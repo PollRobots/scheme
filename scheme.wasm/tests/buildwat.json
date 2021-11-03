@@ -1,0 +1,51 @@
+{
+  "memory": {
+    "name": "$memory",
+    "limit": 1
+  },
+  "files": [
+    "src/malloc.wat",
+    "src/start.wat"
+  ],
+  "exports": [
+    {
+      "name": "memory",
+      "type": "memory",
+      "index": "$memory"
+    },
+    {
+      "name": "malloc_zero",
+      "type": "func",
+      "index": "$malloc_zero"
+    },
+    {
+      "name": "malloc_init",
+      "type": "func",
+      "index": "$malloc_init"
+    },
+    {
+      "name": "malloc_store_list",
+      "type": "func",
+      "index": "$malloc_store_list"
+    },
+    {
+      "name": "malloc_load_list",
+      "type": "func",
+      "index": "$malloc_load_list"
+    },
+    {
+      "name": "malloc_free",
+      "type": "func",
+      "index": "$malloc_free"
+    }
+  ],
+  "wabtOptions": {
+    "wasmFeatures": {
+      "threads": true
+    },
+    "binaryOptions": {
+      "log": true,
+      "write_debug_names": true
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "memory": {
+    "name": "$memory",
+    "limit": 1
+  },
+  "files": [
+    "src/malloc.wat",
+    "src/start.wat",
+    "src/xxh3.wat"
+  ],
+  "start": "$start",
+  "exports": [
+    {
+      "name": "memory",
+      "type": "memory",
+      "index": "$memory"
+    }
+  ],
+  "wabtOptions": {
+    "wasmFeatures": {
+      "threads": true
+    },
+    "binaryOptions": {
+      "log": false,
+      "write_debug_names": true
+    }
+  }
+}
