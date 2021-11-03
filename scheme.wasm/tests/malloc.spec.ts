@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import "mocha";
-import fs from "fs/promises";
+import { loadWasm } from "./common";
 
 interface TestExports {
   memory: WebAssembly.Memory;
@@ -31,17 +31,6 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
     malloc: instance.exports.malloc as (size: number) => number,
     malloc_free: instance.exports.malloc_free as (ptr: number) => void,
   };
-}
-
-async function loadWasm(): Promise<WebAssembly.Instance> {
-  const wasm = await fs.readFile("dist/test.wasm");
-  try {
-    const module = await WebAssembly.instantiate(wasm, {});
-    return module.instance;
-  } catch (err) {
-    console.error(err);
-    throw err;
-  }
 }
 
 describe("malloc wasm", () => {

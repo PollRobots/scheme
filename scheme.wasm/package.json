@@ -11,7 +11,7 @@
     "start": "node .",
     "prestart": "npm run build",
     "build": "tsc -p .",
-    "pretest": "ts-node src/scripts/buildwat.ts tests/buildwat.json --output dist/test.wasm",
+    "pretest": "ts-node src/scripts/buildwat.ts tests/buildwat.json --output dist/test.wasm --tempfile dist/test.wat",
     "test": "node --experimental-wasm-bigint node_modules/mocha/bin/_mocha -r ts-node/register --no-timeouts tests/**/*.spec.ts"
   },
   "keywords": [],

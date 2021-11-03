@@ -5,7 +5,8 @@
   },
   "files": [
     "src/malloc.wat",
-    "src/start.wat"
+    "src/start.wat",
+    "src/xxh3.wat"
   ],
   "exports": [
     {
@@ -37,14 +38,19 @@
       "name": "malloc_free",
       "type": "func",
       "index": "$malloc_free"
+    },
+    {
+      "name": "xxh64",
+      "type": "func",
+      "index": "$xxh64"
     }
   ],
   "wabtOptions": {
     "wasmFeatures": {
-      "threads": true
+      "threads": false
     },
     "binaryOptions": {
-      "log": true,
+      "log": false,
       "write_debug_names": true
     }
   }

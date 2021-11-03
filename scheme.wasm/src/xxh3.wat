@@ -33,7 +33,7 @@
   ;;     acc  = acc * XXH_PRIME64_1 + XXH_PRIME64_4;
   ;;     return acc;
   ;; }
-  (func $XXH64_mergeRound (param $acc i64) (param $val i64) (result i64)
+  (func $xxh64_mergeRound (param $acc i64) (param $val i64) (result i64)
     ;; val  = XXH64_round(0, val);
     (local.set $val (call $xxh64_round (i64.const 0) (local.get $val)))
     ;; acc ^= val;
@@ -128,7 +128,7 @@
         (local.set $h64 (i64.xor
                           (local.get $h64)
                           (i64.mul
-                            (i64.load (local.get $ptr))
+                            (i64.load32_u (local.get $ptr))
                             (global.get $xxh_prime_1)
                           )
                         )
@@ -194,7 +194,7 @@
     (local.set $bEnd (i32.add (local.get $input) (local.get $len)))
 
     ;; if (len >= 32)
-    (if (i32.ge_s (local.get $len) (i32.const 32))
+    (if (i32.ge_u (local.get $len) (i32.const 32))
       (then
         ;; const xxh_u8* const limit = bEnd - 32;
         (local.set $limit (i32.sub (local.get $bEnd) (i32.const 32)))
@@ -218,40 +218,42 @@
             ;; v2 = XXH64_round(v2, XXH_get64bits(input)); input+=8;
             (local.set $v2 (call $xxh64_round (local.get $v2) (i64.load (local.get $input))))
             (local.set $input (i32.add (local.get $input) (i32.const 8)))
+
             ;; v3 = XXH64_round(v3, XXH_get64bits(input)); input+=8;
             (local.set $v3 (call $xxh64_round (local.get $v3) (i64.load (local.get $input))))
             (local.set $input (i32.add (local.get $input) (i32.const 8)))
+
             ;; v4 = XXH64_round(v4, XXH_get64bits(input)); input+=8;
             (local.set $v4 (call $xxh64_round (local.get $v4) (i64.load (local.get $input))))
             (local.set $input (i32.add (local.get $input) (i32.const 8)))
 
             ;; } while (input<=limit);
-            (br_if $do_end (i32.gt_s (local.get $input) (local.get $limit)))
-            (br $do_start)
+            (br_if $do_start (i32.le_u (local.get $input) (local.get $limit)))
+            (br $do_end)
           )
         )
 
         ;; h64 = XXH_rotl64(v1, 1) + XXH_rotl64(v2, 7) + XXH_rotl64(v3, 12) + XXH_rotl64(v4, 18);
         (local.set $h64
           (i64.add 
-            (i64.rotl (local.get $v1) (i64.const 1))
             (i64.add
-              (i64.rotl (local.get $v2) (i64.const 7))
               (i64.add
-                (i64.rotl (local.get $v3) (i64.const 12))
-                (i64.rotl (local.get $v4) (i64.const 18))
+                (i64.rotl (local.get $v1) (i64.const 1))
+                (i64.rotl (local.get $v2) (i64.const 7))
               )
+              (i64.rotl (local.get $v3) (i64.const 12))
             )
+            (i64.rotl (local.get $v4) (i64.const 18))
           )
         )
         ;; h64 = XXH64_mergeRound(h64, v1);
-        (local.set $h64 (call $XXH64_mergeRound (local.get $h64) (local.get $v1)))
+        (local.set $h64 (call $xxh64_mergeRound (local.get $h64) (local.get $v1)))
         ;; h64 = XXH64_mergeRound(h64, v2);
-        (local.set $h64 (call $XXH64_mergeRound (local.get $h64) (local.get $v2)))
+        (local.set $h64 (call $xxh64_mergeRound (local.get $h64) (local.get $v2)))
         ;; h64 = XXH64_mergeRound(h64, v3);
-        (local.set $h64 (call $XXH64_mergeRound (local.get $h64) (local.get $v3)))
+        (local.set $h64 (call $xxh64_mergeRound (local.get $h64) (local.get $v3)))
         ;; h64 = XXH64_mergeRound(h64, v4);
-        (local.set $h64 (call $XXH64_mergeRound (local.get $h64) (local.get $v4)))
+        (local.set $h64 (call $xxh64_mergeRound (local.get $h64) (local.get $v4)))
 
       )
       (else
