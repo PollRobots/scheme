@@ -4,6 +4,7 @@
     "limit": 1
   },
   "files": [
+    "src/string.wat",
     "src/malloc.wat",
     "src/start.wat",
     "src/xxh3.wat"
@@ -43,6 +44,36 @@
       "name": "xxh64",
       "type": "func",
       "index": "$xxh64"
+    },
+    {
+      "name": "strFrom32",
+      "type": "func",
+      "index": "$str-from-32"
+    },
+    {
+      "name": "strFrom64",
+      "type": "func",
+      "index": "$str-from-64"
+    },
+    {
+      "name": "strFrom128",
+      "type": "func",
+      "index": "$str-from-128"
+    },
+    {
+      "name": "strByteLen",
+      "type": "func",
+      "index": "$str-byte-len"
+    },
+    {
+      "name": "strCodePointLen",
+      "type": "func",
+      "index": "$str-code-point-len"
+    },
+    {
+      "name": "strCodePointAt",
+      "type": "func",
+      "index": "$str-code-point-at"
     }
   ],
   "wabtOptions": {
