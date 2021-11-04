@@ -14,6 +14,7 @@ interface TestExports {
   strCodePointLen: (ptr: number) => number;
   strCodePointAt: (ptr: number, at: number) => number;
   strIsValid: (ptr: number) => number;
+  utf8FromCodePoint: (cp: number) => number;
 }
 
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
@@ -43,6 +44,9 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
       at: number
     ) => number,
     strIsValid: instance.exports.strIsValid as (ptr: number) => number,
+    utf8FromCodePoint: instance.exports.utf8FromCodePoint as (
+      cp: number
+    ) => number,
   };
 }
 
@@ -222,7 +226,7 @@ describe("string wasm", () => {
       [0x8f, 1], // misplaced continuation character
       [0xfe, 1], // invalid character
       [0xff, 1], // invalid character
-      [0x8F8FbfF5, 4], // invalid 4 byte character (too big)
+      [0x8f8fbff5, 4], // invalid 4 byte character (too big)
     ];
 
     for (const [str, len] of cases) {
@@ -232,6 +236,47 @@ describe("string wasm", () => {
         `str: ${str.toString(16).padStart(8, "0")}, len: ${len}`
       );
       exports.malloc_free(ptr);
+    }
+  });
+
+  const decodeUtf8Word = (word: number) => {
+    const buffer = new Uint32Array([word]);
+    const len =
+      buffer[0] < 0x100
+        ? 1
+        : buffer[0] < 0x10000
+        ? 2
+        : buffer[0] < 0x1000000
+        ? 3
+        : 4;
+    const bytes = new Uint8Array(buffer.buffer).slice(0, len);
+    return new TextDecoder().decode(bytes);
+  };
+
+  it("converts from a code point to utf8", async () => {
+    const instance = await wasm;
+    const exports = exportsFromInstance(instance);
+
+    const dollar = exports.utf8FromCodePoint(0x24);
+    expect(decodeUtf8Word(dollar)).to.equal("$");
+
+    const cent = exports.utf8FromCodePoint(0xa2);
+    expect(decodeUtf8Word(cent)).to.equal("¢");
+
+    const euro = exports.utf8FromCodePoint(0x20ac);
+    expect(decodeUtf8Word(euro)).to.equal("€");
+
+    const hwair = exports.utf8FromCodePoint(0x10348);
+    expect(decodeUtf8Word(hwair)).to.equal("𐍈");
+
+    const word = new Uint32Array(1);
+    for (const invalid of [0x120000, 0xd800, 0xdfff, 0xdabc]) {
+      const replacement = exports.utf8FromCodePoint(invalid);
+      word[0] = replacement;
+      expect(decodeUtf8Word(replacement)).to.equal(
+        "�",
+        `encoding 0x${invalid.toString(16)}, got 0x${word[0].toString(16)}`
+      );
     }
   });
 });

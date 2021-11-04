@@ -79,6 +79,11 @@
       "name": "strIsValid",
       "type": "func",
       "index": "$str-is-valid"
+    },
+    {
+      "name": "utf8FromCodePoint",
+      "type": "func",
+      "index": "$utf8-from-code-point"
     }
   ],
   "wabtOptions": {

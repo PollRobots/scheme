@@ -617,3 +617,137 @@
   ;; return 1
   (return (i32.const 1))
 )
+
+(func $utf8-from-code-point (param $cp i32) (result i32)
+  (local $first i32)
+  (local $second i32)
+  (local $third i32)
+  (local $fourth i32)
+
+  ;; if (cp < 0x80) {
+  (if (i32.lt_u (local.get $cp) (i32.const 0x80))
+    (then
+      ;; return cp
+      (return (local.get $cp))
+    )
+  )
+  ;; } else if (cp < 0x800)
+  (if (i32.lt_u (local.get $cp) (i32.const 0x800))
+    (then
+      ;; // b110xxxxx b10xxxxxx
+      ;; second = ((cp & 0x3F) | 0x8000)
+      (local.set $second (i32.or (i32.and (local.get $cp) (i32.const 0x3F)) (i32.const 0x80)))
+      ;; first = (((cp >> 6) & 0x1f) | 0xc0)
+      (local.set $first (i32.or (i32.and (i32.shr_u (local.get $cp) (i32.const 6)) (i32.const 0x1F)) (i32.const 0xC0)))
+      ;; return first | second 
+      (return 
+        (i32.or 
+          (local.get $first) 
+          (i32.shl (local.get $second) (i32.const 8))
+        )
+      )
+    )
+  )
+  ;; } else if (cp >= D800 && cp <= DFFF) {
+  (if (i32.ge_u (local.get $cp) (i32.const 0xd800))
+    (then
+      (if (i32.le_u (local.get $cp) (i32.const 0xdfff))
+        (then
+          ;; half of a surrogate pair, not valid in utf-8 
+          ;; return 0xFFFD
+          (return (call $utf8-from-code-point (i32.const 0xFFFD)))
+        )
+      )
+    )
+  )
+  ;; } else if (cp < 0x10000) {
+  (if (i32.lt_u (local.get $cp) (i32.const 0x10000))
+    (then
+  ;;   // b1110xxxx b10xxxxxx b10xxxxxx
+  ;;   third = ((cp & 0x3F) | 0x80)
+      (local.set $third (i32.or (i32.and (local.get $cp) (i32.const 0x3F)) (i32.const 0x80)))
+  ;;   second = (((cp >> 8) & 0x3F) | 0x80)
+      (local.set $second (i32.or (i32.and (i32.shr_u (local.get $cp) (i32.const 6)) (i32.const 0x3F)) (i32.const 0x80)))
+  ;;   first = (((cp >> 16) * 0xF) | 0xE0)
+      (local.set $first (i32.or (i32.and (i32.shr_u (local.get $cp) (i32.const 12)) (i32.const 0xF)) (i32.const 0xE0)))
+  ;;   return first | second << 8 | third < 16 
+      (return
+        (i32.or
+          (i32.or
+            (local.get $first)
+            (i32.shl (local.get $second) (i32.const 8))
+          )
+          (i32.shl (local.get $third) (i32.const 16))
+        )
+      )
+     )
+  )
+  ;; } else if (pc < 0x110000)
+  (if (i32.lt_u (local.get $cp) (i32.const 0x110000))
+    (then
+      ;; // b11110xxx b10xxxxxx b10xxxxxx b10xxxxxx
+      ;; fourth = ((cp & 0x3F) | 0x80)
+      (local.set $fourth (i32.or (i32.and (local.get $cp) (i32.const 0x3F)) (i32.const 0x80)))
+      ;; third = (((cp >> 8) & 0x3F) | 0x80)
+      (local.set $third (i32.or (i32.and (i32.shr_u (local.get $cp) (i32.const 6)) (i32.const 0x3F)) (i32.const 0x80)))
+      ;; second = (((cp >> 16) & 0x3F) | 0x80)
+      (local.set $second (i32.or (i32.and (i32.shr_u (local.get $cp) (i32.const 12)) (i32.const 0x3F)) (i32.const 0x80)))
+      ;; first = (((cp >> 24) * 0x7) | 0xF0)
+      (local.set $first (i32.or (i32.and (i32.shr_u (local.get $cp) (i32.const 18)) (i32.const 0x7)) (i32.const 0xF0)))
+      ;; return first | second << 8 | third < 16 | fourth | 24
+      (return
+        (i32.or
+          (i32.or
+            (i32.or
+              (local.get $first)
+              (i32.shl (local.get $second) (i32.const 8))
+            )
+            (i32.shl (local.get $third) (i32.const 16))
+          )
+          (i32.shl (local.get $fourth) (i32.const 24))
+        )
+      )
+    )
+  )
+  ;; } else {
+  ;;   return 0xFFFD
+  (return (call $utf8-from-code-point (i32.const 0xFFFD)))
+  ;; }
+  
+)
+
+(func $utf8-code-point-size (param $cp i32) (result i32)
+
+  ;; if (cp < 0x80) {
+  (if (i32.lt_u (local.get $cp) (i32.const 0x80))
+    (then
+      ;; return 1
+      (return (i32.const 1))
+    )
+  )
+  ;; } else if (cp < 0x800)
+  (if (i32.lt_u (local.get $cp) (i32.const 0x800))
+    (then
+      ;; return 2
+      (return (i32.const 2))
+    )
+  )
+  ;; } else if (cp < 0x10000) {
+  (if (i32.lt_u (local.get $cp) (i32.const 0x10000))
+    (then
+      ;; return 3 
+      (return (i32.const 3))
+    )
+  )
+  ;; } else if (pc < 0x110000)
+  (if (i32.lt_u (local.get $cp) (i32.const 0x110000))
+    (then
+      ;; return 4
+      (return (i32.const 4))
+    )
+  )
+  ;; } else {
+  ;; return 3 (utf8 length of 0xFFFD)
+  (return (i32.const 3))
+  ;; }
+)
