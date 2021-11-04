@@ -2,9 +2,9 @@
   "name": "scheme.wasm",
   "version": "1.0.0",
   "description": "",
-  "main": "./dist/index.js",
+  "main": "./dist/src/index.js",
   "bin": {
-    "scheme.wasm": "./dist/index.js"
+    "scheme.wasm": "./dist/src/index.js"
   },
   "scripts": {
     "start-dev": "nodemon --watch src -e ts --exec \"npm run start\"",

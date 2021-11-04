@@ -15,6 +15,7 @@ interface TestExports {
   strCodePointAt: (ptr: number, at: number) => number;
   strIsValid: (ptr: number) => number;
   utf8FromCodePoint: (cp: number) => number;
+  utf8CodePointSize: (cp: number) => number;
 }
 
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
@@ -45,6 +46,9 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
     ) => number,
     strIsValid: instance.exports.strIsValid as (ptr: number) => number,
     utf8FromCodePoint: instance.exports.utf8FromCodePoint as (
+      cp: number
+    ) => number,
+    utf8CodePointSize: instance.exports.utf8CodePointSize as (
       cp: number
     ) => number,
   };
@@ -276,6 +280,41 @@ describe("string wasm", () => {
       expect(decodeUtf8Word(replacement)).to.equal(
         "�",
         `encoding 0x${invalid.toString(16)}, got 0x${word[0].toString(16)}`
+      );
+    }
+  });
+
+  it("measures utf8 code point sizes", async () => {
+    const instance = await wasm;
+    const exports = exportsFromInstance(instance);
+
+    expect(exports.utf8CodePointSize(0x24)).to.equal(
+      1,
+      "utf8 encoding for '$' should be 1 byte long"
+    );
+
+    expect(exports.utf8CodePointSize(0xa2)).to.equal(
+      2,
+      "utf8 encoding for '¢' should be 2 bytes long"
+    );
+
+    expect(exports.utf8CodePointSize(0x20ac)).to.equal(
+      3,
+      "utf8 encoding for '€' should be 3 bytes long"
+    );
+
+    expect(exports.utf8CodePointSize(0x10348)).to.equal(
+      4,
+      "utf8 encoding for '𐍈' should be 4 bytes long"
+    );
+
+    const word = new Uint32Array(1);
+    for (const invalid of [0x120000, 0xd800, 0xdfff, 0xdabc]) {
+      expect(exports.utf8CodePointSize(invalid)).to.equal(
+        3,
+        `utf8 encoding for an invalid code point (${invalid.toString(
+          16
+        )}) should be 3 bytes long`
       );
     }
   });

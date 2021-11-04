@@ -84,6 +84,11 @@
       "name": "utf8FromCodePoint",
       "type": "func",
       "index": "$utf8-from-code-point"
+    },
+    {
+      "name": "utf8CodePointSize",
+      "type": "func",
+      "index": "$utf8-code-point-size"
     }
   ],
   "wabtOptions": {
