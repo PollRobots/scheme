@@ -81,6 +81,11 @@
       "index": "$str-is-valid"
     },
     {
+      "name": "strEq",
+      "type": "func",
+      "index": "$str-eq"
+    },
+    {
       "name": "utf8FromCodePoint",
       "type": "func",
       "index": "$utf8-from-code-point"

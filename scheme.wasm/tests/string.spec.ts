@@ -14,6 +14,7 @@ interface TestExports {
   strCodePointLen: (ptr: number) => number;
   strCodePointAt: (ptr: number, at: number) => number;
   strIsValid: (ptr: number) => number;
+  strEq: (a: number, b: number) => number;
   utf8FromCodePoint: (cp: number) => number;
   utf8CodePointSize: (cp: number) => number;
 }
@@ -45,6 +46,7 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
       at: number
     ) => number,
     strIsValid: instance.exports.strIsValid as (ptr: number) => number,
+    strEq: instance.exports.strEq as (a: number, b: number) => number,
     utf8FromCodePoint: instance.exports.utf8FromCodePoint as (
       cp: number
     ) => number,
@@ -316,6 +318,37 @@ describe("string wasm", () => {
           16
         )}) should be 3 bytes long`
       );
+    }
+  });
+
+  it("can check for string equality", async () => {
+    const instance = await wasm;
+    const exports = exportsFromInstance(instance);
+
+    exports.malloc_init();
+
+    const vectors: { a: string; b: string; res: number }[] = [
+      { a: "aaaa", b: "aaaa", res: 1 },
+      { a: "aaaa", b: "aaaA", res: 0 },
+      { a: "aaaa", b: "aaa", res: 0 },
+      { a: "aaaa", b: "aaaaa", res: 0 },
+      { a: "aaaabbbbcc", b: "aaaabbbbcc", res: 1 },
+      { a: "aaaabbbbcc", b: "aaaabbbbCc", res: 0 },
+      { a: "aaaabbbbCc", b: "aaaabbbbcc", res: 0 },
+      { a: "aaaabbbbcc", b: "aaaabbBbcc", res: 0 },
+    ];
+
+    for (const { a, b, res } of vectors) {
+      const aPtr = createString(exports, a);
+      const bPtr = createString(exports, b);
+
+      expect(exports.strEq(aPtr, bPtr)).to.equal(
+        res,
+        `Expected ${JSON.stringify(a)} == ${JSON.stringify(b)} to be ${res}`
+      );
+
+      exports.malloc_free(aPtr);
+      exports.malloc_free(bPtr);
     }
   });
 });

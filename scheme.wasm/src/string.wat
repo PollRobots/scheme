@@ -751,3 +751,71 @@
   (return (i32.const 3))
   ;; }
 )
+
+(func $str-eq (param $a i32) (param $b i32) (result i32)
+  (local $a-len i32)
+  (local $b-len i32)
+  (local $mask i32)
+
+  ;; if (a == b) return 1
+  (if (i32.eq (local.get $a) (local.get $b))
+    (then (return (i32.const 1)))
+  )
+
+  ;; a-len = *a;
+  (local.set $a-len (i32.load (local.get $a)))
+  ;; b-len = *b;
+  (local.set $b-len (i32.load (local.get $b)))
+
+  ;; if (a-len != b-len) return 0
+  (if (i32.ne (local.get $a-len) (local.get $b-len))
+    (then (return (i32.const 0)))
+  )
+
+  ;; a += 4;
+  (local.set $a (i32.add (local.get $a) (i32.const 4)))
+  ;; b += 4;
+  (local.set $b (i32.add (local.get $b) (i32.const 4)))
+
+  ;; while (a-len >= 4) {
+  (block $b_end
+    (loop $b_start
+      ;; break if a-len < 4
+      (br_if $b_end (i32.lt_u (local.get $a-len) (i32.const 4)))
+
+      ;; if (*a != *b) return 0
+      (if (i32.ne (i32.load (local.get $a)) (i32.load (local.get $b)))
+        (then (return (i32.const 0)))
+      )
+
+      ;; a-len -= 4
+      (local.set $a-len (i32.sub (local.get $a-len) (i32.const 4)))
+      ;; a += 4;
+      (local.set $a (i32.add (local.get $a) (i32.const 4)))
+      ;; b += 4;
+      (local.set $b (i32.add (local.get $b) (i32.const 4)))
+      (br $b_start)
+    )
+  )
+  ;; }
+
+  ;; if (a-len) {
+  (if (local.get $a-len)
+    (then
+      ;; mask = -1 >> ((4 - a-len) * 8)
+      (local.set $mask (i32.shr_u (i32.const -1) (i32.shl (i32.sub (i32.const 4) (local.get $a-len)) (i32.const 3))))
+
+      ;; if ((*a & mask) != (*b & mask)) return 0
+      (if 
+        (i32.ne
+          (i32.and (i32.load (local.get $a)) (local.get $mask))
+          (i32.and (i32.load (local.get $b)) (local.get $mask))
+        )
+        (then (return (i32.const 0)))
+      )
+    )
+  )
+  ;;}
+
+  (return (i32.const 1))
+)
