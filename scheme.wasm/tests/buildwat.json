@@ -74,6 +74,11 @@
       "name": "strCodePointAt",
       "type": "func",
       "index": "$str-code-point-at"
+    },
+    {
+      "name": "strIsValid",
+      "type": "func",
+      "index": "$str-is-valid"
     }
   ],
   "wabtOptions": {

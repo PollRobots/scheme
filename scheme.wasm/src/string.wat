@@ -446,10 +446,23 @@
   (block $b_end
     (loop $b_start
       (br_if $b_end (i32.le_s (local.get $byte-len) (i32.const 0)))
-  ;;   byte = (word >> offset)
-      (local.set $byte (i32.shr_u (local.get $word) (local.get $offset)))
 
-  ;;   if ((byte & 0x80) == 0) {
+      ;; if (offset >= 32) {
+      (if (i32.ge_u (local.get $offset) (i32.const 32))
+        (then
+          ;; ptr += 4
+          (local.set $ptr (i32.add (local.get $ptr) (i32.const 4)))
+          ;; word = *ptr
+          (local.set $word (i32.load (local.get $ptr)))
+          ;; offset -= 32
+          (local.set $offset (i32.sub (local.get $offset) (i32.const 32)))
+        )
+      ;; }
+      )
+      ;; byte = (word >> offset) & 0xFF
+      (local.set $byte (i32.and (i32.shr_u (local.get $word) (local.get $offset)) (i32.const 0xff)))
+
+      ;; if ((byte & 0x80) == 0) {
       (if (i32.eqz (i32.and (local.get $byte) (i32.const 0x80)))
         (then
          ;; single byte
@@ -546,9 +559,26 @@
                       ;; 0b11110xxx 0b10xxxxxx 0b10xxxxxx 0b10xxxxxx
                       ;; if ((char & 0xC0C0C0F8) != 0x808080F0) {
                       (if (i32.ne (i32.and (local.get $char) (i32.const 0xC0C0C0F8)) (i32.const 0x808080F0))
-                        ;; return 0
-                        (return (i32.const 0))
-                      ;;}
+                        (then
+                          ;; return 0
+                          (return (i32.const 0))
+                        )
+                      ;; }
+                      )
+                      ;; top 5 bits should be lte 0x10
+                      ;; if (((char & 0x7) << 2) | ((char & 0x3000)>>12)> 0x10)
+                      (if (i32.gt_u
+                            (i32.or 
+                              (i32.shl (i32.and (local.get $char) (i32.const 0x7)) (i32.const 2))
+                              (i32.shr_u (i32.and (local.get $char) (i32.const 0x3000)) (i32.const 12))
+                            )
+                            (i32.const 0x10)
+                          )
+                        (then
+                          ;; return 0
+                          (return (i32.const 0))
+                        )
+                      ;; }
                       )
                       
                       ;; offset += 32
@@ -570,19 +600,7 @@
         )
       )
 
-      ;; if (offset >= 32) {
-      (if (i32.ge_u (local.get $offset) (i32.const 32))
-        (then
-          ;; ptr += 4
-          (local.set $ptr (i32.add (local.get $ptr) (i32.const 4)))
-          ;; word = *ptr
-          (local.set $word (i32.load (local.get $ptr)))
-          ;; offset -= 32
-          (local.set $offset (i32.sub (local.get $offset) (i32.const 32)))
-        )
-      ;; }
-      )
-      (br $b_start)
+     (br $b_start)
     )
   ;; }
   )

@@ -13,6 +13,7 @@ interface TestExports {
   strByteLen: (ptr: number) => number;
   strCodePointLen: (ptr: number) => number;
   strCodePointAt: (ptr: number, at: number) => number;
+  strIsValid: (ptr: number) => number;
 }
 
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
@@ -41,6 +42,7 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
       ptr: number,
       at: number
     ) => number,
+    strIsValid: instance.exports.strIsValid as (ptr: number) => number,
   };
 }
 
@@ -203,5 +205,33 @@ describe("string wasm", () => {
     expect(String.fromCodePoint(exports.strCodePointAt(ptr, 3))).to.equal("𐍈");
 
     exports.malloc_free(ptr);
+  });
+
+  it("checks string validity", async () => {
+    const instance = await wasm;
+    const exports = exportsFromInstance(instance);
+
+    exports.malloc_init();
+
+    const ptr = createString(exports, "$¢€𐍈");
+    expect(exports.strIsValid(ptr));
+    exports.malloc_free(ptr);
+
+    // negative cases
+    const cases: [number, number][] = [
+      [0x8f, 1], // misplaced continuation character
+      [0xfe, 1], // invalid character
+      [0xff, 1], // invalid character
+      [0x8F8FbfF5, 4], // invalid 4 byte character (too big)
+    ];
+
+    for (const [str, len] of cases) {
+      const ptr = exports.strFrom32(len, str);
+      expect(exports.strIsValid(ptr)).to.equal(
+        0,
+        `str: ${str.toString(16).padStart(8, "0")}, len: ${len}`
+      );
+      exports.malloc_free(ptr);
+    }
   });
 });
