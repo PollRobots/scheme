@@ -4,6 +4,7 @@
     "limit": 1
   },
   "files": [
+    "src/hashtable.wat",
     "src/string.wat",
     "src/malloc.wat",
     "src/start.wat",
@@ -94,6 +95,21 @@
       "name": "utf8CodePointSize",
       "type": "func",
       "index": "$utf8-code-point-size"
+    },
+    {
+      "name": "hashtableInit",
+      "type": "func",
+      "index": "$hashtable-init"
+    },
+    {
+      "name": "hashtableAdd",
+      "type": "func",
+      "index": "$hashtable-add"
+    },
+    {
+      "name": "hashtableGet",
+      "type": "func",
+      "index": "$hashtable-get"
     }
   ],
   "wabtOptions": {
