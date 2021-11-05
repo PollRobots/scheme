@@ -110,6 +110,11 @@
       "name": "hashtableGet",
       "type": "func",
       "index": "$hashtable-get"
+    },
+    {
+      "name": "hashtableRemove",
+      "type": "func",
+      "index": "$hashtable-remove"
     }
   ],
   "wabtOptions": {

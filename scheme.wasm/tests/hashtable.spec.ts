@@ -20,6 +20,7 @@ interface TestExports {
   hashtableInit: (capacity: number) => number;
   hashtableAdd: (ptr: number, key: number, value: number) => number;
   hashtableGet: (ptr: number, key: number) => number;
+  hashtableRemove: (ptr: number, key: number) => number;
 }
 
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
@@ -65,6 +66,10 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
       value: number
     ) => number,
     hashtableGet: instance.exports.hashtableGet as (
+      ptr: number,
+      key: number
+    ) => number,
+    hashtableRemove: instance.exports.hashtableRemove as (
       ptr: number,
       key: number
     ) => number,
@@ -116,7 +121,7 @@ describe("hashtable wasm", () => {
       testStrings[key] = testString;
 
       expect(
-        exports.hashtableAdd(ptr, createString(exports, key), value)
+        exports.hashtableAdd(ptr, testString, value)
       ).to.equal(ptr, "hashtable should not grow");
       count++;
       expect(words[(ptr + 4) / 4]).to.equal(count);
@@ -168,5 +173,69 @@ describe("hashtable wasm", () => {
       exports.malloc_free(strings[i]);
     }
     exports.malloc_free(newPtr);
+  });
+
+  it("can remove a hashtable entry", () => {
+    const words = new Uint32Array(exports.memory.buffer);
+    const ptr = exports.hashtableInit(0);
+
+    const testData: Record<string, number> = {
+      a: 1,
+      b: 2,
+      c: 3,
+      d: 4,
+      e: 5,
+    };
+
+    const testStrings: Record<string, number> = {};
+
+    for (const key of Object.keys(testData)) {
+      const testString = createString(exports, key);
+      const value = testData[key];
+      testStrings[key] = testString;
+
+      expect(
+        exports.hashtableAdd(ptr, testString, value)
+      ).to.equal(ptr, "hashtable should not grow");
+    }
+
+    for (const key of Object.keys(testData)) {
+      const res = exports.hashtableGet(ptr, testStrings[key]);
+      expect(res).to.equal(
+        testData[key],
+        `fetching '${key}' as ${testStrings[key]}`
+      );
+    }
+
+    expect(words[(ptr + 4)/4]).to.equal(5);
+
+    expect(exports.hashtableRemove(ptr, testStrings['b'])).to.equal(1, 'Removing b should succeed')
+    expect(exports.hashtableGet(ptr, testStrings['b'])).to.equal(0, 'Should not be able to get b')
+    expect(exports.hashtableRemove(ptr, testStrings['c'])).to.equal(1, 'Removing c should succeed')
+    expect(exports.hashtableGet(ptr, testStrings['c'])).to.equal(0, 'Should not be able to get c')
+
+    expect(exports.hashtableRemove(ptr, testStrings['b'])).to.equal(0, 'Removing b a second time should fail')
+    
+    expect(words[(ptr + 4)/4]).to.equal(3, "count should be 3 after removing two elements");
+
+    delete testData['b']
+    delete testData['c']
+
+    for (const key of Object.keys(testData)) {
+      const res = exports.hashtableGet(ptr, testStrings[key]);
+      expect(res).to.equal(
+        testData[key],
+        `fetching '${key}' as ${testStrings[key]}`
+      );
+    }
+
+    const none = createString(exports, "none");
+    expect(exports.hashtableGet(ptr, none)).to.equal(0);
+    exports.malloc_free(none);
+
+    exports.malloc_free(ptr);
+    for (const key of Object.keys(testData)) {
+      exports.malloc_free(testStrings[key]);
+    }
   });
 });
