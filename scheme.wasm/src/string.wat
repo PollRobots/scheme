@@ -819,3 +819,127 @@
 
   (return (i32.const 1))
 )
+
+(func $str-from-code-points
+  (param $ptr i32)  ;; pointer to an arry of 32bit code point values
+  (param $len i32)  ;; number of code points 
+  (result i32)      ;; an allocated string containing all the code poitns
+
+  (local $byte-len i32) ;; the byte length of the output string
+  (local $i i32)        ;; used to index over code points
+  (local $cp-ptr i32)   ;; pointer to the current code point
+  (local $str i32)      ;; pointer to the output string
+  (local $str-ptr i32)  ;; pointer within the output string
+  (local $accum i64)    ;; used to accumulate utf8 encoded sequences of bytes
+  (local $acc-len i32)  ;; the bit length of the accumulated data in accum
+  (local $cp-len i32)   ;; the utf8 encoded length of the code point cp
+  (local $cp i32)       ;; the current code point (when encoding)
+
+  ;; Compute the byte length.
+  ;; i = 0;
+  (local.set $i (i32.const 0))
+  ;; byte-len = 0
+  (local.set $byte-len (i32.const 0))
+  ;; cp-ptr = ptr
+  (local.set $cp-ptr (local.get $ptr))
+
+  ;; while (i < len) {
+  (block $c_end
+    (loop $c_start
+      (br_if $c_end (i32.ge_u (local.get $i) (local.get $len)))
+
+      ;;  byte-len += utf8-code-point-size(*cp-ptr)
+      (local.set $byte-len
+        (i32.add
+          (local.get $byte-len)
+          (call $utf8-code-point-size (i32.load (local.get $cp-ptr)))
+        )
+      )
+      ;; i++
+      (local.set $i (i32.add (local.get $i) (i32.const 1)))
+      ;; cp-ptr += 4
+      (local.set $cp-ptr (i32.add (local.get $cp-ptr) (i32.const 4)))
+      ;; }
+      (br $c_start)
+    )
+  )
+
+  ;; Allocate the utf-8 encoded string
+  ;; str = malloc(byte-len + 8)
+  (local.set $str (call $malloc (i32.add (local.get $byte-len) (i32.const 4))))
+  ;; *str = byte-len
+  (i32.store (local.get $str) (local.get $byte-len))
+  ;; str-ptr = str + 4;
+  (local.set $str-ptr (i32.add (local.get $str) (i32.const 4)))
+
+  ;; convert and add
+  ;; i = 0;
+  (local.set $i (i32.const 0))
+  ;; cp-ptr = ptr
+  (local.set $cp-ptr (local.get $ptr))
+  ;; accum = 0;
+  (local.set $accum (i64.const 0))
+  ;; acc-len = 0
+  (local.set $acc-len (i32.const 0))
+
+  ;; while (i < len) {
+  (block $a_end
+    (loop $a_start
+      (br_if $a_end (i32.ge_u (local.get $i) (local.get $len)))
+
+      ;; cp = *cp-ptr
+      (local.set $cp (i32.load (local.get $cp-ptr)))
+      ;; cp-len = utf8-code-point-size(cp)
+      (local.set $cp-len (call $utf8-code-point-size (local.get $cp)))
+      ;; accum = accum | (utf8-from-code-point(cp) << acc-len)
+      (local.set $accum
+        (i64.or
+          (local.get $accum)
+          (i64.shl
+            (i64.extend_i32_u (call $utf8-from-code-point (local.get $cp)))
+            (i64.extend_i32_u (local.get $acc-len))
+          )
+        )
+      )
+      ;; acc-len += 8 * cp-len
+      (local.set $acc-len
+        (i32.add
+          (local.get $acc-len) 
+          (i32.shl (local.get $cp-len) (i32.const 3))
+        )
+      )
+      ;; if (acc-len > 32) {
+      (if (i32.gt_u (local.get $acc-len) (i32.const 32))
+        (then
+          ;; *str-ptr = (i32)accum
+          (i32.store (local.get $str-ptr) (i32.wrap_i64 (local.get $accum)))
+          ;; str-ptr += 4
+          (local.set $str-ptr (i32.add (local.get $str-ptr) (i32.const 4)))
+          ;; accum >>= 32
+          (local.set $accum (i64.shr_u (local.get $accum) (i64.const 32)))
+          ;; acc-len -= 32
+          (local.set $acc-len (i32.sub (local.get $acc-len) (i32.const 32)))
+        )
+      ;; }
+      )
+
+      (local.set $i (i32.add (local.get $i) (i32.const 1)))
+      ;; cp-ptr += 4
+      (local.set $cp-ptr (i32.add (local.get $cp-ptr) (i32.const 4)))
+      ;; }
+      (br $a_start)
+    )
+  )
+
+  ;; if (acc-len > 0) {
+  (if (i32.gt_u (local.get $acc-len) (i32.const 0))
+    (then
+      ;; *str-ptr = (i32)accum
+      (i32.store (local.get $str-ptr) (i32.wrap_i64 (local.get $accum)))
+    )
+  ;; }
+  )
+
+  ;; return str;
+  (return (local.get $str))
+)

@@ -7,8 +7,26 @@
     "src/hashtable.wat",
     "src/string.wat",
     "src/malloc.wat",
+    "src/reader.wat",
     "src/start.wat",
     "src/xxh3.wat"
+  ],
+  "importFuncs": [
+    {
+      "module": "io",
+      "name": "read",
+      "index": "$io-read",
+      "params": [],
+      "result": "i32"
+    },
+    {
+      "module": "io",
+      "name": "write",
+      "index": "$io-write",
+      "params": [
+        "i32"
+      ]
+    }
   ],
   "exports": [
     {
@@ -115,6 +133,21 @@
       "name": "hashtableRemove",
       "type": "func",
       "index": "$hashtable-remove"
+    },
+    {
+      "name": "readerInit",
+      "type": "func",
+      "index": "$reader-init"
+    },
+    {
+      "name": "readerFree",
+      "type": "func",
+      "index": "$reader-free"
+    },
+    {
+      "name": "readerReadToken",
+      "type": "func",
+      "index": "$reader-read-token"
     }
   ],
   "wabtOptions": {

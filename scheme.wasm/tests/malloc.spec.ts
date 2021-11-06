@@ -202,6 +202,7 @@ describe("malloc wasm", () => {
       const words = new Uint32Array(memory.buffer);
 
       // validate heap
+      
       // console.log(`${i.toString().padStart(2, "0")} Check Heap`);
       // check free list
       let offset = 8;

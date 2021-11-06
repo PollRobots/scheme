@@ -3,6 +3,40 @@ import fs from "fs/promises";
 import { Command, OptionValues } from "commander";
 import wabt from "wabt";
 
+type WasmNumericType = "i32" | "i64";
+
+function isWasmNumericType(value: any): value is WasmNumericType {
+  return value === "i32" || value === "i64";
+}
+
+interface ConfigImportFunc {
+  module: string;
+  name: string;
+  index: string;
+  params: WasmNumericType[];
+  result?: WasmNumericType;
+}
+
+function isConfigImportFunc(value: any): value is ConfigImportFunc {
+  return (
+    value &&
+    Reflect.has(value, "module") &&
+    typeof value.module === "string" &&
+    Reflect.has(value, "name") &&
+    typeof value.name === "string" &&
+    Reflect.has(value, "index") &&
+    typeof value.index === "string" &&
+    Reflect.has(value, "params") &&
+    Array.isArray(value.params) &&
+    (value.params as any[]).every(isWasmNumericType) &&
+    (value.result === undefined || isWasmNumericType(value.result))
+  );
+}
+
+function isConfigImportFuncArray(value: any): value is ConfigImportFunc[] {
+  return value && Array.isArray(value) && value.every(isConfigImportFunc);
+}
+
 interface ConfigExport {
   name: string;
   type: "func" | "table" | "memory" | "global";
@@ -52,6 +86,7 @@ interface BuildWatConfig {
   memory?: ConfigMemory;
   files: string[];
   start?: string;
+  importFuncs?: ConfigImportFunc[];
   exports?: ConfigExport[];
   wabtOptions?: WabtOptions;
 }
@@ -69,12 +104,25 @@ function isBuildWatConfig(value: any): value is BuildWatConfig {
     Reflect.has(value, "files") &&
     isStringArray(value.files) &&
     (!Reflect.has(value, "start") || typeof value.start === "string") &&
+    (!Reflect.has(value, "importFuncs") ||
+      isConfigImportFuncArray(value.importFuncs)) &&
     (!Reflect.has(value, "exports") || isConfigExportArray(value.exports))
   );
 }
 
 function makePrefix(config: BuildWatConfig): string[] {
   const prefix = ["(module"];
+  if (config.importFuncs) {
+    config.importFuncs.forEach((el) => {
+      const module = JSON.stringify(el.module);
+      const name = JSON.stringify(el.name);
+      const params = el.params.map((t) => ` (param ${t})`).join("");
+      const result = el.result ? ` (result ${el.result})` : "";
+      prefix.push(
+        `  (func ${el.index} (import ${module} ${name})${params}${result})`
+      );
+    });
+  }
   if (config.memory) {
     if (!config.memory.name.startsWith("$")) {
       console.warn("Invalid memory name: ", config.memory.name);
@@ -82,9 +130,7 @@ function makePrefix(config: BuildWatConfig): string[] {
     if (config.memory.limit != (config.memory.limit | 0)) {
       console.warn("Invalid memory limit: ", config.memory.limit);
     }
-    prefix.push(
-      `  (memory ${config.memory.name} ${config.memory.limit | 0})`
-    );
+    prefix.push(`  (memory ${config.memory.name} ${config.memory.limit | 0})`);
   }
   return prefix;
 }
