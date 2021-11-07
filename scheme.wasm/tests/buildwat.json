@@ -5,6 +5,7 @@
   },
   "files": [
     "src/hashtable.wat",
+    "src/heap.wat",
     "src/string.wat",
     "src/malloc.wat",
     "src/reader.wat",
@@ -148,6 +149,26 @@
       "name": "readerReadToken",
       "type": "func",
       "index": "$reader-read-token"
+    },
+    {
+      "name": "heapCreate",
+      "type": "func",
+      "index": "$heap-create"
+    },
+    {
+      "name": "heapAlloc",
+      "type": "func",
+      "index": "$heap-alloc"
+    },
+    {
+      "name": "heapFree",
+      "type": "func",
+      "index": "$heap-free"
+    },
+    {
+      "name": "heapDestroy",
+      "type": "func",
+      "index": "$heap-destroy"
     }
   ],
   "wabtOptions": {
