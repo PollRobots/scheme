@@ -9,6 +9,7 @@
     "src/string.wat",
     "src/malloc.wat",
     "src/reader.wat",
+    "src/runtime.wat",
     "src/start.wat",
     "src/xxh3.wat"
   ],
@@ -34,6 +35,21 @@
       "name": "memory",
       "type": "memory",
       "index": "$memory"
+    },
+    {
+      "name": "gHeap",
+      "type": "global",
+      "index": "$g-heap"
+    },
+    {
+      "name": "gTrue",
+      "type": "global",
+      "index": "$g-true"
+    },
+    {
+      "name": "gFalse",
+      "type": "global",
+      "index": "$g-false"
     },
     {
       "name": "malloc_zero",
@@ -169,6 +185,41 @@
       "name": "heapDestroy",
       "type": "func",
       "index": "$heap-destroy"
+    },
+    {
+      "name": "runtimeInit",
+      "type": "func",
+      "index": "$runtime-init"
+    },
+    {
+      "name": "runtimeCleanup",
+      "type": "func",
+      "index": "$runtime-cleanup"
+    },
+    {
+      "name": "stringToNumber",
+      "type": "func",
+      "index": "$string->number"
+    },
+    {
+      "name": "shortStrEq",
+      "type": "func",
+      "index": "$short-str-eq"
+    },
+    {
+      "name": "atom",
+      "type": "func",
+      "index": "$atom"
+    },
+    {
+      "name": "stringToDatum",
+      "type": "func",
+      "index": "$string->datum"
+    },
+    {
+      "name": "read",
+      "type": "func",
+      "index": "$read"
     }
   ],
   "wabtOptions": {

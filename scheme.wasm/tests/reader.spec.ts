@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import "mocha";
 
-import { checkForLeaks, checkMemory, createString, dumpMemory, getString, loadWasm } from "./common";
+import { checkForLeaks, checkMemory, createString, dumpMemory, getString, IoEvent, IoModule, IoTest, loadWasm } from "./common";
 
 interface TestExports {
   memory: WebAssembly.Memory;
@@ -41,98 +41,9 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
   };
 }
 
-class IoEvent {
-  private _data?: string;
-  private _type: "read" | "write";
-
-  constructor(type: "read" | "write", data?: string) {
-    this._type = type;
-    this._data = data;
-  }
-
-  public get type(): "read" | "write" {
-    return this._type;
-  }
-  public set type(v: "read" | "write") {
-    this._type = v;
-  }
-
-  public get data(): string | undefined {
-    return this._data;
-  }
-
-  public set data(v: string | undefined) {
-    this._data = v;
-  }
-}
-
-type IoEventHandler = (evt: IoEvent) => boolean;
-
-class IoTest {
-  private exports_: TestExports | null = null;
-  private readonly readEvents: IoEventHandler[] = [];
-  private readonly writeEvents: IoEventHandler[] = [];
-
-  constructor() {}
-
-  get exports(): TestExports | null {
-    return this.exports_;
-  }
-  set exports(value: TestExports | null) {
-    this.exports_ = value;
-  }
-
-  addEventListener(type: "read" | "write", callback: IoEventHandler): void {
-    if (type === "read") {
-      this.readEvents.push(callback);
-    } else {
-      this.writeEvents.push(callback);
-    }
-  }
-
-  removeEventListener(type: "read" | "write", callback: IoEventHandler): void {
-    const list = type === "read" ? this.readEvents : this.writeEvents;
-    const index = list.indexOf(callback);
-    if (index >= 0) {
-      list.splice(index, 1);
-    }
-  }
-
-  read(): number {
-    if (!this.exports_) {
-      return 0;
-    }
-    const event = new IoEvent("read");
-    for (const handler of this.readEvents) {
-      const res = handler(event);
-      if (event.data != undefined) {
-        return createString(this.exports_, event.data);
-      } else if (res) {
-        return 0;
-      }
-    }
-    return 0;
-  }
-
-  write(str: number) {
-    if (!this.exports_) {
-      return;
-    }
-    const toWrite = getString(this.exports_, str);
-    const event = new IoEvent("write", toWrite);
-
-    for (const handler of this.writeEvents) {
-      handler(event);
-    }
-  }
-}
-
 describe("reader wasm", () => {
   const io = new IoTest();
-  const wasm = loadWasm({
-    read: () => io.read(),
-    write: (ptr) => io.write(ptr),
-  });
+  const wasm = loadWasm(io.module);
   let exports: TestExports;
 
   before(async () => {

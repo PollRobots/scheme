@@ -10,17 +10,18 @@
 ;; Type - enum
 ;;   empty = 0
 ;;   nil = 1
-;;   cons = 2
-;;   i64 = 3
-;;   f64 = 4
-;;   symbol = 5
-;;   str = 6
-;;   char = 7
-;;   env = 8
-;;   special = 9
-;;   builtin = 10
-;;   lambda = 11
-;; kMaxType = 11
+;;   boolean = 2
+;;   cons = 3
+;;   i64 = 4
+;;   f64 = 5
+;;   symbol = 6
+;;   str = 7
+;;   char = 8
+;;   env = 9
+;;   special = 10
+;;   builtin = 11
+;;   lambda = 12
+;; kMaxType = 12
 
 ;;  Empty cell
 ;;    next-empty: i32 ptr
@@ -113,6 +114,9 @@
 
 (func $heap-destroy (param $heap i32)
   (local $next-heap-ptr i32)
+  (local $size i32)
+  (local $entry-ptr i32)
+  (local $type i32)
 
   ;; next-heap-ptr = heap[8]
   (local.set $next-heap-ptr (i32.load (i32.add (local.get $heap) (i32.const 8))))
@@ -123,6 +127,46 @@
       (call $heap-destroy (local.get $next-heap-ptr))
     )
   ;; }
+  )
+
+  ;; size = heap[0]
+  (local.set $size (i32.load (local.get $heap)))
+  ;; entry-ptr = heap + 12
+  (local.set $entry-ptr (i32.add (local.get $heap) (i32.const 12)))
+
+  ;; while (size) {
+  (block $b_end
+    (loop $b_start
+      (br_if $b_end (i32.eqz (local.get $size)))
+
+      ;; type = entry-ptr[0] & 0xF
+      (local.set $type (i32.and (i32.load (local.get $entry-ptr)) (i32.const 0xF)))
+
+      ;; if (type == 6 || type == 7) {
+      (block $b_else
+        (block $b_str_or_sym
+          (if (i32.eq (local.get $type) (i32.const 6))
+            (then (br $b_str_or_sym))
+            (else
+              (if (i32.eq (local.get $type) (i32.const 7))
+                (then (br $b_str_or_sym))
+                (else (br $b_else))
+              )
+            )
+          )
+        )
+        ;; malloc_free(entry-ptr[4])
+        (call $malloc_free (i32.load (i32.add (local.get $entry-ptr) (i32.const 4))))
+        ;; }
+      )
+
+      ;; entry-ptr += 12
+      (local.set $entry-ptr (i32.add (local.get $entry-ptr) (i32.const 12)))
+      ;; size--;
+      (local.set $size (i32.sub (local.get $size) (i32.const 1)))
+      (br $b_start)
+    ;; }
+    )
   )
   
   ;; malloc_free(heap)
