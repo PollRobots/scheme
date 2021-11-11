@@ -15,6 +15,7 @@ interface TestExports {
   strCodePointAt: (ptr: number, at: number) => number;
   strIsValid: (ptr: number) => number;
   strEq: (a: number, b: number) => number;
+  strDup: (ptr: number) => number;
   utf8FromCodePoint: (cp: number) => number;
   utf8CodePointSize: (cp: number) => number;
 }
@@ -47,6 +48,7 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
     ) => number,
     strIsValid: instance.exports.strIsValid as (ptr: number) => number,
     strEq: instance.exports.strEq as (a: number, b: number) => number,
+    strDup: instance.exports.strDup as (ptr: number) => number,
     utf8FromCodePoint: instance.exports.utf8FromCodePoint as (
       cp: number
     ) => number,
@@ -303,5 +305,21 @@ describe("string wasm", () => {
       exports.malloc_free(aPtr);
       exports.malloc_free(bPtr);
     }
+  });
+
+  it("can duplicate strings", async() => {
+    const instance = await wasm;
+    const exports = exportsFromInstance(instance);
+
+    const testString = "Hello, World!"
+
+    const fromPtr = createString(exports, testString);
+    const toPtr = exports.strDup(fromPtr);
+
+    expect(toPtr).to.not.equal(fromPtr);
+    expect(getString(exports, toPtr)).to.equal(testString);
+
+    exports.malloc_free(fromPtr);
+    exports.malloc_free(toPtr);
   });
 });

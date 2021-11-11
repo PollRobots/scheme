@@ -38,6 +38,71 @@
   (return (local.get $ptr))
 )
 
+(func $hashtable-free-keys (param $hashtable i32)
+  (local $capacity i32)   ;; capacity of the hashtable
+  (local $count i32)      ;; number of entries in the hashtable
+  (local $slot-ptr i32)
+  (local $slot i32)
+  (local $digest i64)
+
+  ;; capacity = hashtable[0]
+  (local.set $capacity (i32.load (local.get $hashtable)))
+  ;; count = hashtable[4]
+  (local.set $count (i32.load (i32.add (local.get $hashtable) (i32.const 4))))
+  
+
+  ;; slot = 0
+  (local.set $slot (i32.const 0))
+  ;; slot-ptr = hashtable + 8
+  (local.set $slot-ptr (i32.add (local.get $hashtable) (i32.const 8)))
+  
+  ;; while (slot != capacity) {
+  (block $w_end
+    (loop $w_start
+      (br_if $w_end (i32.eq (local.get $slot) (local.get $capacity)))
+
+      ;; digest = *slot-ptr
+      (local.set $digest (i64.load (local.get $slot-ptr)))
+      ;; if (digest != 0 && digest != -1) {
+      (if (i64.ne (local.get $digest) (i64.const 0))
+        (then
+          (if (i64.ne (local.get $digest) (i64.const -1))
+            (then
+              ;; key = slot-ptr[8]
+              ;; malloc_free(key)
+              ;;  as point-free
+              ;; malloc_free(slot-ptr[8])
+              (call $malloc_free
+                (i32.load (i32.add (local.get $slot-ptr) (i32.const 8)))
+              )
+
+              ;; count--
+              (local.set $count (i32.sub (local.get $count) (i32.const 1)))
+            )
+          )
+        )
+      )
+      ;; }
+
+      ;; slot++
+      (local.set $slot (i32.add (local.get $slot) (i32.const 1))) 
+      ;; slot-ptr += 16
+      (local.set $slot-ptr (i32.add (local.get $slot-ptr) (i32.const 16))) 
+
+      (br $w_start)
+    )
+  )
+  ;; }
+
+  ;; assert(count == 0)
+  ;; if (count) {
+  (if (local.get $count)
+    ;; trap
+    (then unreachable)
+  ;; }
+  )
+)
+
 (func $hashtable-digest (param $key i32) (result i64)
   (local $len i32)
 
@@ -341,6 +406,24 @@
   (return (local.get $slot-value))
 )
 
+(func $hashtable-has
+  (param $ptr i32)  ;; the hashtable
+  (param $key i32)  ;; the key to lookup
+  (result i32 )     ;; indicates whether the hashtable has a value for this key (1)
+
+  (local $capacity i32)
+  (local $slot i32)
+
+  ;; capacity = ptr[0]
+  (local.set $capacity (i32.load (local.get $ptr)))
+
+  ;; slot = hashtable-get-internal(ptr, key)
+  (local.set $slot (call $hashtable-get-internal (local.get $ptr) (local.get $key)))
+
+  ;; return slot < capacity
+  (return (i32.lt_u (local.get $slot) (local.get $capacity)))
+)
+
 (func $hashtable-remove
   (param $ptr i32)  ;; the hashtable
   (param $key i32)  ;; the key to lookup
@@ -365,8 +448,8 @@
     )
   )
 
-  ;; slot-ptr = ptr + 8 + slot-ptr * 16
-  ;; slot-ptr = ptr + 8 + slot-ptr << 4
+  ;; slot-ptr = ptr + 8 + slot * 16
+  ;; slot-ptr = ptr + 8 + slot << 4
   (local.set $slot-ptr 
     (i32.add
       (i32.add (local.get $ptr) (i32.const 8))
@@ -380,10 +463,56 @@
   (i64.store (i32.add (local.get $slot-ptr) (i32.const 8)) (i64.const 0))
 
   ;; reduce count
+  ;; count = ptr[4]
   (local.set $count (i32.load (i32.add (local.get $ptr) (i32.const 4))))
+  ;; ptr[4] = count - 1
   (i32.store
     (i32.add (local.get $ptr) (i32.const 4)) 
     (i32.sub (local.get $count) (i32.const 1))
+  )
+
+  ;; return 1
+  (return (i32.const 1))
+)
+
+(func $hashtable-replace
+  (param $ptr i32)    ;; the hashtable
+  (param $key i32)    ;; the key to lookup
+  (param $value i32)  ;; the new value
+  (result i32 )       ;; 1 if replaced, 0 otherwise
+
+  (local $capacity i32)
+  (local $count i32)
+  (local $slot i32)
+  (local $slot-ptr i32)
+  (local $slot-value i32)
+
+  ;; capacity = ptr[0]
+  (local.set $capacity (i32.load (local.get $ptr)))
+
+  ;; slot = hashtable-get-internal(ptr, key)
+  (local.set $slot (call $hashtable-get-internal (local.get $ptr) (local.get $key)))
+
+  ;; if (slot >= capacity) { return 0; }
+  (if (i32.ge_u (local.get $slot) (local.get $capacity))
+    (then
+      (return (i32.const 0))
+    )
+  )
+
+  ;; slot-ptr = ptr + 8 + slot * 16
+  ;; slot-ptr = ptr + 8 + slot << 4
+  (local.set $slot-ptr 
+    (i32.add
+      (i32.add (local.get $ptr) (i32.const 8))
+      (i32.shl (local.get $slot) (i32.const 4))
+    )
+  )
+
+  ;; slot-ptr[12] = value
+  (i32.store
+    (i32.add (local.get $slot-ptr) (i32.const 12))
+    (local.get $value)
   )
 
   ;; return 1

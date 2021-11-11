@@ -4,6 +4,7 @@
     "limit": 1
   },
   "files": [
+    "src/environment.wat",
     "src/hashtable.wat",
     "src/heap.wat",
     "src/string.wat",
@@ -122,6 +123,11 @@
       "index": "$str-eq"
     },
     {
+      "name": "strDup",
+      "type": "func",
+      "index": "$str-dup"
+    },
+    {
       "name": "utf8FromCodePoint",
       "type": "func",
       "index": "$utf8-from-code-point"
@@ -135,6 +141,11 @@
       "name": "hashtableInit",
       "type": "func",
       "index": "$hashtable-init"
+    },
+    {
+      "name": "hashtableFreeKeys",
+      "type": "func",
+      "index": "$hashtable-free-keys"
     },
     {
       "name": "hashtableAdd",
@@ -220,6 +231,26 @@
       "name": "read",
       "type": "func",
       "index": "$read"
+    },
+    {
+      "name": "environmentInit",
+      "type": "func",
+      "index": "$environment-init"
+    },
+    {
+      "name": "environmentAdd",
+      "type": "func",
+      "index": "$environment-add"
+    },
+    {
+      "name": "environmentGet",
+      "type": "func",
+      "index": "$environment-get"
+    },
+    {
+      "name": "environmentSetBang",
+      "type": "func",
+      "index": "$environment-set!"
     }
   ],
   "wabtOptions": {

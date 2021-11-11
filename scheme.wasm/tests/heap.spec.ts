@@ -121,15 +121,15 @@ describe("heap wasm", () => {
 
     const kTestData: { type: number; data1: number; data2: number }[] = [
       { type: 1, data1: 0x20656e4f, data2: 3 },
-      { type: 2, data1: 0x206f7754, data2: 9 },
-      { type: 3, data1: 0x73657254, data2: 27 },
-      { type: 4, data1: 0x72756f46, data2: 81 },
-      { type: 5, data1: 0x65766946, data2: 243 },
+      { type: 1, data1: 0x206f7754, data2: 9 },
+      { type: 1, data1: 0x73657254, data2: 27 },
+      { type: 1, data1: 0x72756f46, data2: 81 },
+      { type: 1, data1: 0x65766946, data2: 243 },
       { type: 1, data1: 0x20786953, data2: 729 },
       { type: 1, data1: 0x6e766553, data2: 2187 },
-      { type: 8, data1: 0x6f68634f, data2: 6561 },
-      { type: 9, data1: 0x656e694e, data2: 19683 },
-      { type: 10, data1: 0x206e6554, data2: 59049 },
+      { type: 1, data1: 0x6f68634f, data2: 6561 },
+      { type: 1, data1: 0x656e694e, data2: 19683 },
+      { type: 1, data1: 0x206e6554, data2: 59049 },
     ];
     const ptrs: { ptr: number; type: number; data1: number; data2: number }[] =
       [];
@@ -166,15 +166,15 @@ describe("heap wasm", () => {
 
     const kTestData: { type: number; data1: number; data2: number }[] = [
       { type: 1, data1: 0x20656e4f, data2: 3 },
-      { type: 2, data1: 0x206f7754, data2: 9 },
-      { type: 3, data1: 0x73657254, data2: 27 },
-      { type: 4, data1: 0x72756f46, data2: 81 },
-      { type: 5, data1: 0x65766946, data2: 243 },
+      { type: 1, data1: 0x206f7754, data2: 9 },
+      { type: 1, data1: 0x73657254, data2: 27 },
+      { type: 1, data1: 0x72756f46, data2: 81 },
+      { type: 1, data1: 0x65766946, data2: 243 },
       { type: 1, data1: 0x20786953, data2: 729 },
       { type: 1, data1: 0x6e766553, data2: 2187 },
-      { type: 8, data1: 0x6f68634f, data2: 6561 },
-      { type: 9, data1: 0x656e694e, data2: 19683 },
-      { type: 10, data1: 0x206e6554, data2: 59049 },
+      { type: 1, data1: 0x6f68634f, data2: 6561 },
+      { type: 1, data1: 0x656e694e, data2: 19683 },
+      { type: 1, data1: 0x206e6554, data2: 59049 },
     ];
     const ptrs: { ptr: number; type: number; data1: number; data2: number }[] =
       [];

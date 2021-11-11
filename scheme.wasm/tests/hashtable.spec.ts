@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import "mocha";
 
-import { createString, getString, loadWasm } from "./common";
+import { checkForLeaks, createString, getString, loadWasm } from "./common";
 
 interface TestExports {
   memory: WebAssembly.Memory;
@@ -21,6 +21,7 @@ interface TestExports {
   hashtableAdd: (ptr: number, key: number, value: number) => number;
   hashtableGet: (ptr: number, key: number) => number;
   hashtableRemove: (ptr: number, key: number) => number;
+  hashtableFreeKeys: (ptr:number) => void;
 }
 
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
@@ -73,6 +74,7 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
       ptr: number,
       key: number
     ) => number,
+    hashtableFreeKeys: instance.exports.hashtableFreeKeys as (ptr:number) => void
   };
 }
 
@@ -84,6 +86,10 @@ describe("hashtable wasm", () => {
     const instance = await wasm;
     exports = exportsFromInstance(instance);
     exports.malloc_init();
+  });
+
+  after(() => {
+    checkForLeaks(exports);
   });
 
   it("Can allocate and initialize a hashtable", () => {
@@ -120,9 +126,10 @@ describe("hashtable wasm", () => {
       const value = testData[key];
       testStrings[key] = testString;
 
-      expect(
-        exports.hashtableAdd(ptr, testString, value)
-      ).to.equal(ptr, "hashtable should not grow");
+      expect(exports.hashtableAdd(ptr, testString, value)).to.equal(
+        ptr,
+        "hashtable should not grow"
+      );
       count++;
       expect(words[(ptr + 4) / 4]).to.equal(count);
     }
@@ -194,9 +201,10 @@ describe("hashtable wasm", () => {
       const value = testData[key];
       testStrings[key] = testString;
 
-      expect(
-        exports.hashtableAdd(ptr, testString, value)
-      ).to.equal(ptr, "hashtable should not grow");
+      expect(exports.hashtableAdd(ptr, testString, value)).to.equal(
+        ptr,
+        "hashtable should not grow"
+      );
     }
 
     for (const key of Object.keys(testData)) {
@@ -207,19 +215,37 @@ describe("hashtable wasm", () => {
       );
     }
 
-    expect(words[(ptr + 4)/4]).to.equal(5);
+    expect(words[(ptr + 4) / 4]).to.equal(5);
 
-    expect(exports.hashtableRemove(ptr, testStrings['b'])).to.equal(1, 'Removing b should succeed')
-    expect(exports.hashtableGet(ptr, testStrings['b'])).to.equal(0, 'Should not be able to get b')
-    expect(exports.hashtableRemove(ptr, testStrings['c'])).to.equal(1, 'Removing c should succeed')
-    expect(exports.hashtableGet(ptr, testStrings['c'])).to.equal(0, 'Should not be able to get c')
+    expect(exports.hashtableRemove(ptr, testStrings["b"])).to.equal(
+      1,
+      "Removing b should succeed"
+    );
+    expect(exports.hashtableGet(ptr, testStrings["b"])).to.equal(
+      0,
+      "Should not be able to get b"
+    );
+    expect(exports.hashtableRemove(ptr, testStrings["c"])).to.equal(
+      1,
+      "Removing c should succeed"
+    );
+    expect(exports.hashtableGet(ptr, testStrings["c"])).to.equal(
+      0,
+      "Should not be able to get c"
+    );
 
-    expect(exports.hashtableRemove(ptr, testStrings['b'])).to.equal(0, 'Removing b a second time should fail')
-    
-    expect(words[(ptr + 4)/4]).to.equal(3, "count should be 3 after removing two elements");
+    expect(exports.hashtableRemove(ptr, testStrings["b"])).to.equal(
+      0,
+      "Removing b a second time should fail"
+    );
 
-    delete testData['b']
-    delete testData['c']
+    expect(words[(ptr + 4) / 4]).to.equal(
+      3,
+      "count should be 3 after removing two elements"
+    );
+
+    delete testData["b"];
+    delete testData["c"];
 
     for (const key of Object.keys(testData)) {
       const res = exports.hashtableGet(ptr, testStrings[key]);
@@ -234,8 +260,34 @@ describe("hashtable wasm", () => {
     exports.malloc_free(none);
 
     exports.malloc_free(ptr);
-    for (const key of Object.keys(testData)) {
+    for (const key of Object.keys(testStrings)) {
       exports.malloc_free(testStrings[key]);
     }
+  })
+  
+  it("can free hashtable keys", () => {
+    const words = new Uint32Array(exports.memory.buffer);
+    const ptr = exports.hashtableInit(0);
+
+    const testData: Record<string, number> = {
+      a: 1,
+      b: 2,
+      c: 3,
+      d: 4,
+      e: 5,
+    };
+
+    for (const key of Object.keys(testData)) {
+      const testString = createString(exports, key);
+      const value = testData[key];
+
+      expect(exports.hashtableAdd(ptr, testString, value)).to.equal(
+        ptr,
+        "hashtable should not grow"
+      );
+    }
+
+    exports.hashtableFreeKeys(ptr);
+    exports.malloc_free(ptr);
   });
 });

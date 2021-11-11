@@ -943,3 +943,44 @@
   ;; return str;
   (return (local.get $str))
 )
+
+(func $str-dup (param $str i32) (result i32)
+  (local $len i32)
+  (local $dup i32)
+  (local $dest-ptr i32)
+
+  ;; len = *str + 4
+  (local.set $len (i32.add (i32.load (local.get $str)) (i32.const 4)))
+  ;; dest-ptr = dup = malloc(len)
+  (local.set $dest-ptr
+    (local.tee $dup
+      (call $malloc (local.get $len))
+    )
+  )
+
+  ;; while (len > 0) {
+  (block $w_end
+    (loop $w_start
+      (br_if $w_end (i32.le_s (local.get $len) (i32.const 0)))
+
+      ;; *dest-ptr = *str
+      (i32.store
+        (local.get $dest-ptr)
+        (i32.load (local.get $str))
+      )
+
+      ;; len -=4 
+      (local.set $len (i32.sub (local.get $len) (i32.const 4)))
+      ;; dest-ptr += 4
+      (local.set $dest-ptr (i32.add (local.get $dest-ptr) (i32.const 4)))
+      ;; ptr += 4
+      (local.set $str (i32.add (local.get $str) (i32.const 4)))
+
+      (br $w_start)
+    )
+  )
+  ;; }
+  
+  ;; return dup
+  (return (local.get $dup))
+)

@@ -142,23 +142,39 @@
       ;; type = entry-ptr[0] & 0xF
       (local.set $type (i32.and (i32.load (local.get $entry-ptr)) (i32.const 0xF)))
 
+      ;; if this is a string or a symbol
       ;; if (type == 6 || type == 7) {
-      (block $b_else
+      (block $b_str_or_sym_else
         (block $b_str_or_sym
           (if (i32.eq (local.get $type) (i32.const 6))
             (then (br $b_str_or_sym))
             (else
               (if (i32.eq (local.get $type) (i32.const 7))
                 (then (br $b_str_or_sym))
-                (else (br $b_else))
+                (else (br $b_str_or_sym_else))
               )
             )
           )
         )
+        ;; free the underlying string
         ;; malloc_free(entry-ptr[4])
         (call $malloc_free (i32.load (i32.add (local.get $entry-ptr) (i32.const 4))))
         ;; }
       )
+
+      ;; if this is an environment
+      ;; if (type == 9) {
+      (if (i32.eq (local.get $type) (i32.const 9))
+        (then
+          ;; destroy the environment (but not any outer environment)
+          ;; environment-destroy(entry-ptr, false)
+          (call $environment-destroy (local.get $entry-ptr) (i32.const 0))
+          ;; free the environment hashtable
+          ;; malloc_free(entry-ptr[4])
+          (call $malloc_free (i32.load (i32.add (local.get $entry-ptr) (i32.const 4))))
+        )
+      )
+      ;; }
 
       ;; entry-ptr += 12
       (local.set $entry-ptr (i32.add (local.get $entry-ptr) (i32.const 12)))
