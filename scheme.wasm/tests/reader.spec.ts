@@ -1,12 +1,22 @@
 import { expect } from "chai";
 import "mocha";
 
-import { checkForLeaks, checkMemory, createString, dumpMemory, getString, IoEvent, IoModule, IoTest, loadWasm } from "./common";
+import {
+  checkForLeaks,
+  checkMemory,
+  createString,
+  dumpMemory,
+  getString,
+  IoEvent,
+  IoModule,
+  IoTest,
+  loadWasm,
+} from "./common";
 
 interface TestExports {
   memory: WebAssembly.Memory;
-  malloc_init: () => void;
-  malloc_free: (ptr: number) => void;
+  mallocInit: () => void;
+  mallocFree: (ptr: number) => void;
   strFrom32: (len: number, val: number) => number;
   strFrom64: (len: number, val: bigint) => number;
   strFrom128: (len: number, val1: bigint, val2: bigint) => number;
@@ -18,8 +28,8 @@ interface TestExports {
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
   return {
     memory: instance.exports.memory as WebAssembly.Memory,
-    malloc_init: instance.exports.malloc_init as () => void,
-    malloc_free: instance.exports.malloc_free as (ptr: number) => void,
+    mallocInit: instance.exports.mallocInit as () => void,
+    mallocFree: instance.exports.mallocFree as (ptr: number) => void,
     strFrom32: instance.exports.strFrom32 as (
       len: number,
       val: number
@@ -50,7 +60,7 @@ describe("reader wasm", () => {
     const instance = await wasm;
     exports = exportsFromInstance(instance);
     io.exports = exports;
-    exports.malloc_init();
+    exports.mallocInit();
   });
 
   after(() => {
@@ -108,11 +118,11 @@ describe("reader wasm", () => {
 
     expect(words[wptr]).to.equal(input);
 
-    exports.malloc_free(first);
-    exports.malloc_free(second);
-    exports.malloc_free(third);
-    exports.malloc_free(fourth);
-    exports.malloc_free(fifth);
+    exports.mallocFree(first);
+    exports.mallocFree(second);
+    exports.mallocFree(third);
+    exports.mallocFree(fourth);
+    exports.mallocFree(fifth);
 
     expect(words[wptr]).to.equal(input);
 

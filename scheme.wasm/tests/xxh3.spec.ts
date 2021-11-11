@@ -4,18 +4,18 @@ import { loadWasm } from "./common";
 
 interface TestExports {
   memory: WebAssembly.Memory;
-  malloc_init: () => void;
+  mallocInit: () => void;
   malloc: (size: number) => number;
-  malloc_free: (ptr: number) => void;
+  mallocFree: (ptr: number) => void;
   xxh64: (ptr: number, len: number, seed: bigint) => bigint;
 }
 
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
   return {
     memory: instance.exports.memory as WebAssembly.Memory,
-    malloc_init: instance.exports.malloc_init as () => void,
+    mallocInit: instance.exports.mallocInit as () => void,
     malloc: instance.exports.malloc as (size: number) => number,
-    malloc_free: instance.exports.malloc_free as (ptr: number) => void,
+    mallocFree: instance.exports.mallocFree as (ptr: number) => void,
     xxh64: instance.exports.xxh64 as (
       ptr: number,
       len: number,
@@ -106,7 +106,7 @@ describe("xxh3 wasm", () => {
     const instance = await wasm;
     const exports = exportsFromInstance(instance);
 
-    exports.malloc_init();
+    exports.mallocInit();
 
     for (const [input, output] of test_vectors) {
       const buffer = Buffer.from(input, "utf-8");
@@ -126,7 +126,7 @@ describe("xxh3 wasm", () => {
         `Taking xxh64 digest of ${input.length} byte string ${input}`
       );
 
-      exports.malloc_free(ptr);
+      exports.mallocFree(ptr);
     }
   });
 });

@@ -49,18 +49,18 @@
 
   ;; input = reader[0]
   (local.set $input (i32.load (local.get $reader)))
-  ;; if (input != 0) malloc_free(input)
+  ;; if (input != 0) malloc-free(input)
   (if (local.get $input)
-    (then (call $malloc_free (local.get $input)))
+    (then (call $malloc-free (local.get $input)))
   )
 
   ;; accum = reader[8]
   (local.set $accum (i32.load (i32.add (local.get $reader) (i32.const 8))))
-  ;; malloc_free(accum)
-  (call $malloc_free (local.get $accum))
+  ;; malloc-free(accum)
+  (call $malloc-free (local.get $accum))
 
-  ;; malloc_free(reader)
-  (call $malloc_free (local.get $reader))
+  ;; malloc-free(reader)
+  (call $malloc-free (local.get $reader))
 )
 
 (func $reader-read-token (param $reader i32) (result i32)
@@ -122,8 +122,8 @@
       ;; {
       (then
         ;; free existing input string
-        ;; malloc_free(input)
-        (call $malloc_free (local.get $input))
+        ;; malloc-free(input)
+        (call $malloc-free (local.get $input))
 
         ;; read next input string
         ;; reader[0] = input = io-read()

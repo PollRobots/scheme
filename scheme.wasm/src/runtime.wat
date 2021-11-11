@@ -46,16 +46,16 @@
   ;; if (token-str == '(') {
   (if (call $short-str-eq (local.get $token-str) (i32.const 0x28) (i32.const 1))
     (then
-      ;; malloc_free(token-str)
-      (call $malloc_free (local.get $token-str))
+      ;; malloc-free(token-str)
+      (call $malloc-free (local.get $token-str))
 
       ;; car-str = reader-read-token(g-reader)
       (local.set $car-str (call $reader-read-token (global.get $g-reader)))
       ;; if (car-str == ')') {
       (if (call $short-str-eq (local.get $car-str) (i32.const 0x29) (i32.const 1))
         (then
-          ;; malloc_free(car-str)
-          (call $malloc_free (local.get $car-str))
+          ;; malloc-free(car-str)
+          (call $malloc-free (local.get $car-str))
           ;; return g-nil
           (return (global.get $g-nil))
         )
@@ -77,8 +77,8 @@
         ;; if (cdr-str == ')') {
         (if (call $short-str-eq (local.get $cdr-str) (i32.const 0x29) (i32.const 1))
           (then
-            ;; malloc_free(cdr-str)
-            (call $malloc_free (local.get $cdr-str))
+            ;; malloc-free(cdr-str)
+            (call $malloc-free (local.get $cdr-str))
             ;; return head
             (return (local.get $head))
           )
@@ -87,8 +87,8 @@
         ;; if (cdr-str == '.') {
         (if (call $short-str-eq (local.get $cdr-str) (i32.const 0x2E) (i32.const 1))
           (then
-            ;; malloc_free(cdr-str)
-            (call $malloc_free (local.get $cdr-str))
+            ;; malloc-free(cdr-str)
+            (call $malloc-free (local.get $cdr-str))
             ;; cdr-str = reader-read-token(g-reader)
             (local.set $cdr-str (call $reader-read-token (global.get $g-reader)))
             ;; cdr = string->datum(cdr-str)
@@ -103,8 +103,8 @@
             ;; if (cdr-str == ')') {
             (if (call $short-str-eq (local.get $cdr-str) (i32.const 0x29) (i32.const 1))
               (then
-                ;; malloc_free(cdr-str)
-                (call $malloc_free (local.get $cdr-str))
+                ;; malloc-free(cdr-str)
+                (call $malloc-free (local.get $cdr-str))
                 ;; return head
                 (return (local.get $head))
               )

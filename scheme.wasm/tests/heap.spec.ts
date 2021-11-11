@@ -12,8 +12,8 @@ import {
 
 interface TestExports {
   memory: WebAssembly.Memory;
-  malloc_init: () => void;
-  malloc_free: (ptr: number) => void;
+  mallocInit: () => void;
+  mallocFree: (ptr: number) => void;
   strFrom32: (len: number, val: number) => number;
   strFrom64: (len: number, val: bigint) => number;
   strFrom128: (len: number, val1: bigint, val2: bigint) => number;
@@ -31,8 +31,8 @@ interface TestExports {
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
   return {
     memory: instance.exports.memory as WebAssembly.Memory,
-    malloc_init: instance.exports.malloc_init as () => void,
-    malloc_free: instance.exports.malloc_free as (ptr: number) => void,
+    mallocInit: instance.exports.mallocInit as () => void,
+    mallocFree: instance.exports.mallocFree as (ptr: number) => void,
     strFrom32: instance.exports.strFrom32 as (
       len: number,
       val: number
@@ -65,7 +65,7 @@ describe("heap wasm", () => {
   before(async () => {
     const instance = await wasm;
     exports = exportsFromInstance(instance);
-    exports.malloc_init();
+    exports.mallocInit();
   });
 
   after(() => {
@@ -110,7 +110,7 @@ describe("heap wasm", () => {
       }
     }
 
-    exports.malloc_free(heap);
+    exports.mallocFree(heap);
   });
 
   it("can store and retrieve elements from a heap", () => {

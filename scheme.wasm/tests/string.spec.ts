@@ -5,8 +5,8 @@ import { createString, getString, loadWasm } from "./common";
 
 interface TestExports {
   memory: WebAssembly.Memory;
-  malloc_init: () => void;
-  malloc_free: (ptr: number) => void;
+  mallocInit: () => void;
+  mallocFree: (ptr: number) => void;
   strFrom32: (len: number, val: number) => number;
   strFrom64: (len: number, val: bigint) => number;
   strFrom128: (len: number, val1: bigint, val2: bigint) => number;
@@ -23,8 +23,8 @@ interface TestExports {
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
   return {
     memory: instance.exports.memory as WebAssembly.Memory,
-    malloc_init: instance.exports.malloc_init as () => void,
-    malloc_free: instance.exports.malloc_free as (ptr: number) => void,
+    mallocInit: instance.exports.mallocInit as () => void,
+    mallocFree: instance.exports.mallocFree as (ptr: number) => void,
     strFrom32: instance.exports.strFrom32 as (
       len: number,
       val: number
@@ -65,7 +65,7 @@ describe("string wasm", () => {
     const instance = await wasm;
     const exports = exportsFromInstance(instance);
 
-    exports.malloc_init();
+    exports.mallocInit();
 
     const view = new Uint8Array(exports.memory.buffer);
     const words = new Uint32Array(exports.memory.buffer);
@@ -74,14 +74,14 @@ describe("string wasm", () => {
     expect(exports.strByteLen(ptr)).to.equal(4, "length should be 4");
     expect(getString(exports, ptr)).to.equal("ABCD");
 
-    exports.malloc_free(ptr);
+    exports.mallocFree(ptr);
   });
 
   it("throws if tiny string is too long", async () => {
     const instance = await wasm;
     const exports = exportsFromInstance(instance);
 
-    exports.malloc_init();
+    exports.mallocInit();
 
     expect(() => exports.strFrom32(5, 0)).throws("unreachable");
   });
@@ -90,7 +90,7 @@ describe("string wasm", () => {
     const instance = await wasm;
     const exports = exportsFromInstance(instance);
 
-    exports.malloc_init();
+    exports.mallocInit();
 
     const view = new Uint8Array(exports.memory.buffer);
     const words = new Uint32Array(exports.memory.buffer);
@@ -99,14 +99,14 @@ describe("string wasm", () => {
     expect(exports.strByteLen(ptr)).to.equal(8, "length should be 8");
     expect(getString(exports, ptr)).to.equal("ABCDEFGH");
 
-    exports.malloc_free(ptr);
+    exports.mallocFree(ptr);
   });
 
   it("throws if short string is too long", async () => {
     const instance = await wasm;
     const exports = exportsFromInstance(instance);
 
-    exports.malloc_init();
+    exports.mallocInit();
 
     expect(() => exports.strFrom64(9, 0n)).throws("unreachable");
   });
@@ -115,7 +115,7 @@ describe("string wasm", () => {
     const instance = await wasm;
     const exports = exportsFromInstance(instance);
 
-    exports.malloc_init();
+    exports.mallocInit();
 
     const view = new Uint8Array(exports.memory.buffer);
     const words = new Uint32Array(exports.memory.buffer);
@@ -128,14 +128,14 @@ describe("string wasm", () => {
     expect(exports.strByteLen(ptr)).to.equal(16, "length should be 16");
     expect(getString(exports, ptr)).to.equal("ABCDEFGHIJKLMNOP");
 
-    exports.malloc_free(ptr);
+    exports.mallocFree(ptr);
   });
 
   it("throws if medium string is too long", async () => {
     const instance = await wasm;
     const exports = exportsFromInstance(instance);
 
-    exports.malloc_init();
+    exports.mallocInit();
 
     expect(() => exports.strFrom128(17, 0n, 0n)).throws("unreachable");
   });
@@ -144,21 +144,21 @@ describe("string wasm", () => {
     const instance = await wasm;
     const exports = exportsFromInstance(instance);
 
-    exports.malloc_init();
+    exports.mallocInit();
 
     const ptr = createString(exports, "$¢€𐍈");
     expect(exports.strByteLen(ptr)).to.equal(10);
     expect(getString(exports, ptr)).to.equal("$¢€𐍈");
     expect(exports.strCodePointLen(ptr)).to.equal(4);
 
-    exports.malloc_free(ptr);
+    exports.mallocFree(ptr);
   });
 
   it("fetches code points by index", async () => {
     const instance = await wasm;
     const exports = exportsFromInstance(instance);
 
-    exports.malloc_init();
+    exports.mallocInit();
 
     const ptr = createString(exports, "$¢€𐍈");
     expect(exports.strByteLen(ptr)).to.equal(10);
@@ -169,18 +169,18 @@ describe("string wasm", () => {
     expect(String.fromCodePoint(exports.strCodePointAt(ptr, 2))).to.equal("€");
     expect(String.fromCodePoint(exports.strCodePointAt(ptr, 3))).to.equal("𐍈");
 
-    exports.malloc_free(ptr);
+    exports.mallocFree(ptr);
   });
 
   it("checks string validity", async () => {
     const instance = await wasm;
     const exports = exportsFromInstance(instance);
 
-    exports.malloc_init();
+    exports.mallocInit();
 
     const ptr = createString(exports, "$¢€𐍈");
     expect(exports.strIsValid(ptr));
-    exports.malloc_free(ptr);
+    exports.mallocFree(ptr);
 
     // negative cases
     const cases: [number, number][] = [
@@ -196,7 +196,7 @@ describe("string wasm", () => {
         0,
         `str: ${str.toString(16).padStart(8, "0")}, len: ${len}`
       );
-      exports.malloc_free(ptr);
+      exports.mallocFree(ptr);
     }
   });
 
@@ -280,7 +280,7 @@ describe("string wasm", () => {
     const instance = await wasm;
     const exports = exportsFromInstance(instance);
 
-    exports.malloc_init();
+    exports.mallocInit();
 
     const vectors: { a: string; b: string; res: number }[] = [
       { a: "aaaa", b: "aaaa", res: 1 },
@@ -302,16 +302,16 @@ describe("string wasm", () => {
         `Expected ${JSON.stringify(a)} == ${JSON.stringify(b)} to be ${res}`
       );
 
-      exports.malloc_free(aPtr);
-      exports.malloc_free(bPtr);
+      exports.mallocFree(aPtr);
+      exports.mallocFree(bPtr);
     }
   });
 
-  it("can duplicate strings", async() => {
+  it("can duplicate strings", async () => {
     const instance = await wasm;
     const exports = exportsFromInstance(instance);
 
-    const testString = "Hello, World!"
+    const testString = "Hello, World!";
 
     const fromPtr = createString(exports, testString);
     const toPtr = exports.strDup(fromPtr);
@@ -319,7 +319,7 @@ describe("string wasm", () => {
     expect(toPtr).to.not.equal(fromPtr);
     expect(getString(exports, toPtr)).to.equal(testString);
 
-    exports.malloc_free(fromPtr);
-    exports.malloc_free(toPtr);
+    exports.mallocFree(fromPtr);
+    exports.mallocFree(toPtr);
   });
 });

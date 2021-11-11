@@ -4,42 +4,40 @@ import { loadWasm } from "./common";
 
 interface TestExports {
   memory: WebAssembly.Memory;
-  malloc_zero: (ptr: number, len: number) => void;
-  malloc_init: () => void;
-  malloc_load_list: (ptr: number) => bigint;
-  malloc_store_list: (ptr: number, next: number, size: number) => void;
+  mallocZero: (ptr: number, len: number) => void;
+  mallocInit: () => void;
+  mallocLoadList: (ptr: number) => bigint;
+  mallocStoreList: (ptr: number, next: number, size: number) => void;
   malloc: (size: number) => number;
-  malloc_free: (ptr: number) => void;
+  mallocFree: (ptr: number) => void;
 }
 
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
   return {
     memory: instance.exports.memory as WebAssembly.Memory,
-    malloc_zero: instance.exports.malloc_zero as (
+    mallocZero: instance.exports.mallocZero as (
       ptr: number,
       len: number
     ) => void,
-    malloc_init: instance.exports.malloc_init as () => void,
-    malloc_load_list: instance.exports.malloc_load_list as (
-      ptr: number
-    ) => bigint,
-    malloc_store_list: instance.exports.malloc_store_list as (
+    mallocInit: instance.exports.mallocInit as () => void,
+    mallocLoadList: instance.exports.mallocLoadList as (ptr: number) => bigint,
+    mallocStoreList: instance.exports.mallocStoreList as (
       ptr: number,
       next: number,
       size: number
     ) => void,
     malloc: instance.exports.malloc as (size: number) => number,
-    malloc_free: instance.exports.malloc_free as (ptr: number) => void,
+    mallocFree: instance.exports.mallocFree as (ptr: number) => void,
   };
 }
 
 describe("malloc wasm", () => {
   const wasm = loadWasm();
 
-  it("should have an export called malloc_zero", async () => {
+  it("should have an export called mallocZero", async () => {
     const instance = await wasm;
-    expect(instance.exports).has.property("malloc_zero");
-    expect(instance.exports.malloc_zero).is.instanceOf(Function);
+    expect(instance.exports).has.property("mallocZero");
+    expect(instance.exports.mallocZero).is.instanceOf(Function);
   });
 
   it("should have an export called memory", async () => {
@@ -67,7 +65,7 @@ describe("malloc wasm", () => {
       expected[i] = 0;
     }
 
-    exports.malloc_zero(10, 50);
+    exports.mallocZero(10, 50);
     expect(Array.from(memView.slice(0, 80))).has.ordered.members(
       Array.from(expected.values())
     );
@@ -77,10 +75,10 @@ describe("malloc wasm", () => {
     const instance = await wasm;
     const exports = exportsFromInstance(instance);
 
-    expect(instance.exports).has.property("malloc_init");
-    expect(instance.exports.malloc_init).is.instanceOf(Function);
+    expect(instance.exports).has.property("mallocInit");
+    expect(instance.exports.mallocInit).is.instanceOf(Function);
 
-    exports.malloc_init();
+    exports.mallocInit();
     const view = new Uint32Array(exports.memory.buffer);
 
     // free list ptr should be immediately after the malloc header
@@ -100,17 +98,17 @@ describe("malloc wasm", () => {
     const instance = await wasm;
     const exports = exportsFromInstance(instance);
 
-    expect(instance.exports).has.property("malloc_load_list");
-    expect(instance.exports.malloc_load_list).is.instanceOf(Function);
-    expect(instance.exports).has.property("malloc_store_list");
-    expect(instance.exports.malloc_store_list).is.instanceOf(Function);
+    expect(instance.exports).has.property("mallocLoadList");
+    expect(instance.exports.mallocLoadList).is.instanceOf(Function);
+    expect(instance.exports).has.property("mallocStoreList");
+    expect(instance.exports.mallocStoreList).is.instanceOf(Function);
 
-    exports.malloc_store_list(128, 256, 1234);
+    exports.mallocStoreList(128, 256, 1234);
     const memview = new Uint32Array(exports.memory.buffer);
     expect(memview[128 / 4]).to.equal(256);
     expect(memview[132 / 4]).to.equal(1234);
 
-    const res = exports.malloc_load_list(128);
+    const res = exports.mallocLoadList(128);
     expect(Number(BigInt.asUintN(32, res >> 32n))).to.equal(256);
     expect(Number(BigInt.asUintN(32, res))).to.equal(1234);
   });
@@ -119,13 +117,13 @@ describe("malloc wasm", () => {
     const instance = await wasm;
     const exports = exportsFromInstance(instance);
 
-    expect(instance.exports).has.property("malloc_free");
-    expect(instance.exports.malloc_free).is.instanceOf(Function);
+    expect(instance.exports).has.property("mallocFree");
+    expect(instance.exports.mallocFree).is.instanceOf(Function);
 
-    expect(() => exports.malloc_free(0)).to.throw("unreachable");
+    expect(() => exports.mallocFree(0)).to.throw("unreachable");
 
-    exports.malloc_init();
-    expect(() => exports.malloc_free(40)).to.throw("unreachable");
+    exports.mallocInit();
+    expect(() => exports.mallocFree(40)).to.throw("unreachable");
   });
 
   it("should allocate and free memory while maintaining consistency", async () => {
@@ -135,7 +133,7 @@ describe("malloc wasm", () => {
     expect(instance.exports).has.property("malloc");
     expect(instance.exports.malloc).is.instanceOf(Function);
 
-    exports.malloc_init();
+    exports.mallocInit();
 
     const ptrs: { ptr: number; size: number }[] = [];
     const allocate = (view: Uint8Array, words: Uint32Array) => {
@@ -188,7 +186,7 @@ describe("malloc wasm", () => {
           view[ptr + i] = 0xdd;
         }
         // console.log(`free(${ptr})`);
-        exports.malloc_free(ptr);
+        exports.mallocFree(ptr);
       } catch (err) {
         console.error(err);
         throw err;
@@ -202,7 +200,7 @@ describe("malloc wasm", () => {
       const words = new Uint32Array(memory.buffer);
 
       // validate heap
-      
+
       // console.log(`${i.toString().padStart(2, "0")} Check Heap`);
       // check free list
       let offset = 8;

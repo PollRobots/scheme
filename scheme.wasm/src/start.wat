@@ -1,4 +1,4 @@
 (func $start
-  (call $malloc_init)
+  (call $malloc-init)
   (call $runtime-init)
 )

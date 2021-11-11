@@ -1,4 +1,4 @@
-(global $malloc_hdr_offset i32 (i32.const 32))
+(global $malloc-hdr-offset i32 (i32.const 32))
 
 ;; malloc header size = 8
 
@@ -7,32 +7,32 @@
 ;;   size: i32 (size) -- size of the entry not including this header 
 
 ;; initializes malloc to point to all of available memory
-(func $malloc_init
+(func $malloc-init
   (local $size i32)
   (local $first i32)
 
   ;; size = memory.size << 16
   (local.set $size (i32.shl (memory.size) (i32.const 16)))
 
-  ;; first = malloc_hdr_offset + malloc_hdr_size
-  (local.set $first (i32.add (global.get $malloc_hdr_offset) (i32.const 8))) 
+  ;; first = malloc-hdr_offset + malloc-hdr_size
+  (local.set $first (i32.add (global.get $malloc-hdr-offset) (i32.const 8))) 
 
   ;; free list entry
-  ;; malloc_store_list(first, 0, size - first - 8)
-  (call $malloc_store_list (local.get $first) (i32.const 0) (i32.sub (i32.sub (local.get $size) (local.get $first)) (i32.const 8)))
+  ;; malloc-store-list(first, 0, size - first - 8)
+  (call $malloc-store-list (local.get $first) (i32.const 0) (i32.sub (i32.sub (local.get $size) (local.get $first)) (i32.const 8)))
 
   ;; set free pointer to first address after the header
-  (i32.store (global.get $malloc_hdr_offset) (local.get $first))
+  (i32.store (global.get $malloc-hdr-offset) (local.get $first))
   ;; set memory size (this is the total size of the memory in bytes)
-  (i32.store (i32.add (global.get $malloc_hdr_offset) (i32.const 4)) (local.get $size))
+  (i32.store (i32.add (global.get $malloc-hdr-offset) (i32.const 4)) (local.get $size))
 )
 
-(func $malloc_store_list (param $ptr i32) (param $next i32) (param $size i32)
+(func $malloc-store-list (param $ptr i32) (param $next i32) (param $size i32)
   (i32.store (local.get $ptr) (local.get $next))
   (i32.store (i32.add (local.get $ptr) (i32.const 4)) (local.get $size))
 )
 
-(func $malloc_load_list (param $ptr i32) (result i64)
+(func $malloc-load-list (param $ptr i32) (result i64)
   (return (i64.or
     (i64.shl (i64.extend_i32_u (i32.load (local.get $ptr))) (i64.const 32)) ;; next
     (i64.extend_i32_u (i32.load (i32.add (local.get $ptr) (i32.const 4)))) ;; size
@@ -59,9 +59,9 @@
   (local $oldsize i32)
   (local $memsize i32)
 
-  ;; prev = malloc_hdr_offset
-  (local.set $prev (global.get $malloc_hdr_offset))
-  ;; free = *malloc_hdr_offset
+  ;; prev = malloc-hdr_offset
+  (local.set $prev (global.get $malloc-hdr-offset))
+  ;; free = *malloc-hdr_offset
   (local.set $free (i32.load (local.get $prev)))
 
   ;; grow size to the next multiple of 8
@@ -72,7 +72,7 @@
       ;; break if free == 0
       (br_if $bf_end (i32.eqz (local.get $free)))
 
-      (local.set $entry (call $malloc_load_list (local.get $free)))
+      (local.set $entry (call $malloc-load-list (local.get $free)))
       (local.set $f_next (i32.wrap_i64 (i64.shr_u (local.get $entry) (i64.const 32))))
       (local.set $f_size (i32.wrap_i64 (local.get $entry)))
 
@@ -94,13 +94,13 @@
               ;; rem = f_size - size - 8
               (local.set $rem (i32.sub (i32.sub (local.get $f_size) (local.get $size)) (i32.const 8)))
               
-              ;; malloc_store_list(free, f_next, rem)
-              (call $malloc_store_list (local.get $free) (local.get $f_next) (local.get $rem))
+              ;; malloc-store-list(free, f_next, rem)
+              (call $malloc-store-list (local.get $free) (local.get $f_next) (local.get $rem))
 
               ;; free += rem + 8
               (local.set $free (i32.add (i32.add (local.get $free) (local.get $rem)) (i32.const 8)))
-              ;; malloc_store_list(free, free, size)
-              (call $malloc_store_list (local.get $free) (local.get $free) (local.get $size))
+              ;; malloc-store-list(free, free, size)
+              (call $malloc-store-list (local.get $free) (local.get $free) (local.get $size))
             )
           )
           ;; return free + 8
@@ -131,24 +131,24 @@
   (local.set $memsize (i32.shl (memory.size) (i32.const 16)))
 
   ;; new free list item (marked as an inuse item)
-  ;; malloc_store_list(oldsize, oldsize, memsize - oldsize - 8)
-  (call $malloc_store_list
+  ;; malloc-store-list(oldsize, oldsize, memsize - oldsize - 8)
+  (call $malloc-store-list
     (local.get $oldsize)
     (local.get $oldsize)
     (i32.sub (i32.sub (local.get $memsize) (local.get $oldsize)) (i32.const 8))
   )
 
   ;; give the new memory to malloc by 'free'ing it
-  ;; *(malloc_hdr_offset + 4) = memsize
-  (i32.store (i32.add (global.get $malloc_hdr_offset) (i32.const 4)) (local.get $memsize))
-  ;; malloc_free(oldsize + 8)
-  (call $malloc_free (i32.add (local.get $oldsize) (i32.const 8)))
+  ;; *(malloc-hdr_offset + 4) = memsize
+  (i32.store (i32.add (global.get $malloc-hdr-offset) (i32.const 4)) (local.get $memsize))
+  ;; malloc-free(oldsize + 8)
+  (call $malloc-free (i32.add (local.get $oldsize) (i32.const 8)))
 
   ;; call malloc again now there is space
   (return (call $malloc (local.get $size)))
 )
 
-(func $malloc_free (export "free") (param $ptr i32)
+(func $malloc-free (export "free") (param $ptr i32)
   (local $hdr i32)
   (local $h_next i32)
   (local $h_size i32)
@@ -161,11 +161,11 @@
   (local $n_size i32)
   (local $entry i64)
 
-  ;; if (ptr < malloc_hdr_offset + 8)
-  (if (i32.lt_u (local.get $ptr) (i32.add (global.get $malloc_hdr_offset) (i32.const 8)))
+  ;; if (ptr < malloc-hdr_offset + 8)
+  (if (i32.lt_u (local.get $ptr) (i32.add (global.get $malloc-hdr-offset) (i32.const 8)))
     (then 
       local.get $ptr
-      global.get $malloc_hdr_offset
+      global.get $malloc-hdr-offset
       unreachable
     )
   )
@@ -173,12 +173,12 @@
   ;; hdr = ptr - 8
   (local.set $hdr (i32.sub (local.get $ptr) (i32.const 8)))
 
-  ;; h_next, h_size = malloc_load_list(hdr)
-  (local.set $entry (call $malloc_load_list (local.get $hdr)))
+  ;; h_next, h_size = malloc-load-list(hdr)
+  (local.set $entry (call $malloc-load-list (local.get $hdr)))
   (local.set $h_next (i32.wrap_i64 (i64.shr_u (local.get $entry) (i64.const 32))))
   (local.set $h_size (i32.wrap_i64 (local.get $entry)))
-  ;; malloc_store_list(hdr, 0xbaadf00d, 0xbaadf00d)
-  (call $malloc_store_list (local.get $hdr) (i32.const 0x0df0adba) (i32.const 0x0df0adba))
+  ;; malloc-store-list(hdr, 0xbaadf00d, 0xbaadf00d)
+  (call $malloc-store-list (local.get $hdr) (i32.const 0x0df0adba) (i32.const 0x0df0adba))
 
   ;; fend = ptr + h_size
   (local.set $fend (i32.add (local.get $ptr) (local.get $h_size)))
@@ -193,8 +193,8 @@
     )
   )
 
-  ;; prev = malloc_hdr_offset
-  (local.set $prev (global.get $malloc_hdr_offset))
+  ;; prev = malloc-hdr_offset
+  (local.set $prev (global.get $malloc-hdr-offset))
   ;; curr = *prev
   (local.set $curr (i32.load (local.get $prev)))
 
@@ -213,8 +213,8 @@
         )
       )
 
-      ;; c_next, c_size = malloc_load_list(curr)
-      (local.set $entry (call $malloc_load_list (local.get $curr)))
+      ;; c_next, c_size = malloc-load-list(curr)
+      (local.set $entry (call $malloc-load-list (local.get $curr)))
       (local.set $c_next (i32.wrap_i64 (i64.shr_u (local.get $entry) (i64.const 32))))
       (local.set $c_size (i32.wrap_i64 (local.get $entry)))
 
@@ -236,14 +236,14 @@
             (then
               ;; merge blocks
               ;; i.e. extend current block at front
-              ;; malloc_store_list(hdr, c_next, h_size + c_size + 8)
-              (call $malloc_store_list
+              ;; malloc-store-list(hdr, c_next, h_size + c_size + 8)
+              (call $malloc-store-list
                 (local.get $hdr) 
                 (local.get $c_next) 
                 (i32.add (i32.add (local.get $h_size) (local.get $c_size)) (i32.const 8))
               )
-              ;; malloc_store_list(curr, BAADF00D, BAADF00D)
-              (call $malloc_store_list
+              ;; malloc-store-list(curr, BAADF00D, BAADF00D)
+              (call $malloc-store-list
                 (local.get $curr)
                 (i32.const 0x0df0adba)
                 (i32.const 0x0df0adba)
@@ -254,8 +254,8 @@
             )
             (else
               ;; insert before block
-              ;; malloc_store_list(hdr, curr, h_size)
-              (call $malloc_store_list (local.get $hdr) (local.get $curr) (local.get $h_size))
+              ;; malloc-store-list(hdr, curr, h_size)
+              (call $malloc-store-list (local.get $hdr) (local.get $curr) (local.get $h_size))
               ;; *prev = hdr
               (i32.store (local.get $prev) (local.get $hdr))
               (return)
@@ -292,12 +292,12 @@
             )
             (then 
               ;; merge with current and next
-              ;; n_next, n_size = malloc_load_list(c_next)
-              (local.set $entry (call $malloc_load_list (local.get $c_next)))
+              ;; n_next, n_size = malloc-load-list(c_next)
+              (local.set $entry (call $malloc-load-list (local.get $c_next)))
               (local.set $n_next (i32.wrap_i64 (i64.shr_u (local.get $entry) (i64.const 32))))
               (local.set $n_size (i32.wrap_i64 (local.get $entry)))
-              ;; malloc_store_list(curr, n_next, csize + h_size + n_size + 16)
-              (call $malloc_store_list
+              ;; malloc-store-list(curr, n_next, csize + h_size + n_size + 16)
+              (call $malloc-store-list
                 (local.get $curr)
                 (local.get $n_next)
                 (i32.add (i32.add (i32.add (local.get $c_size) (local.get $h_size)) (local.get $n_size)) (i32.const 16))
@@ -307,8 +307,8 @@
             )
             (else 
               ;; merge with current block (i.e. extend current block)
-              ;; malloc_store_list(curr, c_next, c_size + h_size + 8)
-              (call $malloc_store_list
+              ;; malloc-store-list(curr, c_next, c_size + h_size + 8)
+              (call $malloc-store-list
                 (local.get $curr)
                 (local.get $c_next)
                 (i32.add (i32.add (local.get $c_size) (local.get $h_size)) (i32.const 8))
@@ -323,10 +323,10 @@
           (if (i32.eqz (local.get $c_next))
             (then
               ;; this is the last block, so make the free block the last block
-              ;; malloc_store_list(hdr, c_next, h_size)
-              (call $malloc_store_list (local.get $hdr) (i32.const 0) (local.get $h_size))
-              ;; malloc_store_list(curr, hdr, c_size)
-              (call $malloc_store_list (local.get $curr) (local.get $hdr) (local.get $c_size))
+              ;; malloc-store-list(hdr, c_next, h_size)
+              (call $malloc-store-list (local.get $hdr) (i32.const 0) (local.get $h_size))
+              ;; malloc-store-list(curr, hdr, c_size)
+              (call $malloc-store-list (local.get $curr) (local.get $hdr) (local.get $c_size))
 
               (return)
             )
@@ -349,7 +349,7 @@
   unreachable
 )
 
-(func $malloc_zero (param $ptr i32) (param $size i32)
+(func $malloc-zero (param $ptr i32) (param $size i32)
   (local $rounded i32)
   (local $end i32)
   (local $rem i32)
@@ -412,7 +412,7 @@
   ;; ptr = malloc(size)
   (local.get $ptr (call $malloc (local.get $size)))
 
-  (call $malloc_zero (local.get $ptr) (local.get $size))
+  (call $malloc-zero (local.get $ptr) (local.get $size))
 
   (return (local.get $ptr))
 )

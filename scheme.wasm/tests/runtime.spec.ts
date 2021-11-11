@@ -18,8 +18,8 @@ interface TestExports {
   gHeap: () => number;
   gTrue: () => number;
   gFalse: () => number;
-  malloc_init: () => void;
-  malloc_free: (ptr: number) => void;
+  mallocInit: () => void;
+  mallocFree: (ptr: number) => void;
   strFrom32: (len: number, val: number) => number;
   strFrom64: (len: number, val: bigint) => number;
   strFrom128: (len: number, val1: bigint, val2: bigint) => number;
@@ -45,8 +45,8 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
     gTrue: () => (instance.exports.gTrue as WebAssembly.Global).value as number,
     gFalse: () =>
       (instance.exports.gFalse as WebAssembly.Global).value as number,
-    malloc_init: instance.exports.malloc_init as () => void,
-    malloc_free: instance.exports.malloc_free as (ptr: number) => void,
+    mallocInit: instance.exports.mallocInit as () => void,
+    mallocFree: instance.exports.mallocFree as (ptr: number) => void,
     strFrom32: instance.exports.strFrom32 as (
       len: number,
       val: number
@@ -89,7 +89,7 @@ describe("runtime wasm", () => {
     const instance = await wasm;
     exports = exportsFromInstance(instance);
     io.exports = exports;
-    exports.malloc_init();
+    exports.mallocInit();
     exports.runtimeInit();
   });
 
@@ -204,14 +204,14 @@ describe("runtime wasm", () => {
           16
         )}, ${len}) should return ${ex}`
       );
-      exports.malloc_free(strPtr);
+      exports.mallocFree(strPtr);
     }
 
     const longer = createString(exports, "abcdE");
     expect(() => exports.shortStrEq(longer, 0x64636261, 5)).to.throw(
       "unreachable"
     );
-    exports.malloc_free(longer);
+    exports.mallocFree(longer);
   });
 
   const makeHeapString = (str: string): number => {
@@ -242,8 +242,8 @@ describe("runtime wasm", () => {
     const res = exports.atom(heapItem);
     const words = new Uint32Array(exports.memory.buffer.slice(res, res + 12));
     expect(words[0]).to.equal(4, "#xFF should make a number");
-    expect(words[1]).to.equal(0xFF, "#xFF be 0xFF");
-    expect(words[2]).to.equal(0), '#xFF should be 0 in the upper word';
+    expect(words[1]).to.equal(0xff, "#xFF be 0xFF");
+    expect(words[2]).to.equal(0), "#xFF should be 0 in the upper word";
   });
 
   it("will make a integer atom from 42", () => {
@@ -252,109 +252,124 @@ describe("runtime wasm", () => {
     const words = new Uint32Array(exports.memory.buffer.slice(res, res + 12));
     expect(words[0]).to.equal(4, "42 should make a number");
     expect(words[1]).to.equal(42);
-    expect(words[2]).to.equal(0), '42 should be 0 in the upper word';
+    expect(words[2]).to.equal(0), "42 should be 0 in the upper word";
   });
 
-  it("will make a symbol atom from \"foo\"", () => {
+  it('will make a symbol atom from "foo"', () => {
     const heapItem = makeHeapString("foo");
-    let words = new Uint32Array(exports.memory.buffer.slice(heapItem, heapItem + 12));
+    let words = new Uint32Array(
+      exports.memory.buffer.slice(heapItem, heapItem + 12)
+    );
     const fooStr = words[1];
     const res = exports.atom(heapItem);
     words = new Uint32Array(exports.memory.buffer.slice(res, res + 12));
     expect(words[0]).to.equal(6, "foo should make a symbol");
-    expect(words[1]).to.equal(fooStr, "the symbol should point to the original string");
-    expect(words[2]).to.equal(0), 'a symbol should have 0 in the upper word';
-
+    expect(words[1]).to.equal(
+      fooStr,
+      "the symbol should point to the original string"
+    );
+    expect(words[2]).to.equal(0), "a symbol should have 0 in the upper word";
   });
 
   it("string->datum will convert '42' to an integer item", () => {
     const input = createString(exports, "42");
-    const datum = exports.stringToDatum(input)
-    const words = new Uint32Array(exports.memory.buffer.slice(datum, datum + 12));
+    const datum = exports.stringToDatum(input);
+    const words = new Uint32Array(
+      exports.memory.buffer.slice(datum, datum + 12)
+    );
     expect(words[0]).to.equal(4, "42 should make a number");
     expect(words[1]).to.equal(42);
-    expect(words[2]).to.equal(0), '42 should be 0 in the upper word';
+    expect(words[2]).to.equal(0), "42 should be 0 in the upper word";
   });
 
   it("string->datum will convert '()' to a nil item", () => {
-    const readHandler = (evt: IoEvent)=> {
+    const readHandler = (evt: IoEvent) => {
       evt.data = ")";
       return false;
-    }
-    io.addEventListener('read', readHandler);
+    };
+    io.addEventListener("read", readHandler);
     const input = createString(exports, "(");
-    const datum = exports.stringToDatum(input)
-    const words = new Uint32Array(exports.memory.buffer.slice(datum, datum + 12));
+    const datum = exports.stringToDatum(input);
+    const words = new Uint32Array(
+      exports.memory.buffer.slice(datum, datum + 12)
+    );
     expect(words[0]).to.equal(1, "() should make a nil datum");
-    io.removeEventListener('read', readHandler);
+    io.removeEventListener("read", readHandler);
   });
 
   it("string->datum will convert '(1 2 3)' to a three item list", () => {
     const tokens = ["1 2 3 )"];
 
-    const readHandler = (evt: IoEvent)=> {
+    const readHandler = (evt: IoEvent) => {
       evt.data = tokens.shift();
       return false;
-    }
-    io.addEventListener('read', readHandler);
+    };
+    io.addEventListener("read", readHandler);
     const input = createString(exports, "(");
-    const datum = exports.stringToDatum(input)
+    const datum = exports.stringToDatum(input);
     let words = new Uint32Array(exports.memory.buffer.slice(datum, datum + 12));
 
     const items: number[] = [];
     while (true) {
       expect(words[0]).to.equal(3, "should be a cons cell");
       const car = words[1];
-      const carWords = new Uint32Array(exports.memory.buffer.slice(car, car + 12));
+      const carWords = new Uint32Array(
+        exports.memory.buffer.slice(car, car + 12)
+      );
       expect(carWords[0]).to.equal(4);
       items.push(carWords[1]);
 
       const cdr = words[2];
       words = new Uint32Array(exports.memory.buffer.slice(cdr, cdr + 12));
-      if (words[0] == 1) { // nil cdr means end of list
+      if (words[0] == 1) {
+        // nil cdr means end of list
         break;
       }
     }
 
-    expect(items).to.have.ordered.members([1,2,3]);
-    
-    io.removeEventListener('read', readHandler);
+    expect(items).to.have.ordered.members([1, 2, 3]);
+
+    io.removeEventListener("read", readHandler);
   });
 
   it("string->datum will convert '(1 . 3)' to a cons cell", () => {
     const tokens = ["1 . 3 )"];
 
-    const readHandler = (evt: IoEvent)=> {
+    const readHandler = (evt: IoEvent) => {
       evt.data = tokens.shift();
       return false;
-    }
-    io.addEventListener('read', readHandler);
+    };
+    io.addEventListener("read", readHandler);
     const input = createString(exports, "(");
-    const datum = exports.stringToDatum(input)
+    const datum = exports.stringToDatum(input);
     let words = new Uint32Array(exports.memory.buffer.slice(datum, datum + 12));
 
     expect(words[0]).to.equal(3, "should be a cons cell");
     const car = words[1];
-    const carWords = new Uint32Array(exports.memory.buffer.slice(car, car + 12));
-    expect(carWords[0]).to.equal(4, 'first item should be an integer');
-    expect(carWords[1]).to.equal(1, 'first item should be 1');
+    const carWords = new Uint32Array(
+      exports.memory.buffer.slice(car, car + 12)
+    );
+    expect(carWords[0]).to.equal(4, "first item should be an integer");
+    expect(carWords[1]).to.equal(1, "first item should be 1");
 
     const cdr = words[2];
-    const cdrWords = new Uint32Array(exports.memory.buffer.slice(cdr, cdr + 12));
-    expect(cdrWords[0]).to.equal(4, 'second item should be an integer');
-    expect(cdrWords[1]).to.equal(3, 'second item should be 3');
-  
-    io.removeEventListener('read', readHandler);
+    const cdrWords = new Uint32Array(
+      exports.memory.buffer.slice(cdr, cdr + 12)
+    );
+    expect(cdrWords[0]).to.equal(4, "second item should be an integer");
+    expect(cdrWords[1]).to.equal(3, "second item should be 3");
+
+    io.removeEventListener("read", readHandler);
   });
 
   it("read will read '(1 2 3)' as a three item list", () => {
     const tokens = ["(1 2 ", " 3 )"];
 
-    const readHandler = (evt: IoEvent)=> {
+    const readHandler = (evt: IoEvent) => {
       evt.data = tokens.shift();
       return false;
-    }
-    io.addEventListener('read', readHandler);
+    };
+    io.addEventListener("read", readHandler);
     const datum = exports.read();
     let words = new Uint32Array(exports.memory.buffer.slice(datum, datum + 12));
 
@@ -362,20 +377,22 @@ describe("runtime wasm", () => {
     while (true) {
       expect(words[0]).to.equal(3, "should be a cons cell");
       const car = words[1];
-      const carWords = new Uint32Array(exports.memory.buffer.slice(car, car + 12));
+      const carWords = new Uint32Array(
+        exports.memory.buffer.slice(car, car + 12)
+      );
       expect(carWords[0]).to.equal(4);
       items.push(carWords[1]);
 
       const cdr = words[2];
       words = new Uint32Array(exports.memory.buffer.slice(cdr, cdr + 12));
-      if (words[0] == 1) { // nil cdr means end of list
+      if (words[0] == 1) {
+        // nil cdr means end of list
         break;
       }
     }
 
-    expect(items).to.have.ordered.members([1,2,3]);
-    
-    io.removeEventListener('read', readHandler);
-  });
+    expect(items).to.have.ordered.members([1, 2, 3]);
 
+    io.removeEventListener("read", readHandler);
+  });
 });

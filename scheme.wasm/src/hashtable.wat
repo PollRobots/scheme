@@ -29,8 +29,8 @@
   ;; ptr = malloc(size)
   (local.set $ptr (call $malloc (local.get $size)))
 
-  ;; malloc_zero(ptr, size);
-  (call $malloc_zero (local.get $ptr) (local.get $size))
+  ;; mallocZero(ptr, size);
+  (call $malloc-zero (local.get $ptr) (local.get $size))
   
   ;; ptr[0] = capacity
   (i32.store (local.get $ptr) (local.get $capacity))
@@ -69,10 +69,10 @@
           (if (i64.ne (local.get $digest) (i64.const -1))
             (then
               ;; key = slot-ptr[8]
-              ;; malloc_free(key)
+              ;; malloc-free(key)
               ;;  as point-free
-              ;; malloc_free(slot-ptr[8])
-              (call $malloc_free
+              ;; malloc-free(slot-ptr[8])
+              (call $malloc-free
                 (i32.load (i32.add (local.get $slot-ptr) (i32.const 8)))
               )
 
@@ -280,8 +280,8 @@
   ;; }
   )
 
-  ;; malloc_free(ptr)
-  (call $malloc_free (local.get $old))
+  ;; malloc-free(ptr)
+  (call $malloc-free (local.get $old))
 
   ;; return new
   (return (local.get $new))

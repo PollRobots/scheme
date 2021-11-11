@@ -53,29 +53,29 @@
       "index": "$g-false"
     },
     {
-      "name": "malloc_zero",
+      "name": "mallocZero",
       "type": "func",
-      "index": "$malloc_zero"
+      "index": "$malloc-zero"
     },
     {
-      "name": "malloc_init",
+      "name": "mallocInit",
       "type": "func",
-      "index": "$malloc_init"
+      "index": "$malloc-init"
     },
     {
-      "name": "malloc_store_list",
+      "name": "mallocStoreList",
       "type": "func",
-      "index": "$malloc_store_list"
+      "index": "$malloc-store-list"
     },
     {
-      "name": "malloc_load_list",
+      "name": "mallocLoadList",
       "type": "func",
-      "index": "$malloc_load_list"
+      "index": "$malloc-load-list"
     },
     {
-      "name": "malloc_free",
+      "name": "mallocFree",
       "type": "func",
-      "index": "$malloc_free"
+      "index": "$malloc-free"
     },
     {
       "name": "xxh64",

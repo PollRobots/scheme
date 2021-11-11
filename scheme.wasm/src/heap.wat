@@ -157,8 +157,8 @@
           )
         )
         ;; free the underlying string
-        ;; malloc_free(entry-ptr[4])
-        (call $malloc_free (i32.load (i32.add (local.get $entry-ptr) (i32.const 4))))
+        ;; malloc-free(entry-ptr[4])
+        (call $malloc-free (i32.load (i32.add (local.get $entry-ptr) (i32.const 4))))
         ;; }
       )
 
@@ -170,8 +170,8 @@
           ;; environment-destroy(entry-ptr, false)
           (call $environment-destroy (local.get $entry-ptr) (i32.const 0))
           ;; free the environment hashtable
-          ;; malloc_free(entry-ptr[4])
-          (call $malloc_free (i32.load (i32.add (local.get $entry-ptr) (i32.const 4))))
+          ;; malloc-free(entry-ptr[4])
+          (call $malloc-free (i32.load (i32.add (local.get $entry-ptr) (i32.const 4))))
         )
       )
       ;; }
@@ -185,8 +185,8 @@
     )
   )
   
-  ;; malloc_free(heap)
-  (call $malloc_free (local.get $heap))
+  ;; malloc-free(heap)
+  (call $malloc-free (local.get $heap))
 )
 
 (func $heap-alloc (param $heap i32) (param $type i32) (param $data1 i32) (param $data2 i32) (result i32)
