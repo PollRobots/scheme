@@ -35,13 +35,8 @@
 (func $malloc-load-list (param $ptr i32) (result i64)
   (return (i64.or
     (i64.shl (i64.extend_i32_u (i32.load (local.get $ptr))) (i64.const 32)) ;; next
-    (i64.extend_i32_u (i32.load (i32.add (local.get $ptr) (i32.const 4)))) ;; size
+    (i64.extend_i32_u (i32.load offset=4 (local.get $ptr))) ;; size
   ))
-  ;; (return (i64.load (local.get $ptr)))
-  ;; (return
-  ;;   (i32.load (local.get $ptr)) ;; next
-  ;;   (i32.load (i32.add (local.get $ptr) (i32.const 4))) ;; size
-  ;; )
 )
 
 (func $malloc (export "malloc") (param $size i32) (result i32)

@@ -2,11 +2,46 @@ import { expect } from "chai";
 import { Console } from "console";
 import fs from "fs/promises";
 
-interface TestExports {
+export interface CommonTestExports {
   memory: WebAssembly.Memory;
+  gHeap: () => number;
   strFrom32: (len: number, val: number) => number;
   strFrom64: (len: number, val: bigint) => number;
   strFrom128: (len: number, val1: bigint, val2: bigint) => number;
+  heapAlloc: (
+    heap: number,
+    type: number,
+    data1: number,
+    data2: number
+  ) => number;
+}
+
+export function commonExportsFromInstance(
+  instance: WebAssembly.Instance
+): CommonTestExports {
+  return {
+    memory: instance.exports.memory as WebAssembly.Memory,
+    gHeap: () => (instance.exports.gHeap as WebAssembly.Global).value as number,
+    strFrom32: instance.exports.strFrom32 as (
+      len: number,
+      val: number
+    ) => number,
+    strFrom64: instance.exports.strFrom64 as (
+      len: number,
+      val: bigint
+    ) => number,
+    strFrom128: instance.exports.strFrom128 as (
+      len: number,
+      val1: bigint,
+      val2: bigint
+    ) => number,
+    heapAlloc: instance.exports.heapAlloc as (
+      heap: number,
+      type: number,
+      data1: number,
+      data2: number
+    ) => number,
+  };
 }
 
 export interface IoModule extends Record<string, Function> {
@@ -37,13 +72,13 @@ export async function loadWasm(io?: IoModule): Promise<WebAssembly.Instance> {
   }
 }
 
-export function createString(exports: TestExports, str: string): number {
+export function createString(exports: CommonTestExports, str: string): number {
   const ptr = createStringImpl(exports, str);
   checkMemory(exports);
   return ptr;
 }
 
-export function createStringImpl(exports: TestExports, str: string): number {
+export function createStringImpl(exports: CommonTestExports, str: string): number {
   const array = new TextEncoder().encode(str);
   if (array.byteLength > 16) {
     throw new Error(
@@ -65,7 +100,7 @@ export function createStringImpl(exports: TestExports, str: string): number {
   }
 }
 
-export function getString(exports: TestExports, ptr: number): string {
+export function getString(exports: CommonTestExports, ptr: number): string {
   const view = new Uint8Array(exports.memory.buffer);
   const words = new Uint32Array(exports.memory.buffer);
 
@@ -90,8 +125,14 @@ export function getString(exports: TestExports, ptr: number): string {
   return new TextDecoder().decode(view.slice(ptr + 4, ptr + 4 + len));
 }
 
+export function createHeapString(exports: CommonTestExports, str: string) :number {
+    const ptr = createString(exports, str);
+    return exports.heapAlloc(exports.gHeap(), 7, ptr, 0);
+  }
+
+
 export function checkMemory(
-  exports: TestExports,
+  exports: CommonTestExports,
   checkForLeaks: boolean = false
 ) {
   const view = new Uint8Array(exports.memory.buffer);
@@ -195,11 +236,11 @@ export function checkMemory(
   }
 }
 
-export function checkForLeaks(exports: TestExports) {
+export function checkForLeaks(exports: CommonTestExports) {
   return checkMemory(exports, true);
 }
 
-export function dumpMemory(exports: TestExports) {
+export function dumpMemory(exports: CommonTestExports) {
   const view = new Uint8Array(exports.memory.buffer);
   const words = new Uint32Array(exports.memory.buffer);
 
@@ -305,16 +346,16 @@ export class IoEvent {
 export type IoEventHandler = (evt: IoEvent) => boolean;
 
 export class IoTest {
-  private exports_: TestExports | null = null;
+  private exports_: CommonTestExports | null = null;
   private readonly readEvents: IoEventHandler[] = [];
   private readonly writeEvents: IoEventHandler[] = [];
 
   constructor() {}
 
-  get exports(): TestExports | null {
+  get exports(): CommonTestExports | null {
     return this.exports_;
   }
-  set exports(value: TestExports | null) {
+  set exports(value: CommonTestExports | null) {
     this.exports_ = value;
   }
 

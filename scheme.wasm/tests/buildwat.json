@@ -10,6 +10,7 @@
     "src/heap.wat",
     "src/string.wat",
     "src/malloc.wat",
+    "src/print.wat",
     "src/reader.wat",
     "src/runtime.wat",
     "src/start.wat",
@@ -52,6 +53,11 @@
       "name": "gFalse",
       "type": "global",
       "index": "$g-false"
+    },
+    {
+      "name": "gNil",
+      "type": "global",
+      "index": "$g-nil"
     },
     {
       "name": "mallocZero",
@@ -252,6 +258,11 @@
       "name": "environmentSetBang",
       "type": "func",
       "index": "$environment-set!"
+    },
+    {
+      "name": "print",
+      "type": "func",
+      "index": "$print"
     }
   ],
   "wabtOptions": {

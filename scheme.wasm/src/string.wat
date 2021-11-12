@@ -16,7 +16,7 @@
   ;; *ptr = len
   (i32.store (local.get $ptr) (local.get $len))
   ;; *(ptr + 4) = data
-  (i32.store (i32.add (local.get $ptr) (i32.const 4)) (local.get $data))
+  (i32.store offset=4 (local.get $ptr) (local.get $data))
 
   ;; return ptr
   (return (local.get $ptr))

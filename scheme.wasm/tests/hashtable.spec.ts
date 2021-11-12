@@ -1,15 +1,11 @@
 import { expect } from "chai";
 import "mocha";
 
-import { checkForLeaks, createString, getString, loadWasm } from "./common";
+import { checkForLeaks, commonExportsFromInstance, CommonTestExports, createString, getString, loadWasm } from "./common";
 
-interface TestExports {
-  memory: WebAssembly.Memory;
+interface TestExports extends CommonTestExports {
   mallocInit: () => void;
   mallocFree: (ptr: number) => void;
-  strFrom32: (len: number, val: number) => number;
-  strFrom64: (len: number, val: bigint) => number;
-  strFrom128: (len: number, val1: bigint, val2: bigint) => number;
   strByteLen: (ptr: number) => number;
   strCodePointLen: (ptr: number) => number;
   strCodePointAt: (ptr: number, at: number) => number;
@@ -26,22 +22,9 @@ interface TestExports {
 
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
   return {
-    memory: instance.exports.memory as WebAssembly.Memory,
+    ...commonExportsFromInstance(instance),
     mallocInit: instance.exports.mallocInit as () => void,
     mallocFree: instance.exports.mallocFree as (ptr: number) => void,
-    strFrom32: instance.exports.strFrom32 as (
-      len: number,
-      val: number
-    ) => number,
-    strFrom64: instance.exports.strFrom64 as (
-      len: number,
-      val: bigint
-    ) => number,
-    strFrom128: instance.exports.strFrom128 as (
-      len: number,
-      val1: bigint,
-      val2: bigint
-    ) => number,
     strByteLen: instance.exports.strByteLen as (ptr: number) => number,
     strCodePointLen: instance.exports.strCodePointLen as (
       ptr: number

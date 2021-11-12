@@ -30,14 +30,14 @@
   ;;  as point-free
   ;; hashtable-free-keys(env[4])
   (call $hashtable-free-keys 
-    (i32.load (i32.add (local.get $env) (i32.const 4)))
+    (i32.load offset=4 (local.get $env))
   )
 
   ;; if (destroy-outer) {
   (if (local.get $destroy-outer)
     (then
       ;; outer = env[8]
-      (local.set $outer (i32.load (i32.add (local.get $env) (i32.const 8))))
+      (local.set $outer (i32.load offset=8 (local.get $env)))
       ;; if (outer) {
       (if (local.get $outer)
         (then
@@ -66,9 +66,9 @@
   )
 
   ;; key-str = key[4]
-  (local.set $key-str (i32.load (i32.add (local.get $key) (i32.const 4))))
+  (local.set $key-str (i32.load offset=4 (local.get $key)))
   ;; hashtable = env[4]
-  (local.set $hashtable (i32.load (i32.add (local.get $env) (i32.const 4))))
+  (local.set $hashtable (i32.load offset=4 (local.get $env)))
 
   ;; check that there isn't an existing entry in the hashtable
   ;; if (hashtable-has(hashtable, key-str)) {
@@ -117,11 +117,11 @@
   ;; }
   )
   ;; key-str = key[4]
-  (local.set $key-str (i32.load (i32.add (local.get $key) (i32.const 4))))
+  (local.set $key-str (i32.load offset=4 (local.get $key)))
 
   (loop $forever
     ;; hashtable = env[4]
-    (local.set $hashtable (i32.load (i32.add (local.get $env) (i32.const 4))))
+    (local.set $hashtable (i32.load offset=4 (local.get $env)))
     ;; value = hashtable-get(hashtable, key-str)
     (local.set $value 
       (call $hashtable-get 
@@ -139,7 +139,7 @@
     )
 
     ;; env = env[8]
-    (local.set $env (i32.load (i32.add (local.get $env) (i32.const 8))))
+    (local.set $env (i32.load offset=8 (local.get $env)))
 
     ;; if (env) continue;
     (br_if $forever (local.get $env))
@@ -164,12 +164,12 @@
   ;; }
   )
   ;; key-str = key[4]
-  (local.set $key-str (i32.load (i32.add (local.get $key) (i32.const 4))))
+  (local.set $key-str (i32.load offset=4 (local.get $key)))
 
   ;; while (true) {
   (loop $forever
     ;; hashtable = env[4]
-    (local.set $hashtable (i32.load (i32.add (local.get $env) (i32.const 4))))
+    (local.set $hashtable (i32.load offset=4 (local.get $env)))
 
     ;; Note: cannot remove then add, because the duplicated key-string in the hashtable will leak.
     ;; if (hashtable-replace(hashtable, key-str, value)) {
@@ -180,7 +180,7 @@
     )
 
     ;; env = env[8]
-    (local.set $env (i32.load (i32.add (local.get $env) (i32.const 8))))
+    (local.set $env (i32.load offset=8 (local.get $env)))
 
     ;; if (env) continue;
     (br_if $forever (local.get $env))

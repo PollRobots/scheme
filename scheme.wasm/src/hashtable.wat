@@ -48,7 +48,7 @@
   ;; capacity = hashtable[0]
   (local.set $capacity (i32.load (local.get $hashtable)))
   ;; count = hashtable[4]
-  (local.set $count (i32.load (i32.add (local.get $hashtable) (i32.const 4))))
+  (local.set $count (i32.load offset=4 (local.get $hashtable)))
   
 
   ;; slot = 0
@@ -73,7 +73,7 @@
               ;;  as point-free
               ;; malloc-free(slot-ptr[8])
               (call $malloc-free
-                (i32.load (i32.add (local.get $slot-ptr) (i32.const 8)))
+                (i32.load offset=8 (local.get $slot-ptr))
               )
 
               ;; count--
@@ -133,7 +133,7 @@
   ;; capacity = ptr[0]
   (local.set $capacity (i32.load (local.get $ptr)))
   ;; count = ptr[1]
-  (local.set $count (i32.load (i32.add (local.get $ptr) (i32.const 4))))
+  (local.set $count (i32.load offset=4 (local.get $ptr)))
   ;; threshold = 3 * capacity / 4
   ;; threshold = (3 * capacity) >> 2
   (local.set $threshold (i32.shr_u (i32.mul (i32.const 3) (local.get $capacity)) (i32.const 2)))
@@ -236,7 +236,7 @@
   ;; capacity = ptr[0]
   (local.set $capacity (i32.load (local.get $ptr)))
   ;; count = ptr[1]
-  (local.set $count (i32.load (i32.add (local.get $ptr) (i32.const 4))))
+  (local.set $count (i32.load offset=4 (local.get $ptr)))
   ;; new = hashtable-init(capacity * 2)
   (local.set $new (call $hashtable-init (i32.shl (local.get $capacity) (i32.const 1))))
 
@@ -259,9 +259,9 @@
           (if (i64.ne (local.get $digest) (i64.const -1))
             (then
               ;; str = *(ptr + 8)
-              (local.set $str (i32.load (i32.add (local.get $ptr) (i32.const 8))))
+              (local.set $str (i32.load offset=8 (local.get $ptr)))
               ;; value = *(ptr + 12)
-              (local.set $value (i32.load (i32.add (local.get $ptr) (i32.const 12))))
+              (local.set $value (i32.load offset=12 (local.get $ptr)))
 
               ;; hashtable-add(new, str, value)
               (drop (call $hashtable-add (local.get $new) (local.get $str) (local.get $value)))
@@ -303,7 +303,7 @@
   ;; capacity = ptr[0]
   (local.set $capacity (i32.load (local.get $ptr)))
   ;; count = ptr[1]
-  (local.set $count (i32.load (i32.add (local.get $ptr) (i32.const 4))))
+  (local.set $count (i32.load offset=4 (local.get $ptr)))
 
   ;; digest = hashtable-digest(key)
   (local.set $digest (call $hashtable-digest (local.get $key)))
@@ -340,7 +340,7 @@
       (if (i64.eq (local.get $slot-digest) (local.get $digest))
         (then
           ;; slot-key = *(slot-ptr + 8)
-          (local.set $slot-key (i32.load (i32.add (local.get $slot-ptr) (i32.const 8))))
+          (local.set $slot-key (i32.load offset=8 (local.get $slot-ptr)))
           ;; if (str-eq(slot-key, key)) {
           (if (call $str-eq (local.get $slot-key) (local.get $key))
             (then
@@ -401,7 +401,7 @@
   )
 
   ;; slot-value = #(slot-ptr + 12)
-  (local.set $slot-value (i32.load (i32.add (local.get $slot-ptr) (i32.const 12))))
+  (local.set $slot-value (i32.load offset=12 (local.get $slot-ptr)))
   ;; return slot-value
   (return (local.get $slot-value))
 )
@@ -464,7 +464,7 @@
 
   ;; reduce count
   ;; count = ptr[4]
-  (local.set $count (i32.load (i32.add (local.get $ptr) (i32.const 4))))
+  (local.set $count (i32.load offset=4 (local.get $ptr)))
   ;; ptr[4] = count - 1
   (i32.store
     (i32.add (local.get $ptr) (i32.const 4)) 

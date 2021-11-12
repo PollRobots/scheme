@@ -55,7 +55,7 @@
   )
 
   ;; accum = reader[8]
-  (local.set $accum (i32.load (i32.add (local.get $reader) (i32.const 8))))
+  (local.set $accum (i32.load offset=8 (local.get $reader)))
   ;; malloc-free(accum)
   (call $malloc-free (local.get $accum))
 
@@ -78,9 +78,9 @@
   ;; in-off-ptr = reader + 4
   (local.set $in-off-ptr (i32.add (local.get $reader) (i32.const 4)))
   ;; acuum = reader[8];
-  (local.set $accum (i32.load (i32.add (local.get $reader) (i32.const 8))))
+  (local.set $accum (i32.load offset=8 (local.get $reader)))
   ;; size = reader[12]
-  (local.set $size (i32.load (i32.add (local.get $reader) (i32.const 12))))
+  (local.set $size (i32.load offset=12 (local.get $reader)))
 
   ;; if (input == 0) {
   (if (i32.eqz (local.get $input))

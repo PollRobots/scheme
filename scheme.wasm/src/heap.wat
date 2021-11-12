@@ -119,7 +119,7 @@
   (local $type i32)
 
   ;; next-heap-ptr = heap[8]
-  (local.set $next-heap-ptr (i32.load (i32.add (local.get $heap) (i32.const 8))))
+  (local.set $next-heap-ptr (i32.load offset=8 (local.get $heap)))
   ;; if (next-heap-ptr != 0) {
   (if (local.get $next-heap-ptr)
     (then
@@ -158,7 +158,7 @@
         )
         ;; free the underlying string
         ;; malloc-free(entry-ptr[4])
-        (call $malloc-free (i32.load (i32.add (local.get $entry-ptr) (i32.const 4))))
+        (call $malloc-free (i32.load offset=4 (local.get $entry-ptr)))
         ;; }
       )
 
@@ -171,7 +171,7 @@
           (call $environment-destroy (local.get $entry-ptr) (i32.const 0))
           ;; free the environment hashtable
           ;; malloc-free(entry-ptr[4])
-          (call $malloc-free (i32.load (i32.add (local.get $entry-ptr) (i32.const 4))))
+          (call $malloc-free (i32.load offset=4 (local.get $entry-ptr)))
         )
       )
       ;; }
@@ -194,13 +194,13 @@
   (local $next-heap-ptr i32)
 
   ;; empty-ptr = heap[4]
-  (local.set $empty-ptr (i32.load (i32.add (local.get $heap) (i32.const 4))))
+  (local.set $empty-ptr (i32.load offset=4 (local.get $heap)))
   ;; if (empty-ptr == 0) {
   (if (i32.eqz (local.get $empty-ptr))
     (then
       ;; no space in this heap, alloc in the next
       ;; next-heap-ptr = heap[8]
-      (local.set $next-heap-ptr (i32.load (i32.add (local.get $heap) (i32.const 8))))
+      (local.set $next-heap-ptr (i32.load offset=8 (local.get $heap)))
 
       ;; if (next-heap-ptr == 0) {
       (if (i32.eqz (local.get $next-heap-ptr))
@@ -242,7 +242,7 @@
   ;; heap[4] = empty-ptr[4]
   (i32.store
     (i32.add (local.get $heap) (i32.const 4))
-    (i32.load (i32.add (local.get $empty-ptr) (i32.const 4)))
+    (i32.load offset=4 (local.get $empty-ptr))
   )
   ;; empty-ptr[0] = type
   (i32.store
@@ -301,7 +301,7 @@
     ;; ptr[4] = heap[4] ;; set next to the free ptr
     (i32.store
       (i32.add (local.get $ptr) (i32.const 4))
-      (i32.load (i32.add (local.get $heap) (i32.const 4)))
+      (i32.load offset=4 (local.get $heap))
     )
     ;; heap[4] = ptr ;; set free ptr to be this ptr
     (i32.store
@@ -315,7 +315,7 @@
   )
 
   ;; next-ptr = heap[8]
-  (local.set $next-ptr (i32.load (i32.add (local.get $heap) (i32.const 8))))
+  (local.set $next-ptr (i32.load offset=8 (local.get $heap)))
   ;; if (next-ptr == 0) {
   (if (i32.eqz (local.get $next-ptr))
     ;; can't find a heap that owns this ptr

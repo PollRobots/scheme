@@ -2,24 +2,20 @@ import { expect } from "chai";
 import { create } from "domain";
 import "mocha";
 
-import { checkForLeaks, createString, IoTest, loadWasm } from "./common";
+import {
+  checkForLeaks,
+  commonExportsFromInstance,
+  CommonTestExports,
+  createHeapString,
+  IoTest,
+  loadWasm,
+} from "./common";
 
-interface TestExports {
-  memory: WebAssembly.Memory;
-  gHeap: () => number;
+interface TestExports extends CommonTestExports {
   gTrue: () => number;
   gFalse: () => number;
   mallocInit: () => void;
   mallocFree: (ptr: number) => void;
-  strFrom32: (len: number, val: number) => number;
-  strFrom64: (len: number, val: bigint) => number;
-  strFrom128: (len: number, val1: bigint, val2: bigint) => number;
-  heapAlloc: (
-    heap: number,
-    type: number,
-    data1: number,
-    data2: number
-  ) => number;
   runtimeInit: () => void;
   runtimeCleanup: () => void;
   environmentInit: (heap: number, outer: number) => number;
@@ -30,32 +26,12 @@ interface TestExports {
 
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
   return {
-    memory: instance.exports.memory as WebAssembly.Memory,
-    gHeap: () => (instance.exports.gHeap as WebAssembly.Global).value as number,
+    ...commonExportsFromInstance(instance),
     gTrue: () => (instance.exports.gTrue as WebAssembly.Global).value as number,
     gFalse: () =>
       (instance.exports.gFalse as WebAssembly.Global).value as number,
     mallocInit: instance.exports.mallocInit as () => void,
     mallocFree: instance.exports.mallocFree as (ptr: number) => void,
-    strFrom32: instance.exports.strFrom32 as (
-      len: number,
-      val: number
-    ) => number,
-    strFrom64: instance.exports.strFrom64 as (
-      len: number,
-      val: bigint
-    ) => number,
-    strFrom128: instance.exports.strFrom128 as (
-      len: number,
-      val1: bigint,
-      val2: bigint
-    ) => number,
-    heapAlloc: instance.exports.heapAlloc as (
-      heap: number,
-      type: number,
-      data1: number,
-      data2: number
-    ) => number,
     runtimeInit: instance.exports.runtimeInit as () => void,
     runtimeCleanup: instance.exports.runtimeCleanup as () => void,
     environmentInit: instance.exports.environmentInit as (
@@ -97,11 +73,6 @@ describe("environment wasm", () => {
     checkForLeaks(exports);
   });
 
-  const createHeapString = (str: string) => {
-    const ptr = createString(exports, str);
-    return exports.heapAlloc(exports.gHeap(), 7, ptr, 0);
-  };
-
   it("can initialize an environment", () => {
     const env = exports.environmentInit(exports.gHeap(), 0);
     expect(env).to.be.greaterThan(exports.gHeap());
@@ -119,14 +90,14 @@ describe("environment wasm", () => {
     const stored: Record<string, number> = {};
 
     for (const { key, value } of kTestItems) {
-      const heapKey = createHeapString(key);
-      const heapValue = createHeapString(value);
+      const heapKey = createHeapString(exports, key);
+      const heapValue = createHeapString(exports, value);
       exports.environmentAdd(env, heapKey, heapValue);
       stored[key] = heapValue;
     }
 
     for (const { key, value } of kTestItems) {
-      const heapKey = createHeapString(key);
+      const heapKey = createHeapString(exports, key);
 
       expect(exports.environmentGet(env, heapKey)).to.equal(stored[key]);
     }
@@ -151,36 +122,46 @@ describe("environment wasm", () => {
     const storedInner: Record<string, number> = {};
 
     kOuterItems.forEach(({ key, value }) => {
-      const heapKey = createHeapString(key);
-      const heapValue = createHeapString(value);
+      const heapKey = createHeapString(exports, key);
+      const heapValue = createHeapString(exports, value);
       exports.environmentAdd(outer, heapKey, heapValue);
       storedOuter[key] = heapValue;
     });
 
     kInnerItems.forEach(({ key, value }) => {
-      const heapKey = createHeapString(key);
-      const heapValue = createHeapString(value);
+      const heapKey = createHeapString(exports, key);
+      const heapValue = createHeapString(exports, value);
       exports.environmentAdd(inner, heapKey, heapValue);
       storedInner[key] = heapValue;
     });
 
-    expect(exports.environmentGet(inner, createHeapString("item"))).to.equal(
+    expect(
+      exports.environmentGet(inner, createHeapString(exports, "item"))
+    ).to.equal(
       storedOuter["item"],
       '"item" should be fetched from the outer environment'
     );
-    expect(exports.environmentGet(inner, createHeapString("baz"))).to.equal(
+    expect(
+      exports.environmentGet(inner, createHeapString(exports, "baz"))
+    ).to.equal(
       storedOuter["baz"],
       '"baz" should be fetched from the outer environment'
     );
-    expect(exports.environmentGet(inner, createHeapString("bar"))).to.equal(
+    expect(
+      exports.environmentGet(inner, createHeapString(exports, "bar"))
+    ).to.equal(
       storedInner["bar"],
       '"bar" should be fetched from the inner environment (shadowing)'
     );
-    expect(exports.environmentGet(inner, createHeapString("foo"))).to.equal(
+    expect(
+      exports.environmentGet(inner, createHeapString(exports, "foo"))
+    ).to.equal(
       storedInner["foo"],
       '"foo" should be fetched from the inner environment'
     );
-    expect(exports.environmentGet(outer, createHeapString("bar"))).to.equal(
+    expect(
+      exports.environmentGet(outer, createHeapString(exports, "bar"))
+    ).to.equal(
       storedOuter["bar"],
       '"bar" should be fetched from the outer environment (shadowed, fetched directly)'
     );
@@ -191,14 +172,14 @@ describe("environment wasm", () => {
 
     exports.environmentAdd(
       env,
-      createHeapString("foo"),
-      createHeapString("bar")
+      createHeapString(exports, "foo"),
+      createHeapString(exports, "bar")
     );
     expect(() =>
       exports.environmentAdd(
         env,
-        createHeapString("foo"),
-        createHeapString("baz")
+        createHeapString(exports, "foo"),
+        createHeapString(exports, "baz")
       )
     ).throws("unreachable");
   });
@@ -206,9 +187,9 @@ describe("environment wasm", () => {
   it("can overwrite an item with set!", () => {
     const env = exports.environmentInit(exports.gHeap(), 0);
 
-    const heapFoo = createHeapString("foo");
-    const heapBar = createHeapString("bar");
-    const heapBaz = createHeapString("baz");
+    const heapFoo = createHeapString(exports, "foo");
+    const heapBar = createHeapString(exports, "bar");
+    const heapBaz = createHeapString(exports, "baz");
 
     exports.environmentAdd(env, heapFoo, heapBar);
     expect(exports.environmentGet(env, heapFoo)).to.equal(

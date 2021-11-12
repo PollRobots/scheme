@@ -1,21 +1,51 @@
-(global $g-reader (mut i32) (i32.const 0))
-(global $g-heap   (mut i32) (i32.const 0))
-(global $g-true   (mut i32) (i32.const 0))
-(global $g-false  (mut i32) (i32.const 0))
-(global $g-nil    (mut i32) (i32.const 0))
+(global $g-reader     (mut i32) (i32.const 0))
+(global $g-heap       (mut i32) (i32.const 0))
+(global $g-true       (mut i32) (i32.const 0))
+(global $g-true-str   (mut i32) (i32.const 0))
+(global $g-false      (mut i32) (i32.const 0))
+(global $g-false-str  (mut i32) (i32.const 0))
+(global $g-nil        (mut i32) (i32.const 0))
+(global $g-nil-str    (mut i32) (i32.const 0))
 
 (func $runtime-init
   (global.set $g-reader (call $reader-init))
   (global.set $g-heap (call $heap-create (i32.const 1024)))
   (global.set $g-true (call $heap-alloc (global.get $g-heap) (i32.const 2) (i32.const 1) (i32.const 0x7423)))
+  (global.set $g-true-str
+    (call $heap-alloc
+      (global.get $g-heap)
+      (i32.const 7)
+      (call $str-from-32 (i32.const 2) (i32.const 0x7423))
+      (i32.const 0)
+    )
+  )
   (global.set $g-false (call $heap-alloc (global.get $g-heap) (i32.const 2) (i32.const 0) (i32.const 0x6623)))
+  (global.set $g-false-str
+    (call $heap-alloc
+      (global.get $g-heap)
+      (i32.const 7)
+      (call $str-from-32 (i32.const 2) (i32.const 0x6623))
+      (i32.const 0)
+    )
+  )
   (global.set $g-nil (call $heap-alloc (global.get $g-heap) (i32.const 1) (i32.const 0) (i32.const 0x2928)))
+  (global.set $g-nil-str
+    (call $heap-alloc
+      (global.get $g-heap)
+      (i32.const 7)
+      (call $str-from-32 (i32.const 2) (i32.const 0x2928))
+      (i32.const 0)
+    )
+  )
 )
 
 (func $runtime-cleanup
   (global.set $g-nil (i32.const 0))
+  (global.set $g-nil-str (i32.const 0))
   (global.set $g-false (i32.const 0))
+  (global.set $g-false-str (i32.const 0))
   (global.set $g-true (i32.const 0))
+  (global.set $g-true-str (i32.const 0))
 
   (call $heap-destroy (global.get $g-heap))
   (global.set $g-heap (i32.const 0))
@@ -129,7 +159,7 @@
         )
 
         ;; curr = curr[8]
-        (local.set $curr (i32.load (i32.add (local.get $curr) (i32.const 8))))
+        (local.set $curr (i32.load offset=8 (local.get $curr)))
 
         (br $forever)
       )
@@ -172,7 +202,7 @@
   )
 
   ;; token-str == token[4]
-  (local.set $token-str (i32.load (i32.add (local.get $token) (i32.const 4))))
+  (local.set $token-str (i32.load offset=4 (local.get $token)))
 
   ;; if (token-str == '#t') {
   (if (call $short-str-eq (local.get $token-str) (i32.const 0x7423) (i32.const 2))
@@ -232,7 +262,7 @@
       ;; return (str[4] == short-str)
       (return 
         (i32.eq
-          (i32.load (i32.add (local.get $str) (i32.const 4)))
+          (i32.load offset=4 (local.get $str))
           (local.get $short-str)
         )
       )
@@ -247,7 +277,7 @@
   (if (i32.eq (i32.and (i32.load (local.get $token)) (i32.const 0xF)) (i32.const 2))
     (then
       ;; if (token[4] == 0) {
-      (if (i32.eqz (i32.load (i32.add (local.get $token) (i32.const 4))))
+      (if (i32.eqz (i32.load offset=4 (local.get $token)))
         ;; return 0
         (then (return (i32.const 0)))
       )
@@ -281,7 +311,7 @@
   )
 
   ;; str-ptr = str[4]
-  (local.set $str-ptr (i32.load (i32.add (local.get $str) (i32.const 4))))
+  (local.set $str-ptr (i32.load offset=4 (local.get $str)))
 
   ;; i = 0
   (local.set $i (i32.const 0))

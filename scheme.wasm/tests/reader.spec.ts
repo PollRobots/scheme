@@ -4,22 +4,17 @@ import "mocha";
 import {
   checkForLeaks,
   checkMemory,
-  createString,
-  dumpMemory,
+  commonExportsFromInstance,
+  CommonTestExports,
   getString,
   IoEvent,
-  IoModule,
   IoTest,
   loadWasm,
 } from "./common";
 
-interface TestExports {
-  memory: WebAssembly.Memory;
+interface TestExports extends CommonTestExports {
   mallocInit: () => void;
   mallocFree: (ptr: number) => void;
-  strFrom32: (len: number, val: number) => number;
-  strFrom64: (len: number, val: bigint) => number;
-  strFrom128: (len: number, val1: bigint, val2: bigint) => number;
   readerInit: () => number;
   readerFree: (ptr: number) => void;
   readerReadToken: (ptr: number) => number;
@@ -27,22 +22,9 @@ interface TestExports {
 
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
   return {
-    memory: instance.exports.memory as WebAssembly.Memory,
+    ...commonExportsFromInstance(instance),
     mallocInit: instance.exports.mallocInit as () => void,
     mallocFree: instance.exports.mallocFree as (ptr: number) => void,
-    strFrom32: instance.exports.strFrom32 as (
-      len: number,
-      val: number
-    ) => number,
-    strFrom64: instance.exports.strFrom64 as (
-      len: number,
-      val: bigint
-    ) => number,
-    strFrom128: instance.exports.strFrom128 as (
-      len: number,
-      val1: bigint,
-      val2: bigint
-    ) => number,
     readerInit: instance.exports.readerInit as () => number,
     readerFree: instance.exports.readerFree as (ptr: number) => void,
     readerReadToken: instance.exports.readerReadToken as (

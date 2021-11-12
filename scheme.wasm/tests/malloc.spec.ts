@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import "mocha";
-import { loadWasm } from "./common";
+import { commonExportsFromInstance, CommonTestExports, loadWasm } from "./common";
 
-interface TestExports {
+interface TestExports extends CommonTestExports {
   memory: WebAssembly.Memory;
   mallocZero: (ptr: number, len: number) => void;
   mallocInit: () => void;
@@ -14,7 +14,7 @@ interface TestExports {
 
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
   return {
-    memory: instance.exports.memory as WebAssembly.Memory,
+    ...commonExportsFromInstance(instance),
     mallocZero: instance.exports.mallocZero as (
       ptr: number,
       len: number
