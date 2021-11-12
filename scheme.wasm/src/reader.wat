@@ -222,7 +222,7 @@
                   (local.get $char)
                 )
                 ;; acc-off++
-                (local.set $acc-off (i32.add (local.get $acc-off) (i32.const 1)))
+                (%inc $acc-off)
                 ;; continue
                 (br $forever)
               )

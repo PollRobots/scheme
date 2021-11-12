@@ -2,6 +2,7 @@
 import fs from "fs/promises";
 import { Command, OptionValues } from "commander";
 import wabt from "wabt";
+import { emit, parse } from "./watmacro";
 
 type WasmNumericType = "i32" | "i64";
 
@@ -166,10 +167,11 @@ async function main() {
     .version("0.0.0.1")
     .requiredOption("-o, --output <wasm file>", "The output to generate")
     .option("-t, --tempfile <tempfile>", "Save the intermediate WAT file")
+    .option('-m, --macros', "Use macro expansion")
     .argument("<config>", "build configuration file");
 
   program.parse();
-  const opts = program.opts<{ output: string; tempfile?: string }>();
+  const opts = program.opts<{ output: string; tempfile?: string, macros?: boolean }>();
 
   const config = JSON.parse(await fs.readFile(program.args[0], "utf-8"));
   if (!isBuildWatConfig(config)) {
@@ -193,7 +195,23 @@ async function main() {
   }
 
   contents.push(...makeSuffix(config));
-  const joined = contents.join("\n");
+  let joined = contents.join("\n");
+
+  if (opts.macros) {
+    try {
+      const parsed = parse(joined);
+      const expanded = emit(parsed)
+      console.log('Expanded macros');
+      joined = expanded.join('');
+    } catch(e) {
+      console.error("Error expanding macros");
+      console.error(
+        Reflect.has(e as object, "message")
+          ? (e as { message: string }).message
+          : e
+      );
+    }
+  }
 
   if (opts.tempfile) {
     await fs.writeFile(opts.tempfile, joined, "utf-8");

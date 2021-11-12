@@ -370,7 +370,7 @@
       (i32.store8 (local.get $ptr) (i32.const 0))
 
       ;; ptr++
-      (local.set $ptr (i32.add (local.get $ptr) (i32.const 1)))
+      (%inc $ptr)
       (br $p_start)
     )
   )
@@ -397,7 +397,7 @@
       (i32.store8 (local.get $ptr) (i32.const 0))
 
       ;; ptr++
-      (local.set $ptr (i32.add (local.get $ptr) (i32.const 1)))
+      (%inc $ptr)
       (br $s_start)
     )
   )

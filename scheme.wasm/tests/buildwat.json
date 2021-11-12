@@ -4,6 +4,7 @@
     "limit": 1
   },
   "files": [
+    "src/macros.wat",
     "src/environment.wat",
     "src/hashtable.wat",
     "src/heap.wat",

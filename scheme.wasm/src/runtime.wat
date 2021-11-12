@@ -501,7 +501,7 @@
     )
 
     ;; i++
-    (local.set $i (i32.add (local.get $i) (i32.const 1)))
+    (%inc $i)
     (br $forever)
   ;; }
   )

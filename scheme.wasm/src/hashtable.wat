@@ -85,9 +85,9 @@
       ;; }
 
       ;; slot++
-      (local.set $slot (i32.add (local.get $slot) (i32.const 1))) 
+      (%inc $slot)
       ;; slot-ptr += 16
-      (local.set $slot-ptr (i32.add (local.get $slot-ptr) (i32.const 16))) 
+      (%plus-eq $slot-ptr 16)
 
       (br $w_start)
     )
@@ -272,9 +272,9 @@
       )
 
       ;; i++
-      (local.set $i (i32.add (local.get $i) (i32.const 1)))
+      (%inc $i)
       ;; ptr += 16
-      (local.set $ptr (i32.add (local.get $ptr) (i32.const 16)))
+      (%plus-eq $ptr 16)
       (br $b_start)
     )
   ;; }

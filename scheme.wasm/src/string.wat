@@ -174,13 +174,13 @@
       )
 
   ;;   cp-len++
-      (local.set $cp-len (i32.add (local.get $cp-len) (i32.const 1)))
+      (%inc $cp-len)
 
   ;;   if (offset >= 32) {
       (if (i32.ge_u (local.get $offset) (i32.const 32))
         (then
-  ;;     ptr += 4
-          (local.set $ptr (i32.add (local.get $ptr) (i32.const 4)))
+          ;; ptr += 4
+          (%plus-eq $ptr 4)
   ;;     word = *ptr
           (local.set $word (i32.load (local.get $ptr)))
   ;;     offset -= 32
@@ -392,13 +392,13 @@
       )
 
       ;; cp-len++
-      (local.set $cp-len (i32.add (local.get $cp-len) (i32.const 1)))
+      (%inc $cp-len)
 
       ;; if (offset >= 32) {
       (if (i32.ge_u (local.get $offset) (i32.const 32))
         (then
           ;; ptr += 4
-          (local.set $ptr (i32.add (local.get $ptr) (i32.const 4)))
+          (%plus-eq $ptr 4)
           ;; word = *ptr
           (local.set $word (i32.load (local.get $ptr)))
           ;; offset -= 32
@@ -856,9 +856,9 @@
         )
       )
       ;; i++
-      (local.set $i (i32.add (local.get $i) (i32.const 1)))
+      (%inc $i)
       ;; cp-ptr += 4
-      (local.set $cp-ptr (i32.add (local.get $cp-ptr) (i32.const 4)))
+      (%plus-eq $cp-ptr 4)
       ;; }
       (br $c_start)
     )
