@@ -103,7 +103,7 @@
         ;; xxh_u64 const k1 = XXH64_round(0, XXH_get64bits(ptr));
         (local.set $k1 (call $xxh64_round (i64.const 0) (i64.load (local.get $ptr))))
         ;; ptr += 8;
-        (local.set $ptr (i32.add (local.get $ptr) (i32.const 8)))
+        (%plus-eq $ptr 8)
         ;; h64 ^= k1;
         (local.set $h64 (i64.xor (local.get $h64) (local.get $k1)))
         ;; h64  = XXH_rotl64(h64,27) * XXH_PRIME64_1 + XXH_PRIME64_4;
@@ -134,7 +134,7 @@
                         )
         )
         ;; ptr += 4;
-        (local.set $ptr (i32.add (local.get $ptr) (i32.const 4)))
+        (%plus-eq $ptr 4)
         ;; h64 = XXH_rotl64(h64, 23) * XXH_PRIME64_2 + XXH_PRIME64_3;
         (local.set $h64 (i64.add
                           (i64.mul
@@ -213,19 +213,19 @@
           (loop $do_start
             ;; v1 = XXH64_round(v1, XXH_get64bits(input)); input+=8;
             (local.set $v1 (call $xxh64_round (local.get $v1) (i64.load (local.get $input))))
-            (local.set $input (i32.add (local.get $input) (i32.const 8)))
+            (%plus-eq $input 8)
 
             ;; v2 = XXH64_round(v2, XXH_get64bits(input)); input+=8;
             (local.set $v2 (call $xxh64_round (local.get $v2) (i64.load (local.get $input))))
-            (local.set $input (i32.add (local.get $input) (i32.const 8)))
+            (%plus-eq $input 8)
 
             ;; v3 = XXH64_round(v3, XXH_get64bits(input)); input+=8;
             (local.set $v3 (call $xxh64_round (local.get $v3) (i64.load (local.get $input))))
-            (local.set $input (i32.add (local.get $input) (i32.const 8)))
+            (%plus-eq $input 8)
 
             ;; v4 = XXH64_round(v4, XXH_get64bits(input)); input+=8;
             (local.set $v4 (call $xxh64_round (local.get $v4) (i64.load (local.get $input))))
-            (local.set $input (i32.add (local.get $input) (i32.const 8)))
+            (%plus-eq $input 8)
 
             ;; } while (input<=limit);
             (br_if $do_start (i32.le_u (local.get $input) (local.get $limit)))

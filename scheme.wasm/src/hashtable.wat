@@ -241,7 +241,7 @@
   (local.set $new (call $hashtable-init (i32.shl (local.get $capacity) (i32.const 1))))
 
   ;; ptr += 8
-  (local.set $ptr (i32.add (local.get $ptr) (i32.const 8)))
+  (%plus-eq $ptr 8)
 
   ;; while (i < capacity) {
   (block $b_end

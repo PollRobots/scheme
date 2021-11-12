@@ -111,59 +111,59 @@
   (local.set $offset (i32.const 0))
 
   ;; ptr = ptr += 4
-  (local.set $ptr (i32.add (local.get $ptr) (i32.const 4)))
+  (%plus-eq $ptr 4)
   ;; word = *ptr
   (local.set $word (i32.load (local.get $ptr)))
   ;; while (byte-len > 0) {
   (block $b_end
     (loop $b_start
       (br_if $b_end (i32.le_s (local.get $byte-len) (i32.const 0)))
-  ;;   byte = (word >> offset)
+      ;; byte = (word >> offset)
       (local.set $byte (i32.shr_u (local.get $word) (local.get $offset)))
 
-  ;;   if ((byte & 0x80) == 0) {
+      ;; if ((byte & 0x80) == 0) {
       (if (i32.eqz (i32.and (local.get $byte) (i32.const 0x80)))
         (then
-  ;;     // single byte
-  ;;     offset += 8
-          (local.set $offset (i32.add (local.get $offset) (i32.const 8)))
-  ;;     byte-len -= 1
-          (local.set $byte-len (i32.sub (local.get $byte-len) (i32.const 1)))
+          ;; single byte
+          ;; offset += 8
+          (%plus-eq $offset 8)
+          ;; byte-len -= 1
+          (%dec $byte-len)
         )
         (else
-  ;;   } else if ((byte & 0xE0) == 0xC0) {
+          ;; } else if ((byte & 0xE0) == 0xC0) {
           (if (i32.eq (i32.and (local.get $byte) (i32.const 0xE0)) (i32.const 0xC0))
             (then
-  ;;     // double byte
-  ;;     offset += 16
-              (local.set $offset (i32.add (local.get $offset) (i32.const 16)))
-  ;;     byte-len -= 2
-              (local.set $byte-len (i32.sub (local.get $byte-len) (i32.const 2)))
+              ;; double byte
+              ;; offset += 16
+              (%plus-eq $offset 16)
+              ;; byte-len -= 2
+              (%minus-eq $byte-len 2)
             )
             (else
-  ;;   } else if ((byte & 0xF0) == 0xE0) {
+            ;; } else if ((byte & 0xF0) == 0xE0) {
               (if (i32.eq (i32.and (local.get $byte) (i32.const 0xF0)) (i32.const 0xE0))
                 (then
-  ;;     // triple byte
-  ;;     offset += 24
-                  (local.set $offset (i32.add (local.get $offset) (i32.const 24)))
-  ;;     byte-len -= 3
-                  (local.set $byte-len (i32.sub (local.get $byte-len) (i32.const 3)))
+                  ;; triple byte
+                  ;; offset += 24
+                  (%plus-eq $offset 24)
+                  ;; byte-len -= 3
+                  (%minus-eq $byte-len 3)
                 )
                 (else
-  ;;   } else if ((byte & 0xF8) == 0xF0) {
+                  ;; } else if ((byte & 0xF8) == 0xF0) {
                   (if (i32.eq (i32.and (local.get $byte) (i32.const 0xF8)) (i32.const 0xF0))
                     (then
-  ;;     offset += 32
-                      (local.set $offset (i32.add (local.get $offset) (i32.const 32)))
-  ;;     byte-len -= 4
-                      (local.set $byte-len (i32.sub (local.get $byte-len) (i32.const 4)))
+                      ;; offset += 32
+                      (%plus-eq $offset 32)
+                      ;; byte-len -= 4
+                      (%minus-eq $byte-len 4)
                     )
+                    ;; } else {
                     (else
-  ;;   } else {
-  ;;     trap
+                      ;; trap
                       unreachable
-  ;;   }
+                      ;; }
                     )
                   )
                 )
@@ -173,20 +173,20 @@
         )
       )
 
-  ;;   cp-len++
+      ;; cp-len++
       (%inc $cp-len)
 
-  ;;   if (offset >= 32) {
+      ;; if (offset >= 32) {
       (if (i32.ge_u (local.get $offset) (i32.const 32))
         (then
           ;; ptr += 4
           (%plus-eq $ptr 4)
-  ;;     word = *ptr
+          ;; word = *ptr
           (local.set $word (i32.load (local.get $ptr)))
-  ;;     offset -= 32
-          (local.set $offset (i32.sub (local.get $offset) (i32.const 32)))
+          ;; offset -= 32
+          (%minus-eq $offset 32)
         )
-  ;;   }
+        ;; }
       )
       
       (br $b_start)
@@ -250,8 +250,8 @@
   ;; offset = 0
   (local.set $offset (i32.const 0))
 
-  ;; ptr = ptr += 4
-  (local.set $ptr (i32.add (local.get $ptr) (i32.const 4)))
+  ;; ptr += 4
+  (%plus-eq $ptr 4)
   (local.set $end (i32.add (local.get $ptr) (local.get $byte-len)))
   ;; word = *ptr
   (local.set $word (i32.load (local.get $ptr)))
@@ -266,16 +266,16 @@
       (if (i32.eqz (i32.and (local.get $byte) (i32.const 0x80)))
         (then
           ;; single byte
+          ;; if (cp-len == at) {
           (if (i32.eq (local.get $cp-len) (local.get $at))
           ;;   return (byte & 0x7F)
             (return (i32.and (local.get $byte) (i32.const 0x7F)))
           ;; }
           )
           ;; offset += 8
-          (local.set $offset (i32.add (local.get $offset) (i32.const 8)))
+          (%plus-eq $offset 8)
           ;; byte-len -= 1
-          (local.set $byte-len (i32.sub (local.get $byte-len) (i32.const 1)))
-          ;; if (cp-len == at) {
+          (%dec $byte-len)
         )
         (else
           ;; } else if ((byte & 0xE0) == 0xC0) {
@@ -302,9 +302,9 @@
               ;; }
               )
               ;; offset += 16
-              (local.set $offset (i32.add (local.get $offset) (i32.const 16)))
+              (%plus-eq $offset 16)
               ;; byte-len -= 2
-              (local.set $byte-len (i32.sub (local.get $byte-len) (i32.const 2)))
+              (%minus-eq $byte-len 2)
             )
             (else
               ;; } else if ((byte & 0xF0) == 0xE0) {
@@ -336,9 +336,9 @@
                   ;; }
                   )
                   ;; offset += 24
-                  (local.set $offset (i32.add (local.get $offset) (i32.const 24)))
+                  (%plus-eq $offset 24)
                   ;; byte-len -= 3
-                  (local.set $byte-len (i32.sub (local.get $byte-len) (i32.const 3)))
+                  (%minus-eq $byte-len 3)
                 )
                 (else
                   ;; } else if ((byte & 0xF8) == 0xF0) {
@@ -373,9 +373,9 @@
                       ;; }
                       )
                       ;; offset += 32
-                      (local.set $offset (i32.add (local.get $offset) (i32.const 32)))
+                      (%plus-eq $offset 32)
                       ;; byte-len -= 4
-                      (local.set $byte-len (i32.sub (local.get $byte-len) (i32.const 4)))
+                      (%minus-eq $byte-len 4)
                     )
                     (else
                       ;; } else {
@@ -402,7 +402,7 @@
           ;; word = *ptr
           (local.set $word (i32.load (local.get $ptr)))
           ;; offset -= 32
-          (local.set $offset (i32.sub (local.get $offset) (i32.const 32)))
+          (%minus-eq $offset 32)
         )
       ;; }
       )
@@ -435,8 +435,8 @@
   ;; offset = 0
   (local.set $offset (i32.const 0))
 
-  ;; ptr = ptr += 4
-  (local.set $ptr (i32.add (local.get $ptr) (i32.const 4)))
+  ;; ptr += 4
+  (%plus-eq $ptr 4)
   ;; end = ptr + byte-len
   (local.set $end (i32.add (local.get $ptr) (local.get $byte-len)))
 
@@ -451,11 +451,11 @@
       (if (i32.ge_u (local.get $offset) (i32.const 32))
         (then
           ;; ptr += 4
-          (local.set $ptr (i32.add (local.get $ptr) (i32.const 4)))
+          (%plus-eq $ptr 4)
           ;; word = *ptr
           (local.set $word (i32.load (local.get $ptr)))
           ;; offset -= 32
-          (local.set $offset (i32.sub (local.get $offset) (i32.const 32)))
+          (%minus-eq $offset 32)
         )
       ;; }
       )
@@ -465,12 +465,12 @@
       ;; if ((byte & 0x80) == 0) {
       (if (i32.eqz (i32.and (local.get $byte) (i32.const 0x80)))
         (then
-         ;; single byte
-         ;; no special validation needed
-         ;; offset += 8
-          (local.set $offset (i32.add (local.get $offset) (i32.const 8)))
+          ;; single byte
+          ;; no special validation needed
+          ;; offset += 8
+          (%plus-eq $offset 8)
           ;; byte-len -= 1
-          (local.set $byte-len (i32.sub (local.get $byte-len) (i32.const 1)))
+          (%minus-eq $byte-len 1)
         )
         (else
           ;; } else if ((byte & 0xE0) == 0xC0) {
@@ -500,9 +500,9 @@
               ;;}
               )
               ;; offset += 16
-              (local.set $offset (i32.add (local.get $offset) (i32.const 16)))
+              (%plus-eq $offset 16)
               ;; byte-len -= 2
-              (local.set $byte-len (i32.sub (local.get $byte-len) (i32.const 2)))
+              (%minus-eq $byte-len 2)
             )
             (else
               ;; } else if ((byte & 0xF0) == 0xE0) {
@@ -532,9 +532,9 @@
                   ;;}
                   )
                   ;; offset += 24
-                  (local.set $offset (i32.add (local.get $offset) (i32.const 24)))
+                  (%plus-eq $offset 24)
                   ;; byte-len -= 3
-                  (local.set $byte-len (i32.sub (local.get $byte-len) (i32.const 3)))
+                  (%minus-eq $byte-len 3)
                 )
                 (else
                   ;; } else if ((byte & 0xF8) == 0xF0) {
@@ -582,9 +582,9 @@
                       )
                       
                       ;; offset += 32
-                      (local.set $offset (i32.add (local.get $offset) (i32.const 32)))
+                      (%plus-eq $offset 32)
                       ;; byte-len -= 4
-                      (local.set $byte-len (i32.sub (local.get $byte-len) (i32.const 4)))
+                      (%minus-eq $byte-len 4)
                     )
                     (else
                       ;; } else {
@@ -773,9 +773,9 @@
   )
 
   ;; a += 4;
-  (local.set $a (i32.add (local.get $a) (i32.const 4)))
+  (%plus-eq $a 4)
   ;; b += 4;
-  (local.set $b (i32.add (local.get $b) (i32.const 4)))
+  (%plus-eq $b 4)
 
   ;; while (a-len >= 4) {
   (block $b_end
@@ -789,11 +789,12 @@
       )
 
       ;; a-len -= 4
-      (local.set $a-len (i32.sub (local.get $a-len) (i32.const 4)))
+      (%minus-eq $a-len 4)
       ;; a += 4;
-      (local.set $a (i32.add (local.get $a) (i32.const 4)))
+      (%plus-eq $a 4)
       ;; b += 4;
-      (local.set $b (i32.add (local.get $b) (i32.const 4)))
+      (%plus-eq $b 4)
+
       (br $b_start)
     )
   )
@@ -914,18 +915,18 @@
           ;; *str-ptr = (i32)accum
           (i32.store (local.get $str-ptr) (i32.wrap_i64 (local.get $accum)))
           ;; str-ptr += 4
-          (local.set $str-ptr (i32.add (local.get $str-ptr) (i32.const 4)))
+          (%plus-eq $str-ptr 4)
           ;; accum >>= 32
           (local.set $accum (i64.shr_u (local.get $accum) (i64.const 32)))
           ;; acc-len -= 32
-          (local.set $acc-len (i32.sub (local.get $acc-len) (i32.const 32)))
+          (%minus-eq $acc-len 32)
         )
       ;; }
       )
 
       (local.set $i (i32.add (local.get $i) (i32.const 1)))
       ;; cp-ptr += 4
-      (local.set $cp-ptr (i32.add (local.get $cp-ptr) (i32.const 4)))
+      (%plus-eq $cp-ptr 4)
       ;; }
       (br $a_start)
     )
@@ -972,9 +973,9 @@
       ;; len -=4 
       (local.set $len (i32.sub (local.get $len) (i32.const 4)))
       ;; dest-ptr += 4
-      (local.set $dest-ptr (i32.add (local.get $dest-ptr) (i32.const 4)))
-      ;; ptr += 4
-      (local.set $str (i32.add (local.get $str) (i32.const 4)))
+      (%plus-eq $dest-ptr 4)
+      ;; str += 4
+      (%plus-eq $str 4)
 
       (br $w_start)
     )

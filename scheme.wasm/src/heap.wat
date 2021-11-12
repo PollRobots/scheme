@@ -100,9 +100,9 @@
     ;; entry-ptr = next
     (local.set $entry-ptr (local.get $next))
     ;; next += 12
-    (local.set $next (i32.add (local.get $next) (i32.const 12)))
+    (%plus-eq $next 12)
     ;; size--;
-    (local.set $size (i32.sub (local.get $size) (i32.const 1)))
+    (%dec $size)
 
     (br $forever)
   )
@@ -177,9 +177,9 @@
       ;; }
 
       ;; entry-ptr += 12
-      (local.set $entry-ptr (i32.add (local.get $entry-ptr) (i32.const 12)))
+      (%plus-eq $entry-ptr 12)
       ;; size--;
-      (local.set $size (i32.sub (local.get $size) (i32.const 1)))
+      (%dec $size)
       (br $b_start)
     ;; }
     )

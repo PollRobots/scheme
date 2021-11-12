@@ -383,7 +383,7 @@
       (i64.store (local.get $ptr) (i64.const 0))
 
       ;; ptr += 8
-      (local.set $ptr (i32.add (local.get $ptr) (i32.const 8)))
+      (%plus-eq $ptr 8)
       (br $b_start)
     )
   )
