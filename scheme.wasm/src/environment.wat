@@ -56,9 +56,9 @@
   (local $hashtable i32)
   (local $new-hash i32)
 
-  ;; check that key is a string
-  ;; if (*key & 0xF != 7) {
-  (if (i32.ne (i32.and (i32.load (local.get $key)) (i32.const 0xF)) (i32.const 7))
+  ;; check that key is a symbol
+  ;; if (*key & 0xF != 6) {
+  (if (i32.ne (i32.and (i32.load (local.get $key)) (i32.const 0xF)) (%symbol-type))
     ;; trap
     ;; TODO: return error
     (then unreachable)
@@ -108,8 +108,8 @@
   (local $value i32)
 
   ;; check that key is a string
-  ;; if (*key & 0xF != 7) {
-  (if (i32.ne (i32.and (i32.load (local.get $key)) (i32.const 0xF)) (i32.const 7))
+  ;; if (*key & 0xF != 6) {
+  (if (i32.ne (i32.and (i32.load (local.get $key)) (i32.const 0xF)) (%symbol-type))
     (then
       ;; return g-nil
       (return (global.get $g-nil))
@@ -155,8 +155,8 @@
   (local $new-hashtable i32)
 
   ;; check that key is a string
-  ;; if (*key & 0xF != 7) {
-  (if (i32.ne (i32.and (i32.load (local.get $key)) (i32.const 0xF)) (i32.const 7))
+  ;; if (*key & 0xF != symbol) {
+  (if (i32.ne (i32.and (i32.load (local.get $key)) (i32.const 0xF)) (%symbol-type))
     (then
       ;; trap
       (unreachable)

@@ -337,7 +337,7 @@ class List extends ParsedWat {
     return fluent.some(
       this.getSignificantElements(),
       (el) => isAtom(el) && isMacroToken(el.token)
-    );
+    ) || fluent.empty(this.getSignificantElements());
   }
 
   private get argList(): MacroToken[] {
@@ -400,7 +400,18 @@ class List extends ParsedWat {
       const name = this.macroName;
       const defn = scope.lookup(name);
       if (defn) {
-        return this.expandMacro(defn);
+        return this.expandMacro(defn).map(el => {
+          if (isList(el)) {
+            const twoex = el.expand(scope);
+            if (Array.isArray(twoex)) {
+              return twoex;
+            } else {
+              return [twoex];
+            }
+          } else {
+            return [el];
+          }
+        }).flat()
       }
     }
 

@@ -78,7 +78,10 @@ export function createString(exports: CommonTestExports, str: string): number {
   return ptr;
 }
 
-export function createStringImpl(exports: CommonTestExports, str: string): number {
+export function createStringImpl(
+  exports: CommonTestExports,
+  str: string
+): number {
   const array = new TextEncoder().encode(str);
   if (array.byteLength > 16) {
     throw new Error(
@@ -125,11 +128,21 @@ export function getString(exports: CommonTestExports, ptr: number): string {
   return new TextDecoder().decode(view.slice(ptr + 4, ptr + 4 + len));
 }
 
-export function createHeapString(exports: CommonTestExports, str: string) :number {
-    const ptr = createString(exports, str);
-    return exports.heapAlloc(exports.gHeap(), 7, ptr, 0);
-  }
+export function createHeapSymbol(
+  exports: CommonTestExports,
+  str: string
+): number {
+  const ptr = createString(exports, str);
+  return exports.heapAlloc(exports.gHeap(), 6, ptr, 0);
+}
 
+export function createHeapString(
+  exports: CommonTestExports,
+  str: string
+): number {
+  const ptr = createString(exports, str);
+  return exports.heapAlloc(exports.gHeap(), 7, ptr, 0);
+}
 
 export function checkMemory(
   exports: CommonTestExports,
@@ -402,12 +415,11 @@ export class IoTest {
       handler(event);
     }
   }
-  
-  get module() : IoModule {
+
+  get module(): IoModule {
     return {
       read: () => this.read(),
       write: (ptr) => this.write(ptr),
     };
   }
 }
-

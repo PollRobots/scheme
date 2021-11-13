@@ -5,6 +5,7 @@
   },
   "files": [
     "src/macros.wat",
+    "src/builtins.wat",
     "src/environment.wat",
     "src/hashtable.wat",
     "src/heap.wat",
@@ -263,6 +264,16 @@
       "name": "print",
       "type": "func",
       "index": "$print"
+    },
+    {
+      "name": "eval",
+      "type": "func",
+      "index": "$eval"
+    },
+    {
+      "name": "registerBuiltins",
+      "type": "func",
+      "index": "$register-builtins"
     }
   ],
   "wabtOptions": {

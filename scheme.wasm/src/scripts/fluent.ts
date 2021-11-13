@@ -42,6 +42,10 @@ export function some<T>(iter: Iterable<T>, predicate: (el: T) => boolean): boole
   return false;
 }
 
+export function empty<T>(iter: Iterable<T>): boolean {
+  return !!iter[Symbol.iterator]().next().done;
+}
+
 export function* map<T, V>(iter: Iterable<T>, mapFn: (el: T) => V): Generator<V> {
   for (const el of iter) {
     yield mapFn(el);

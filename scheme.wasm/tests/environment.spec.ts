@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import { create } from "domain";
 import "mocha";
 
 import {
@@ -7,6 +6,7 @@ import {
   commonExportsFromInstance,
   CommonTestExports,
   createHeapString,
+  createHeapSymbol,
   IoTest,
   loadWasm,
 } from "./common";
@@ -90,14 +90,14 @@ describe("environment wasm", () => {
     const stored: Record<string, number> = {};
 
     for (const { key, value } of kTestItems) {
-      const heapKey = createHeapString(exports, key);
+      const heapKey = createHeapSymbol(exports, key);
       const heapValue = createHeapString(exports, value);
       exports.environmentAdd(env, heapKey, heapValue);
       stored[key] = heapValue;
     }
 
     for (const { key, value } of kTestItems) {
-      const heapKey = createHeapString(exports, key);
+      const heapKey = createHeapSymbol(exports, key);
 
       expect(exports.environmentGet(env, heapKey)).to.equal(stored[key]);
     }
@@ -122,45 +122,45 @@ describe("environment wasm", () => {
     const storedInner: Record<string, number> = {};
 
     kOuterItems.forEach(({ key, value }) => {
-      const heapKey = createHeapString(exports, key);
+      const heapKey = createHeapSymbol(exports, key);
       const heapValue = createHeapString(exports, value);
       exports.environmentAdd(outer, heapKey, heapValue);
       storedOuter[key] = heapValue;
     });
 
     kInnerItems.forEach(({ key, value }) => {
-      const heapKey = createHeapString(exports, key);
+      const heapKey = createHeapSymbol(exports, key);
       const heapValue = createHeapString(exports, value);
       exports.environmentAdd(inner, heapKey, heapValue);
       storedInner[key] = heapValue;
     });
 
     expect(
-      exports.environmentGet(inner, createHeapString(exports, "item"))
+      exports.environmentGet(inner, createHeapSymbol(exports, "item"))
     ).to.equal(
       storedOuter["item"],
       '"item" should be fetched from the outer environment'
     );
     expect(
-      exports.environmentGet(inner, createHeapString(exports, "baz"))
+      exports.environmentGet(inner, createHeapSymbol(exports, "baz"))
     ).to.equal(
       storedOuter["baz"],
       '"baz" should be fetched from the outer environment'
     );
     expect(
-      exports.environmentGet(inner, createHeapString(exports, "bar"))
+      exports.environmentGet(inner, createHeapSymbol(exports, "bar"))
     ).to.equal(
       storedInner["bar"],
       '"bar" should be fetched from the inner environment (shadowing)'
     );
     expect(
-      exports.environmentGet(inner, createHeapString(exports, "foo"))
+      exports.environmentGet(inner, createHeapSymbol(exports, "foo"))
     ).to.equal(
       storedInner["foo"],
       '"foo" should be fetched from the inner environment'
     );
     expect(
-      exports.environmentGet(outer, createHeapString(exports, "bar"))
+      exports.environmentGet(outer, createHeapSymbol(exports, "bar"))
     ).to.equal(
       storedOuter["bar"],
       '"bar" should be fetched from the outer environment (shadowed, fetched directly)'
@@ -172,13 +172,13 @@ describe("environment wasm", () => {
 
     exports.environmentAdd(
       env,
-      createHeapString(exports, "foo"),
+      createHeapSymbol(exports, "foo"),
       createHeapString(exports, "bar")
     );
     expect(() =>
       exports.environmentAdd(
         env,
-        createHeapString(exports, "foo"),
+        createHeapSymbol(exports, "foo"),
         createHeapString(exports, "baz")
       )
     ).throws("unreachable");
@@ -187,7 +187,7 @@ describe("environment wasm", () => {
   it("can overwrite an item with set!", () => {
     const env = exports.environmentInit(exports.gHeap(), 0);
 
-    const heapFoo = createHeapString(exports, "foo");
+    const heapFoo = createHeapSymbol(exports, "foo");
     const heapBar = createHeapString(exports, "bar");
     const heapBaz = createHeapString(exports, "baz");
 

@@ -538,3 +538,100 @@
 
   unreachable
 )
+
+(func $eval (param $env i32) (param $args i32) (result i32)
+  (local $type i32)
+  (local $op i32)
+  (local $cdr i32)
+
+
+  ;; type = *args & 0xf
+  (local.set $type (i32.and (i32.load (local.get $args)) (i32.const 0x0F)))
+
+  ;; switch (type) {
+  ;; case symbol:
+  (if (i32.eq (local.get $type) (%symbol-type))
+    (then
+      ;; return environment-lookup(env, args)
+      (return
+        (call $environment-get (local.get $env) (local.get $args))
+      )
+    )
+  )
+  ;; case cons:
+  (if (i32.eq (local.get $type) (%cons-type))
+    (then
+      ;; car = args[4]
+      ;; op = eval(car)
+      ;;  pointfree ->
+      ;;    op = eval(env, args[4])
+      ;; cdr = args[8]
+      ;; return apply(env, op, cdr)
+      ;;  pointfree ->
+      ;;    return apply(env, eval(env, args[4]), args[8])
+      (return
+        (call $apply
+          (local.get $env)
+          (call $eval
+            (local.get $env)
+            (i32.load offset=4 (local.get $args))
+          )
+          (i32.load offset=8 (local.get $args))
+        )
+      )
+    )
+  )
+  ;; default:
+  ;; return args
+  (return (local.get $args))
+  ;; }
+
+  (unreachable)
+)
+
+(func $eval-list (param $env i32) (param $args i32) (result i32)
+  (local $type i32)
+  ;; type =*args & 0xF 
+  (local.set $type (i32.and (i32.load (local.get $args)) (i32.const 0xF)))
+  ;; if (type == %nil-type) {
+  (if (i32.eq (local.get $type) (%nil-type))
+    (then
+    ;; return args
+      (return (local.get $args))
+    )
+  ;; }
+  )
+  ;; if (type != %cons-type) {
+  (if (i32.ne (local.get $type) (%cons-type)) 
+    ;; trap
+    (then unreachable)
+  ;; }
+  )
+
+  ;; return heap-alloc(g-heap, %cons-type, eval(env, args[4]), eval-list(env, args[8])) 
+  (return
+    (call $heap-alloc
+      (global.get $g-heap)
+      (%cons-type)
+      (call $eval (local.get $env) (i32.load offset=4 (local.get $args)))
+      (call $eval-list (local.get $env) (i32.load offset=8 (local.get $args)))
+    )
+  )
+)
+
+(func $apply (param $env i32) (param $op i32) (param $args i32) (result i32)
+  (local $curr i32)
+  (local $head i32)
+
+  ;; if ((*op & 0xF) != %builtin-type) {
+  (if (i32.ne (i32.and (i32.load (local.get $op)) (i32.const 0xF)) (%builtin-type))
+    ;; trap
+    (then unreachable)
+  ;; }
+  )
+
+  (local.get $env)
+  (call $eval-list (local.get $env) (local.get $args))
+  (i32.load offset=4 (local.get $op))
+  call_indirect $table-builtin (type $builtin-type)
+)

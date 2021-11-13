@@ -3,12 +3,8 @@ import "mocha";
 
 import {
   checkForLeaks,
-  checkMemory,
   createString,
-  dumpMemory,
-  getString,
   IoEvent,
-  IoEventHandler,
   IoTest,
   loadWasm,
 } from "./common";
@@ -31,11 +27,14 @@ interface TestExports {
   ) => number;
   runtimeInit: () => void;
   runtimeCleanup: () => void;
+  environmentInit: (heap: number, outer: number) => number;
   stringToNumber: (str: number) => number;
   shortStrEq: (str: number, shortStr: number, shortStrLen: number) => number;
   atom: (token: number) => number;
   stringToDatum: (str: number) => number;
   read: () => number;
+  eval: (env: number, expr: number) => number;
+  registerBuiltins: (heap: number, env: number) => void;
 }
 
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
@@ -68,6 +67,10 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
     ) => number,
     runtimeInit: instance.exports.runtimeInit as () => void,
     runtimeCleanup: instance.exports.runtimeCleanup as () => void,
+    environmentInit: instance.exports.environmentInit as (
+      heap: number,
+      outer: number
+    ) => number,
     stringToNumber: instance.exports.stringToNumber as (str: number) => number,
     shortStrEq: instance.exports.shortStrEq as (
       str: number,
@@ -77,6 +80,11 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
     atom: instance.exports.atom as (token: number) => number,
     stringToDatum: instance.exports.stringToDatum as (ptr: number) => number,
     read: instance.exports.read as () => number,
+    eval: instance.exports.eval as (env: number, expr: number) => number,
+    registerBuiltins: instance.exports.registerBuiltins as (
+      heap: number,
+      env: number
+    ) => void,
   };
 }
 
@@ -392,6 +400,30 @@ describe("runtime wasm", () => {
     }
 
     expect(items).to.have.ordered.members([1, 2, 3]);
+
+    io.removeEventListener("read", readHandler);
+  });
+
+  it("can eval simple expressions", () => {
+    const tokens = ["(+ 1 (* 2 3))"];
+    const readHandler = (evt: IoEvent) => {
+      evt.data = tokens.shift();
+      return false;
+    };
+    io.addEventListener("read", readHandler);
+
+    const env = exports.environmentInit(exports.gHeap(), 0);
+    exports.registerBuiltins(exports.gHeap(), env);
+
+    const datum = exports.read();
+
+    const result = exports.eval(env, datum);
+    const words = new Uint32Array(
+      exports.memory.buffer.slice(result, result + 12)
+    );
+    expect(words[0]).to.equal(4, "result type should be an i64");
+    expect(words[1]).to.equal(7, "1 + 2 * 3 = 7");
+    expect(words[2]).to.equal(0);
 
     io.removeEventListener("read", readHandler);
   });
