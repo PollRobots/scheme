@@ -18,15 +18,6 @@ interface TestExports extends CommonTestExports {
   gTrue: () => number;
   gFalse: () => number;
   mallocInit: () => void;
-  strFrom32: (len: number, val: number) => number;
-  strFrom64: (len: number, val: bigint) => number;
-  strFrom128: (len: number, val1: bigint, val2: bigint) => number;
-  heapAlloc: (
-    heap: number,
-    type: number,
-    data1: number,
-    data2: number
-  ) => number;
   runtimeInit: () => void;
   runtimeCleanup: () => void;
   environmentInit: (heap: number, outer: number) => number;
@@ -37,6 +28,7 @@ interface TestExports extends CommonTestExports {
   read: () => number;
   eval: (env: number, expr: number) => number;
   registerBuiltins: (heap: number, env: number) => void;
+  print: (ptr: number) => void;
 }
 
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
@@ -68,6 +60,7 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
       heap: number,
       env: number
     ) => void,
+    print: instance.exports.print as (ptr: number) => void,
   };
 }
 
@@ -75,6 +68,13 @@ describe("runtime wasm", () => {
   const io = new IoTest();
   const wasm = loadWasm(io.module);
   let exports: TestExports;
+  const written: string[] = [];
+  const writeHandler = (evt: IoEvent) => {
+    if (evt.data) {
+      written.push(evt.data);
+    }
+    return true;
+  };
 
   before(async () => {
     const instance = await wasm;
@@ -82,11 +82,19 @@ describe("runtime wasm", () => {
     io.exports = exports;
     exports.mallocInit();
     exports.runtimeInit();
+    io.addEventListener("write", writeHandler);
   });
 
   after(() => {
     exports.runtimeCleanup();
     checkForLeaks(exports);
+    io.removeEventListener("write", writeHandler);
+  });
+
+  afterEach(() => {
+    if (written.length) {
+      console.log(written.splice(0, written.length).join(""));
+    }
   });
 
   it("converts strings to numbers", () => {
@@ -492,6 +500,47 @@ describe("runtime wasm", () => {
     expect(words[0]).to.equal(4, "result type should be an i64");
     expect(words[1]).to.equal(30, "inner x and y should be 30");
     expect(words[2]).to.equal(0);
+
+    io.removeEventListener("read", readHandler);
+  });
+
+  it("can evaluate a lambda", () => {
+    const tokens = ["((lambda (x) (+ x x)) 4)"];
+    const readHandler = (evt: IoEvent) => {
+      evt.data = tokens.shift();
+      return false;
+    };
+    io.addEventListener("read", readHandler);
+
+    const env = exports.environmentInit(exports.gHeap(), 0);
+    exports.registerBuiltins(exports.gHeap(), env);
+
+    const datum = exports.read();
+
+    const result = exports.eval(env, datum);
+    const words = new Uint32Array(
+      exports.memory.buffer.slice(result, result + 12)
+    );
+    expect(words[0]).to.equal(4, "result type should be an i64");
+    expect(words[1]).to.equal(8, "x + x should be 8");
+    expect(words[2]).to.equal(0);
+
+    io.removeEventListener("read", readHandler);
+  });
+
+  it("can evaluate a lambda with a single formal", () => {
+    const tokens = ["((lambda x x) 3 4 5 6)"];
+    const readHandler = (evt: IoEvent) => {
+      evt.data = tokens.shift();
+      return false;
+    };
+    io.addEventListener("read", readHandler);
+
+    const env = exports.environmentInit(exports.gHeap(), 0);
+    exports.registerBuiltins(exports.gHeap(), env);
+
+    exports.print(exports.eval(env, exports.read()));
+    expect(written.join("")).to.equal("(3 4 5 6)");
 
     io.removeEventListener("read", readHandler);
   });

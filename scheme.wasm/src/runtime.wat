@@ -625,7 +625,7 @@
   (local $head i32)
 
   ;; op-type = *op & 0xF
-  (local.set $op-type (i32.and (i32.load (local.get $op)) (i32.const 0xF)))
+  (local.set $op-type (%get-type $op))
 
   ;; switch (op-type) {
   (block $b_check
@@ -644,8 +644,17 @@
         (br $b_check)
       )
     )
+    ;; case %lambda-type:
+    (if (i32.eq (local.get $op-type) (%lambda-type))
+      (then
+        (return 
+          (call $apply-lambda (local.get $env) (local.get $op) (local.get $args))
+        )
+      )
+    )
     ;; default:
     ;;   any other type:
+    (call $print (call $cons (local.get $op-type) (call $cons (local.get $op) (local.get $args))))
     (unreachable)
   )
 
@@ -654,3 +663,91 @@
   (i32.load offset=4 (local.get $op))
   call_indirect $table-builtin (type $builtin-type)
 )
+
+(func $apply-lambda (param $env i32) (param $lambda i32) (param $args i32) (result i32)
+  (local $formals i32)
+  (local $body i32)
+  (local $child-env i32)
+  (local $result i32)
+
+  ;; formals = lambda[4]
+  (local.set $formals (i32.load offset=4 (local.get $lambda)))
+  ;; body = lambda[8]
+  (local.set $body (i32.load offset=8 (local.get $lambda)))
+
+  ;; child-env = environment-init(gHeap, env)
+  (local.set $child-env (call $environment-init (global.get $g-heap) (local.get $env)))
+
+  ;; zip-lambda-args(child-env, formals, args)
+  (call $zip-lambda-args (local.get $child-env) (local.get $formals) (local.get $args))
+
+  ;; result = g-nil
+  (local.set $result (global.get $g-nil))
+  ;; while (typeof body == cons) {
+  (block $b_end
+    (loop $b_start
+      (br_if $b_end (i32.ne (%get-type $body) (%cons-type)))
+
+      ;; result = eval(child-env, car(body))
+      (local.set $result (call $eval (local.get $child-env) (%car-l $body)))
+      ;; body = cdr(body)
+      (local.set $body (%cdr-l $body))
+
+      (br $b_start)
+    )
+  ;; }
+  )
+
+  ;; return result
+  (return (local.get $result))
+)
+
+(func $cons (param $car i32) (param $cdr i32) (result i32)
+  (return 
+    (call $heap-alloc
+      (global.get $g-heap)
+      (%cons-type)
+      (local.get $car)
+      (local.get $cdr)
+    )
+  )
+)
+
+(func $zip-lambda-args (param $env i32) (param $formals i32) (param $args i32)
+  (loop $forever
+    ;; if (get-type(formals) == nil-type) {
+    (if (i32.eq (%get-type $formals) (%nil-type))
+      ;; return g-nil
+      (then return)
+    ;; }
+    )
+    ;; if (get-type(formals) == symbol-type) {
+    (if (i32.eq (%get-type $formals) (%symbol-type))
+      (then
+        ;; environment-add(env, formals, args)
+        (call $environment-add (local.get $env) (local.get $formals) (local.get $args))
+        ;; return
+        (return)
+      )
+      ;; }
+    )
+
+    ;; if (get-type(args) == nil-type) {
+    (if (i32.eq (%get-type $args) (%nil-type))
+      ;; TODO return an error for too few args
+      ;; trap
+      (then unreachable)
+    ;; }
+    )
+
+    ;; environment-add(env, car(formals), car(args))
+    ;; formals = cdr(formals)
+    ;; args = cdr(args)
+    (call $environment-add (local.get $env) (%car-l $formals) (%car-l $args))
+    (local.set $formals (%cdr-l $formals))
+    (local.set $args (%cdr-l $args))
+
+    (br $forever)
+  )
+)
+

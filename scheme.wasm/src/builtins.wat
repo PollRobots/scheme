@@ -1,10 +1,11 @@
 (type $builtin-type (func (param i32 i32) (result i32)))
 
-(%define %builtin-add ()  (i32.const 0))
-(%define %builtin-mult () (i32.const 1))
-(%define %special-if ()   (i32.const 2))
-(%define %special-let ()  (i32.const 3))
-(table $table-builtin 4 anyfunc)
+(%define %builtin-add ()      (i32.const 0))
+(%define %builtin-mult ()     (i32.const 1))
+(%define %special-if ()       (i32.const 2))
+(%define %special-let ()      (i32.const 3))
+(%define %special-lambda ()   (i32.const 4))
+(table $table-builtin 5 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
   (call $environment-add
@@ -46,6 +47,16 @@
       (i32.const 0)
     )
     (call $heap-alloc (local.get $heap) (%special-type) (%special-let) (i32.const 0))
+  )
+  (call $environment-add
+    (local.get $env)
+    (call $heap-alloc 
+      (local.get $heap) 
+      (%symbol-type) 
+      (call $str-from-64 (i32.const 6) (i64.const 0x6164626d616c)) ;; 'lambda'
+      (i32.const 0)
+    )
+    (call $heap-alloc (local.get $heap) (%special-type) (%special-lambda) (i32.const 0))
   )
 )
 
@@ -228,7 +239,6 @@
 
 (elem $table-builtin (%special-if) $if)
 
-
 (func $let (param $env i32) (param $args i32) (result i32)
   (local $bindings i32)
   (local $temp i32)
@@ -313,3 +323,50 @@
 )
 
 (elem $table-builtin (%special-let) $let)
+
+(func $lambda (param $env i32) (param $args i32) (result i32)
+  (local $formals i32)
+  (local $f-type i32)
+  (local $f-val i32)
+
+  ;; formals = car(args)
+  (local.set $formals (%car-l $args))
+
+  ;; while (true) {
+  (block $b_end
+    (loop $b_start
+      ;; f-type = get-type(formals)
+      (local.set $f-type (%get-type $formals))
+      ;; if (f-type == symbol) break
+      (br_if $b_end (i32.eq (local.get $f-type) (%symbol-type)))
+      ;; if (f-type == nil) break
+      (br_if $b_end (i32.eq (local.get $f-type) (%nil-type)))
+      ;; if (f-type != cons) trap
+      (if (i32.ne (local.get $f-type) (%cons-type))
+        (then unreachable)
+      )
+
+      ;; fval = car(formals)
+      (local.set $f-val (%car-l $formals))
+      ;; assert(fval is symbol)
+      (%assert-symbol $f-val)
+      ;; formals = cdr(formals)
+      (local.set $formals (%cdr-l $formals))
+
+      (br $b_start)
+    )
+    ;; }
+  )
+
+  ;; return heap-alloc(heap, lambda-type, car(args), cdr(args))
+  (return 
+    (call $heap-alloc
+      (global.get $g-heap)
+      (%lambda-type)
+      (%car-l $args)
+      (%cdr-l $args)
+    )
+  )
+)
+
+(elem $table-builtin (%special-lambda) $lambda)

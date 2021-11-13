@@ -43,6 +43,10 @@
 ;;    hashtable: i32
 ;;    parent: i32
 
+;; Lambda
+;;    formals: i32
+;;    body: i32
+
 ;; Heap
 ;;   Size:      i32
 ;;   Free:      i32 ptr -- pointer to an empty cell
@@ -232,8 +236,8 @@
     (then unreachable)
   ;; }
   )
-  ;; if (type > kMaxType(11) ) {
-  (if (i32.gt_u (local.get $type) (i32.const 11))
+  ;; if (type > kMaxType(12) ) {
+  (if (i32.gt_u (local.get $type) (i32.const 12))
     ;; trap
     (then unreachable)
   ;; }
