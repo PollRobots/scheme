@@ -3,6 +3,8 @@ import "mocha";
 
 import {
   checkForLeaks,
+  commonExportsFromInstance,
+  CommonTestExports,
   createHeapSymbol,
   createString,
   IoEvent,
@@ -10,13 +12,12 @@ import {
   loadWasm,
 } from "./common";
 
-interface TestExports {
+interface TestExports extends CommonTestExports {
   memory: WebAssembly.Memory;
   gHeap: () => number;
   gTrue: () => number;
   gFalse: () => number;
   mallocInit: () => void;
-  mallocFree: (ptr: number) => void;
   strFrom32: (len: number, val: number) => number;
   strFrom64: (len: number, val: bigint) => number;
   strFrom128: (len: number, val1: bigint, val2: bigint) => number;
@@ -40,32 +41,13 @@ interface TestExports {
 
 function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
   return {
+    ...commonExportsFromInstance(instance),
     memory: instance.exports.memory as WebAssembly.Memory,
     gHeap: () => (instance.exports.gHeap as WebAssembly.Global).value as number,
     gTrue: () => (instance.exports.gTrue as WebAssembly.Global).value as number,
     gFalse: () =>
       (instance.exports.gFalse as WebAssembly.Global).value as number,
     mallocInit: instance.exports.mallocInit as () => void,
-    mallocFree: instance.exports.mallocFree as (ptr: number) => void,
-    strFrom32: instance.exports.strFrom32 as (
-      len: number,
-      val: number
-    ) => number,
-    strFrom64: instance.exports.strFrom64 as (
-      len: number,
-      val: bigint
-    ) => number,
-    strFrom128: instance.exports.strFrom128 as (
-      len: number,
-      val1: bigint,
-      val2: bigint
-    ) => number,
-    heapAlloc: instance.exports.heapAlloc as (
-      heap: number,
-      type: number,
-      data1: number,
-      data2: number
-    ) => number,
     runtimeInit: instance.exports.runtimeInit as () => void,
     runtimeCleanup: instance.exports.runtimeCleanup as () => void,
     environmentInit: instance.exports.environmentInit as (
@@ -411,18 +393,26 @@ describe("runtime wasm", () => {
 
     const datum = exports.heapAlloc(exports.gHeap(), 4, 1234, 0);
     const result = exports.eval(env, datum);
-    expect(exports.eval(env, datum)).to.equal(datum, "numbers should eval to themselves");
-  })
+    expect(exports.eval(env, datum)).to.equal(
+      datum,
+      "numbers should eval to themselves"
+    );
+  });
 
   it("evals symbols to builtins via environment lookup", () => {
     const env = exports.environmentInit(exports.gHeap(), 0);
     exports.registerBuiltins(exports.gHeap(), env);
 
-    const datum = createHeapSymbol(exports, '+');
+    const datum = createHeapSymbol(exports, "+");
     const result = exports.eval(env, datum);
-    const words = new Uint32Array(exports.memory.buffer.slice(result, result + 12));
-    expect(words[0]).to.equal(11, "expect the result to be a builtin (type 11)")
-  })
+    const words = new Uint32Array(
+      exports.memory.buffer.slice(result, result + 12)
+    );
+    expect(words[0]).to.equal(
+      11,
+      "expect the result to be a builtin (type 11)"
+    );
+  });
 
   it("can eval simple expressions", () => {
     const tokens = ["(+ 1 (* 2 3))"];
@@ -443,6 +433,64 @@ describe("runtime wasm", () => {
     );
     expect(words[0]).to.equal(4, "result type should be an i64");
     expect(words[1]).to.equal(7, "1 + 2 * 3 = 7");
+    expect(words[2]).to.equal(0);
+
+    io.removeEventListener("read", readHandler);
+  });
+
+  it("can choose branches in an if", () => {
+    const tokens = ["(if #t 3 4)"];
+    const readHandler = (evt: IoEvent) => {
+      evt.data = tokens.shift();
+      return false;
+    };
+    io.addEventListener("read", readHandler);
+
+    const env = exports.environmentInit(exports.gHeap(), 0);
+    exports.registerBuiltins(exports.gHeap(), env);
+
+    const datum = exports.read();
+
+    const result = exports.eval(env, datum);
+    const words = new Uint32Array(
+      exports.memory.buffer.slice(result, result + 12)
+    );
+    expect(words[0]).to.equal(4, "result type should be an i64");
+    expect(words[1]).to.equal(3, "The true branch should have been taken");
+    expect(words[2]).to.equal(0);
+
+    io.removeEventListener("read", readHandler);
+  });
+
+  it("can assign variables in a let expression", () => {
+    const tokens = [
+      `
+      (let
+        (
+          (x 10) 
+          (y 20)
+        )
+        (+ x y)
+      )
+    `,
+    ];
+    const readHandler = (evt: IoEvent) => {
+      evt.data = tokens.shift();
+      return false;
+    };
+    io.addEventListener("read", readHandler);
+
+    const env = exports.environmentInit(exports.gHeap(), 0);
+    exports.registerBuiltins(exports.gHeap(), env);
+
+    const datum = exports.read();
+
+    const result = exports.eval(env, datum);
+    const words = new Uint32Array(
+      exports.memory.buffer.slice(result, result + 12)
+    );
+    expect(words[0]).to.equal(4, "result type should be an i64");
+    expect(words[1]).to.equal(30, "inner x and y should be 30");
     expect(words[2]).to.equal(0);
 
     io.removeEventListener("read", readHandler);

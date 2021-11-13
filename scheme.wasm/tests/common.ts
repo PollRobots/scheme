@@ -4,10 +4,13 @@ import fs from "fs/promises";
 
 export interface CommonTestExports {
   memory: WebAssembly.Memory;
+  malloc: (len: number) => number;
+  mallocFree: (ptr: number) => void;
   gHeap: () => number;
   strFrom32: (len: number, val: number) => number;
   strFrom64: (len: number, val: bigint) => number;
   strFrom128: (len: number, val1: bigint, val2: bigint) => number;
+  strFromCodePoints: (ptr: number, len: number) => number;
   heapAlloc: (
     heap: number,
     type: number,
@@ -21,6 +24,8 @@ export function commonExportsFromInstance(
 ): CommonTestExports {
   return {
     memory: instance.exports.memory as WebAssembly.Memory,
+    malloc: instance.exports.malloc as (len: number) => number,
+    mallocFree: instance.exports.mallocFree as (ptr: number) => void,
     gHeap: () => (instance.exports.gHeap as WebAssembly.Global).value as number,
     strFrom32: instance.exports.strFrom32 as (
       len: number,
@@ -34,6 +39,10 @@ export function commonExportsFromInstance(
       len: number,
       val1: bigint,
       val2: bigint
+    ) => number,
+    strFromCodePoints: instance.exports.strFromCodePoints as (
+      ptr: number,
+      len: number
     ) => number,
     heapAlloc: instance.exports.heapAlloc as (
       heap: number,
@@ -84,9 +93,18 @@ export function createStringImpl(
 ): number {
   const array = new TextEncoder().encode(str);
   if (array.byteLength > 16) {
-    throw new Error(
-      `Cannot create strings with a byte length of greater than 16 '${str}' has a utf-8 byte length of ${array.byteLength}.`
+    const codePoints = new Uint32Array(
+      Array.from(str).map((el) => el.codePointAt(0) || 0xfffd)
     );
+    const byteArray = new Uint8Array(codePoints.buffer);
+    const ptr = exports.malloc(codePoints.length * 4);
+    const view = new Uint8Array(exports.memory.buffer);
+    for (let i = 0; i < byteArray.length; i++) {
+      view[i + ptr] = byteArray[i];
+    }
+    const strPtr = exports.strFromCodePoints(ptr, codePoints.length);
+    exports.mallocFree(ptr);
+    return strPtr;
   }
   const extended = new Uint8Array(16);
   extended.set(array);

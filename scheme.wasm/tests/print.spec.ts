@@ -4,29 +4,20 @@ import "mocha";
 import {
   checkForLeaks,
   commonExportsFromInstance,
+  CommonTestExports,
   createString,
   IoEvent,
   IoTest,
   loadWasm,
 } from "./common";
 
-interface TestExports {
+interface TestExports extends CommonTestExports {
   memory: WebAssembly.Memory;
   gHeap: () => number;
   gTrue: () => number;
   gFalse: () => number;
   gNil: () => number;
   mallocInit: () => void;
-  mallocFree: (ptr: number) => void;
-  strFrom32: (len: number, val: number) => number;
-  strFrom64: (len: number, val: bigint) => number;
-  strFrom128: (len: number, val1: bigint, val2: bigint) => number;
-  heapAlloc: (
-    heap: number,
-    type: number,
-    data1: number,
-    data2: number
-  ) => number;
   runtimeInit: () => void;
   runtimeCleanup: () => void;
   stringToNumber: (str: number) => number;

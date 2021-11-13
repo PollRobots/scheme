@@ -620,18 +620,37 @@
 )
 
 (func $apply (param $env i32) (param $op i32) (param $args i32) (result i32)
+  (local $op-type i32)
   (local $curr i32)
   (local $head i32)
 
-  ;; if ((*op & 0xF) != %builtin-type) {
-  (if (i32.ne (i32.and (i32.load (local.get $op)) (i32.const 0xF)) (%builtin-type))
-    ;; trap
-    (then unreachable)
-  ;; }
+  ;; op-type = *op & 0xF
+  (local.set $op-type (i32.and (i32.load (local.get $op)) (i32.const 0xF)))
+
+  ;; switch (op-type) {
+  (block $b_check
+    ;; case %special-type:
+    ;;   special forms are called without having their arguments executed first
+    ;;   break
+    (br_if $b_check (i32.eq (local.get $op-type) (%special-type)))
+    ;; case $builtin-type:
+    (if (i32.eq (local.get $op-type) (%builtin-type))
+      (then
+        ;; args = eval-list(env, args)
+        (local.set $args
+          (call $eval-list (local.get $env) (local.get $args))
+        )
+        ;; break
+        (br $b_check)
+      )
+    )
+    ;; default:
+    ;;   any other type:
+    (unreachable)
   )
 
   (local.get $env)
-  (call $eval-list (local.get $env) (local.get $args))
+  (local.get $args)
   (i32.load offset=4 (local.get $op))
   call_indirect $table-builtin (type $builtin-type)
 )
