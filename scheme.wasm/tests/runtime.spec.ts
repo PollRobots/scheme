@@ -3,6 +3,7 @@ import "mocha";
 
 import {
   checkForLeaks,
+  createHeapSymbol,
   createString,
   IoEvent,
   IoTest,
@@ -403,6 +404,25 @@ describe("runtime wasm", () => {
 
     io.removeEventListener("read", readHandler);
   });
+
+  it("evals numbers to themselves", () => {
+    const env = exports.environmentInit(exports.gHeap(), 0);
+    exports.registerBuiltins(exports.gHeap(), env);
+
+    const datum = exports.heapAlloc(exports.gHeap(), 4, 1234, 0);
+    const result = exports.eval(env, datum);
+    expect(exports.eval(env, datum)).to.equal(datum, "numbers should eval to themselves");
+  })
+
+  it("evals symbols to builtins via environment lookup", () => {
+    const env = exports.environmentInit(exports.gHeap(), 0);
+    exports.registerBuiltins(exports.gHeap(), env);
+
+    const datum = createHeapSymbol(exports, '+');
+    const result = exports.eval(env, datum);
+    const words = new Uint32Array(exports.memory.buffer.slice(result, result + 12));
+    expect(words[0]).to.equal(11, "expect the result to be a builtin (type 11)")
+  })
 
   it("can eval simple expressions", () => {
     const tokens = ["(+ 1 (* 2 3))"];
