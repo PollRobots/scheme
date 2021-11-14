@@ -7,6 +7,7 @@ import {
   CommonTestExports,
   createHeapSymbol,
   createString,
+  getString,
   IoEvent,
   IoTest,
   loadWasm,
@@ -263,10 +264,7 @@ describe("runtime wasm", () => {
     const res = exports.atom(heapItem);
     words = new Uint32Array(exports.memory.buffer.slice(res, res + 12));
     expect(words[0]).to.equal(6, "foo should make a symbol");
-    expect(words[1]).to.equal(
-      fooStr,
-      "the symbol should point to the original string"
-    );
+    expect(getString(exports, words[1])).to.equal("foo");
     expect(words[2]).to.equal(0), "a symbol should have 0 in the upper word";
   });
 

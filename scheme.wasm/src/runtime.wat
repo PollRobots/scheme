@@ -1,5 +1,6 @@
 (global $g-reader     (mut i32) (i32.const 0))
 (global $g-heap       (mut i32) (i32.const 0))
+(global $g-interned   (mut i32) (i32.const 0))
 (global $g-true       (mut i32) (i32.const 0))
 (global $g-true-str   (mut i32) (i32.const 0))
 (global $g-false      (mut i32) (i32.const 0))
@@ -10,6 +11,7 @@
 (func $runtime-init
   (global.set $g-reader (call $reader-init))
   (global.set $g-heap (call $heap-create (i32.const 1024)))
+  (global.set $g-interned (call $hashtable-init (i32.const 1024)))
   (global.set $g-true (call $heap-alloc (global.get $g-heap) (i32.const 2) (i32.const 1) (i32.const 0x7423)))
   (global.set $g-true-str
     (call $heap-alloc
@@ -46,6 +48,9 @@
   (global.set $g-false-str (i32.const 0))
   (global.set $g-true (i32.const 0))
   (global.set $g-true-str (i32.const 0))
+
+  (call $malloc-free (global.get $g-interned))
+  (global.set $g-interned (i32.const 0))
 
   (call $heap-destroy (global.get $g-heap))
   (global.set $g-heap (i32.const 0))
@@ -232,12 +237,15 @@
     ;; }
   )
 
-  ;; coerce token to symbol
-  ;; *token = 6
-  (i32.store (local.get $token) (i32.const 6))
-
-  ;; return token
-  (return (local.get $token))
+  ;; return heap-alloc(g-heap, %symbol-type, str-dup(token-str), 0)
+  (return
+    (call $heap-alloc
+      (global.get $g-heap)
+      (%symbol-type)
+      (call $str-dup (local.get $token-str))
+      (i32.const 0)
+    )
+  )
 )
 
 (func $short-str-eq 

@@ -196,6 +196,27 @@
 (func $heap-alloc (param $heap i32) (param $type i32) (param $data1 i32) (param $data2 i32) (result i32)
   (local $empty-ptr i32)
   (local $next-heap-ptr i32)
+  (local $interned i32)
+
+  ;; if (type == symbol-type) {
+  (if (i32.eq (local.get $type) (%symbol-type))
+    (then
+      ;; interned = get-interned-symbol(data1)
+      ;; if (interned) {
+      ;; if (interned = get-interned-symbol(data1)) {
+      (if (local.tee $interned (call $get-interned-symbol (local.get $data1)))
+        (then
+          ;; free the string which is no longer needed
+          (call $malloc-free (local.get $data1))
+          ;; malloc-free(data1)
+          ;; return interned
+          (return (local.get $interned))
+        )
+      ;; }
+      )
+    )
+  ;; }
+  )
 
   ;; empty-ptr = heap[4]
   (local.set $empty-ptr (i32.load offset=4 (local.get $heap)))
@@ -264,8 +285,39 @@
     (local.get $data2)
   )
 
+  ;; if (type == symbol-type) {
+  (if (i32.eq (local.get $type) (%symbol-type))
+    ;; intern-symbol(data1, empty-ptr)
+    (call $intern-symbol (local.get $data1) (local.get $empty-ptr))
+  ;; }
+  )
+
   ;; return empty-ptr
   (return (local.get $empty-ptr))
+)
+
+(func $get-interned-symbol (param $str i32) (result i32)
+  (return
+    (call $hashtable-get
+      (global.get $g-interned)
+      (local.get $str)
+    )
+  )
+)
+
+(func $intern-symbol (param $str i32) (param $heap-ptr i32)
+  (local $new-interned i32)
+
+  (local.set $new-interned
+    (call $hashtable-add
+      (global.get $g-interned)
+      (local.get $str)
+      (local.get $heap-ptr)
+    )
+  )
+  (if (i32.ne (local.get $new-interned) (global.get $g-interned))
+    (global.set $g-interned (local.get $new-interned))
+  )
 )
 
 (func $heap-free (param $heap i32) (param $ptr i32)
