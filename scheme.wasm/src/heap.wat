@@ -44,8 +44,8 @@
 ;;    parent: i32
 
 ;; Lambda
-;;    formals: i32
-;;    body: i32
+;;    env : i32
+;;    cons (formals, body): i32
 
 ;; Heap
 ;;   Size:      i32

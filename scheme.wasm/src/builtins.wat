@@ -358,13 +358,13 @@
     ;; }
   )
 
-  ;; return heap-alloc(heap, lambda-type, car(args), cdr(args))
+  ;; return heap-alloc(heap, lambda-type, env, args)
   (return 
     (call $heap-alloc
       (global.get $g-heap)
       (%lambda-type)
-      (%car-l $args)
-      (%cdr-l $args)
+      (local.get $env)
+      (local.get $args)
     )
   )
 )

@@ -665,18 +665,25 @@
 )
 
 (func $apply-lambda (param $env i32) (param $lambda i32) (param $args i32) (result i32)
+  (local $closure i32)
+  (local $lambda-args i32)
   (local $formals i32)
   (local $body i32)
   (local $child-env i32)
   (local $result i32)
 
-  ;; formals = lambda[4]
-  (local.set $formals (i32.load offset=4 (local.get $lambda)))
-  ;; body = lambda[8]
-  (local.set $body (i32.load offset=8 (local.get $lambda)))
+  ;; closure = lambda[4]
+  (local.set $closure (i32.load offset=4 (local.get $lambda)))
+  ;; lambda-args = lambda[8]
+  (local.set $lambda-args (i32.load offset=8 (local.get $lambda)))
+
+  ;; formals = car(lambda-args)
+  (local.set $formals (%car-l $lambda-args))
+  ;; body = cdr(lambda-args)
+  (local.set $body (%cdr-l $lambda-args))
 
   ;; child-env = environment-init(gHeap, env)
-  (local.set $child-env (call $environment-init (global.get $g-heap) (local.get $env)))
+  (local.set $child-env (call $environment-init (global.get $g-heap) (local.get $closure)))
 
   ;; zip-lambda-args(child-env, formals, args)
   (call $zip-lambda-args (local.get $child-env) (local.get $formals) (local.get $args))

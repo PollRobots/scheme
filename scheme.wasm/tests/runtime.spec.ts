@@ -541,6 +541,51 @@ describe("runtime wasm", () => {
 
     exports.print(exports.eval(env, exports.read()));
     expect(written.join("")).to.equal("(3 4 5 6)");
+    written.splice(0, written.length);
+
+    io.removeEventListener("read", readHandler);
+  });
+
+  it("can evaluate a lambda with a dotted formal list", () => {
+    const tokens = ["((lambda (x y . z) z) 3 4 5 6)"];
+    const readHandler = (evt: IoEvent) => {
+      evt.data = tokens.shift();
+      return false;
+    };
+    io.addEventListener("read", readHandler);
+
+    const env = exports.environmentInit(exports.gHeap(), 0);
+    exports.registerBuiltins(exports.gHeap(), env);
+
+    exports.print(exports.eval(env, exports.read()));
+    expect(written.join("")).to.equal("(5 6)");
+    written.splice(0, written.length);
+
+    io.removeEventListener("read", readHandler);
+  });
+
+  it("applies the correct closure for lambda", () => {
+    const tokens = [`
+      (let ((x 2))
+        (let ((fn (lambda (y) (+ x y))))
+          (let ((x 3))
+            (fn 4)
+          )
+        )  
+      )
+    `];
+    const readHandler = (evt: IoEvent) => {
+      evt.data = tokens.shift();
+      return false;
+    };
+    io.addEventListener("read", readHandler);
+
+    const env = exports.environmentInit(exports.gHeap(), 0);
+    exports.registerBuiltins(exports.gHeap(), env);
+
+    exports.print(exports.eval(env, exports.read()));
+    expect(written.join("")).to.equal("6");
+    written.splice(0, written.length);
 
     io.removeEventListener("read", readHandler);
   });
