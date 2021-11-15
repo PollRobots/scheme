@@ -188,6 +188,33 @@
     )
   )
   ;; }
+  ;; if (token-str == "'") 0x27 {
+  (if (call $short-str-eq (local.get $token-str) (i32.const 0x27) (i32.const 1))
+    (then
+      ;; malloc-free(token-str)
+      (call $malloc-free (local.get $token-str))
+      ;; return cons('quote', cons(read(), nil))
+      (return
+        (call $heap-alloc
+          (global.get $g-heap)
+          (%cons-type)
+          (call $heap-alloc 
+            (global.get $g-heap) 
+            (%symbol-type)
+            (call $str-from-64 (i32.const 5) (i64.const 0x65746f7571)) ;; 'quote'
+            (i32.const 0)
+          )
+          (call $heap-alloc
+            (global.get $g-heap)
+            (%cons-type) 
+            (call $read)
+            (global.get $g-nil)
+          )
+        )
+      )
+    )
+  ;; }
+  )
 
   ;; raw-token = heap-alloc(6, token-str, 0)
   (local.set $raw-token (call $heap-alloc (global.get $g-heap) (i32.const 7) (local.get $token-str) (i32.const 0)))

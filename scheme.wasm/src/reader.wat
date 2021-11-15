@@ -281,5 +281,9 @@
   (if (i32.eq (local.get $char) (i32.const 0x2E))
     (then (return (i32.const 1)))
   )
+  ;; char == "'" 0x27
+  (if (i32.eq (local.get $char) (i32.const 0x27))
+    (then (return (i32.const 1)))
+  )
   (return (i32.const 0))
 )

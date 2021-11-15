@@ -563,7 +563,8 @@ describe("runtime wasm", () => {
   });
 
   it("applies the correct closure for lambda", () => {
-    const tokens = [`
+    const tokens = [
+      `
       (let ((x 2))
         (let ((fn (lambda (y) (+ x y))))
           (let ((x 3))
@@ -571,7 +572,8 @@ describe("runtime wasm", () => {
           )
         )  
       )
-    `];
+    `,
+    ];
     const readHandler = (evt: IoEvent) => {
       evt.data = tokens.shift();
       return false;
@@ -583,6 +585,41 @@ describe("runtime wasm", () => {
 
     exports.print(exports.eval(env, exports.read()));
     expect(written.join("")).to.equal("6");
+    written.splice(0, written.length);
+
+    io.removeEventListener("read", readHandler);
+  });
+
+  it("quote returns input as a datum", () => {
+    const tokens = [`
+      (quote (+ 1 2))
+      (quote a)
+      '(+ 1 2)
+      'foo
+      `];
+    const readHandler = (evt: IoEvent) => {
+      evt.data = tokens.shift();
+      return false;
+    };
+    io.addEventListener("read", readHandler);
+
+    const env = exports.environmentInit(exports.gHeap(), 0);
+    exports.registerBuiltins(exports.gHeap(), env);
+
+    exports.print(exports.eval(env, exports.read()));
+    expect(written.join("")).to.equal("(+ 1 2)", "(quote (+ 1 2))");
+    written.splice(0, written.length);
+
+    exports.print(exports.eval(env, exports.read()));
+    expect(written.join("")).to.equal("a", "(quote a)");
+    written.splice(0, written.length);
+
+    exports.print(exports.eval(env, exports.read()));
+    expect(written.join("")).to.equal("(+ 1 2)", "'(+ 1 2)");
+    written.splice(0, written.length);
+
+    exports.print(exports.eval(env, exports.read()));
+    expect(written.join("")).to.equal("foo", "'foo");
     written.splice(0, written.length);
 
     io.removeEventListener("read", readHandler);

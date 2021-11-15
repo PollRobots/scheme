@@ -5,9 +5,12 @@
 (%define %special-if ()       (i32.const 2))
 (%define %special-let ()      (i32.const 3))
 (%define %special-lambda ()   (i32.const 4))
-(table $table-builtin 5 anyfunc)
+(%define %special-quote ()    (i32.const 5))
+(table $table-builtin 6 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
+  (local $quote i32)
+
   (call $environment-add
     (local.get $env)
     (call $heap-alloc 
@@ -57,6 +60,27 @@
       (i32.const 0)
     )
     (call $heap-alloc (local.get $heap) (%special-type) (%special-lambda) (i32.const 0))
+  )
+  (local.set $quote (call $heap-alloc (local.get $heap) (%special-type) (%special-quote) (i32.const 0)))
+  (call $environment-add
+    (local.get $env)
+    (call $heap-alloc 
+      (local.get $heap) 
+      (%symbol-type) 
+      (call $str-from-64 (i32.const 5) (i64.const 0x65746f7571)) ;; 'quote'
+      (i32.const 0)
+    )
+    (local.get $quote)
+  )
+  (call $environment-add
+    (local.get $env)
+    (call $heap-alloc 
+      (local.get $heap) 
+      (%symbol-type) 
+      (call $str-from-64 (i32.const 1) (i64.const 0x27)) ;; ' (0x27)
+      (i32.const 0)
+    )
+    (local.get $quote)
   )
 )
 
@@ -370,3 +394,12 @@
 )
 
 (elem $table-builtin (%special-lambda) $lambda)
+
+(func $quote (param $env i32) (param $args i32) (result i32)
+  (local $tail i32)
+  (local.set $tail (%cdr-l $args))
+  (%assert-nil $tail)
+  (return (%car-l $args))
+)
+
+(elem $table-builtin (%special-quote) $quote)
