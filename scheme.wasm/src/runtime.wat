@@ -101,7 +101,7 @@
       ;; curr = head = heap-alloc(3, car, g-nil)
       (local.set $curr
         (local.tee $head 
-          (call $heap-alloc (global.get $g-heap) (i32.const 3) (local.get $car) (global.get $g-nil))
+          (call $heap-alloc (global.get $g-heap) (%cons-type) (local.get $car) (global.get $g-nil))
         )
       )
 
@@ -160,7 +160,7 @@
         ;; curr[8] = heap-alloc(3, cdr, g-nil)
         (i32.store
           (i32.add (local.get $curr) (i32.const 8))
-          (call $heap-alloc (global.get $g-heap) (i32.const 3) (local.get $cdr) (global.get $g-nil))
+          (call $heap-alloc (global.get $g-heap) (%cons-type) (local.get $cdr) (global.get $g-nil))
         )
 
         ;; curr = curr[8]

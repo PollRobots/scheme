@@ -1,0 +1,6 @@
+(func $quote (param $env i32) (param $args i32) (result i32)
+  (local $tail i32)
+  (local.set $tail (%cdr-l $args))
+  (%assert-nil $tail)
+  (return (%car-l $args))
+)

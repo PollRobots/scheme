@@ -2,12 +2,12 @@
   (local $type i32) 
 
   ;; type = *ptr & 0x0F
-  (local.set $type (i32.and (i32.load (local.get $ptr)) (i32.const 0x0f)))
+  (local.set $type (%get-type $ptr))
 
   (block $b_switch
   ;; switch (type) {
     ;; case nil (1):
-    (if (i32.eq (local.get $type) (i32.const 1))
+    (if (i32.eq (local.get $type) (%nil-type))
       (then
         ;; print-nil()
         (call $print-nil)
@@ -16,7 +16,7 @@
       )
     )
     ;; case boolean (2):
-    (if (i32.eq (local.get $type) (i32.const 2))
+    (if (i32.eq (local.get $type) (%boolean-type))
       (then
         ;; print-boolean(ptr[4])
         (call $print-boolean (i32.load offset=4 (local.get $ptr)))
@@ -25,7 +25,7 @@
       )
     )
     ;; case cons (3):
-    (if (i32.eq (local.get $type) (i32.const 3))
+    (if (i32.eq (local.get $type) (%cons-type))
       (then
         ;; print-cons(ptr[4], ptr[8])
         (call $print-cons
@@ -37,7 +37,7 @@
       )
     )
     ;; case i64 (4):
-    (if (i32.eq (local.get $type) (i32.const 4))
+    (if (i32.eq (local.get $type) (%i64-type))
       (then
         ;; print-integer((i64)ptr[4])
         (call $print-integer (i64.load offset=4 (local.get $ptr)))
@@ -46,7 +46,7 @@
       )
     )
     ;; case symbol (6):
-    (if (i32.eq (local.get $type) (i32.const 6))
+    (if (i32.eq (local.get $type) (%symbol-type))
       (then
         ;; print-symbol(ptr[4])
         (call $print-symbol (i32.load offset=4 (local.get $ptr)))
@@ -55,7 +55,7 @@
       )
     )
     ;; case str (7):
-    (if (i32.eq (local.get $type) (i32.const 7))
+    (if (i32.eq (local.get $type) (%str-type))
       (then
         ;; print-str(ptr[4])
         ;; break
@@ -63,7 +63,7 @@
       )
     )
     ;; case env (9):
-    (if (i32.eq (local.get $type) (i32.const 9))
+    (if (i32.eq (local.get $type) (%env-type))
       (then
         ;; print-env(ptr)
         ;; break
@@ -200,12 +200,12 @@
   (block $b_end
     (loop $b_start
       ;; cdr-type = *cdr & 0xF;
-      (local.set $cdr-type (i32.and (i32.load (local.get $cdr)) (i32.const 0xF)))
+      (local.set $cdr-type (%get-type $cdr))
       ;; if (cdr-type == 1) {
         ;; break
       (br_if $b_end (i32.eq (local.get $cdr-type) (i32.const 1)))
       ;; } else if (cdr-type == 3) {
-      (if (i32.eq (local.get $cdr-type) (i32.const 3))
+      (if (i32.eq (local.get $cdr-type) (%cons-type))
         (then
           ;; another cons cell, continue list view
           ;; *str = 1

@@ -49,3 +49,35 @@
 (%define %car-l (%cons) (i32.load offset=4 (local.get %cons)))
 (%define %cdr (%cons) (i32.load offset=8 %cons))
 (%define %cdr-l (%cons) (i32.load offset=8 (local.get %cons)))
+
+(%define %assert-cons (%arg)
+  ;; if ((%arg & 0xF) != %cons-type)
+  (if (i32.ne (%get-type %arg) (%cons-type)) 
+    ;; TODO: return error
+    (then unreachable)
+  )
+)
+
+(%define %assert-nil (%arg)
+  ;; if ((%arg & 0xF) != %nil-type)
+  (if (i32.ne (%get-type %arg) (%nil-type)) 
+    ;; TODO: return error
+    (then unreachable)
+  )
+)
+
+(%define %assert-num (%arg)
+  ;; if ((%arg & 0xF) != %i64-type)
+  (if (i32.ne (%get-type %arg) (%i64-type)) 
+    ;; TODO: return error
+    (then unreachable)
+  )
+)
+
+(%define %assert-symbol (%arg)
+  ;; if ((%arg & 0xF) != %symbol-type)
+  (if (i32.ne (%get-type %arg) (%symbol-type)) 
+    ;; TODO: return error
+    (then unreachable)
+  )
+)
