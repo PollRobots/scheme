@@ -701,4 +701,41 @@ describe("runtime wasm", () => {
 
     io.removeEventListener("read", readHandler);
   });
+
+  const testExpectations = (
+    inputs: string[],
+    outputs: (undefined | string)[]
+  ) => {
+    const readHandler = (evt: IoEvent) => {
+      evt.data = inputs.shift();
+      return false;
+    };
+    io.addEventListener("read", readHandler);
+
+    const env = exports.environmentInit(exports.gHeap(), 0);
+    exports.registerBuiltins(exports.gHeap(), env);
+
+    while (inputs.length) {
+      const input = inputs[0];
+      exports.print(exports.eval(env, exports.read()));
+      const expected = outputs.shift();
+      if (typeof expected === "string") {
+        const output = written.join();
+        expect(output).to.equal(
+          expected,
+          `"${input}" should evaluate to "${expected}"`
+        );
+      }
+      written.splice(0, written.length);
+    }
+
+    io.removeEventListener("read", readHandler);
+  };
+
+  it("allows set! to update a definition", () => {
+    const inputs = ["(define x 2)", "(+ x 1)", "(set! x 4)", "(+ x 1)"];
+    const outputs = [undefined, "3", undefined, "5"];
+
+    testExpectations(inputs, outputs);
+  });
 });

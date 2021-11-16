@@ -73,3 +73,43 @@
   )
   (return (global.get $g-nil))
 )
+
+(func $set! (param $env i32) (param $args i32) (result i32)
+  (local $name i32)
+  (local $value i32)
+
+  (if (i32.eqz (call $list-of-n? (local.get $args) (i32.const 2))) 
+    (then unreachable)
+  )
+
+  (local.set $name (%car-l $args))
+  (%assert-symbol $name)
+  (local.set $value (%car (%cdr-l $args)))
+
+  (call $environment-set!
+    (local.get $env) 
+    (local.get $name)
+    (call $eval (local.get $env) (local.get $value))
+  )
+
+  (return (global.get $g-nil))
+)
+ 
+(func $list-of-n? (param $list i32) (param $n i32) (result i32) 
+  (loop $forever
+    (if (i32.eqz (local.get $n))
+      (then
+        (return (i32.eq (%get-type $list) (%nil-type)))
+      )
+    )
+    (if (i32.ne (%get-type $list) (%cons-type))
+      (then (return (i32.const 0)))
+    )
+
+    (local.set $list (%cdr-l $list))
+
+    (%dec $n)
+    (br $forever)
+  )
+  unreachable
+)

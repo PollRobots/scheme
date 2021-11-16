@@ -109,7 +109,7 @@
 
   ;; check that key is a string
   ;; if (*key & 0xF != 6) {
-  (if (i32.ne (i32.and (i32.load (local.get $key)) (i32.const 0xF)) (%symbol-type))
+  (if (i32.ne (%get-type $key) (%symbol-type))
     (then
       ;; return g-nil
       (return (global.get $g-nil))
@@ -156,7 +156,7 @@
 
   ;; check that key is a string
   ;; if (*key & 0xF != symbol) {
-  (if (i32.ne (i32.and (i32.load (local.get $key)) (i32.const 0xF)) (%symbol-type))
+  (if (i32.ne (%get-type $key) (%symbol-type))
     (then
       ;; trap
       (unreachable)
