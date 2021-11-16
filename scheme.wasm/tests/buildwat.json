@@ -6,6 +6,7 @@
   "files": [
     "src/macros.wat",
     "src/builtins.wat",
+    "src/define.wat",
     "src/environment.wat",
     "src/hashtable.wat",
     "src/heap.wat",

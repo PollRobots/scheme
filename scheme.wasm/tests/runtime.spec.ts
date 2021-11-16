@@ -591,12 +591,14 @@ describe("runtime wasm", () => {
   });
 
   it("quote returns input as a datum", () => {
-    const tokens = [`
+    const tokens = [
+      `
       (quote (+ 1 2))
       (quote a)
       '(+ 1 2)
       'foo
-      `];
+      `,
+    ];
     const readHandler = (evt: IoEvent) => {
       evt.data = tokens.shift();
       return false;
@@ -620,6 +622,56 @@ describe("runtime wasm", () => {
 
     exports.print(exports.eval(env, exports.read()));
     expect(written.join("")).to.equal("foo", "'foo");
+    written.splice(0, written.length);
+
+    io.removeEventListener("read", readHandler);
+  });
+
+  it("define sets a value in the environment", () => {
+    const tokens = [
+      `
+      (define x 42)
+      x
+      `,
+    ];
+    const readHandler = (evt: IoEvent) => {
+      evt.data = tokens.shift();
+      return false;
+    };
+    io.addEventListener("read", readHandler);
+
+    const env = exports.environmentInit(exports.gHeap(), 0);
+    exports.registerBuiltins(exports.gHeap(), env);
+
+    exports.print(exports.eval(env, exports.read()));
+    written.splice(0, written.length);
+    exports.print(exports.eval(env, exports.read()));
+    expect(written.join("")).to.equal("42", "x should now be 42");
+    written.splice(0, written.length);
+
+    io.removeEventListener("read", readHandler);
+  });
+
+  it("define sets a lambda in the environment", () => {
+    const tokens = [
+      `
+      (define (add (x y)) (+ x y))
+      (add 2 3)
+      `,
+    ];
+    const readHandler = (evt: IoEvent) => {
+      evt.data = tokens.shift();
+      return false;
+    };
+    io.addEventListener("read", readHandler);
+
+    const env = exports.environmentInit(exports.gHeap(), 0);
+    exports.registerBuiltins(exports.gHeap(), env);
+
+    exports.print(exports.eval(env, exports.read()));
+    written.splice(0, written.length);
+    exports.print(exports.eval(env, exports.read()));
+    expect(written.join("")).to.equal("5", "2 + 3 = 5");
     written.splice(0, written.length);
 
     io.removeEventListener("read", readHandler);
