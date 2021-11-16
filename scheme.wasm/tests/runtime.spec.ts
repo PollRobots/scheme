@@ -468,6 +468,31 @@ describe("runtime wasm", () => {
     io.removeEventListener("read", readHandler);
   });
 
+  it("Handles an if with only a consequent", () => {
+    const tokens = [
+      `
+      (if #t 3)
+      (if #f 4)
+      `,
+    ];
+    const readHandler = (evt: IoEvent) => {
+      evt.data = tokens.shift();
+      return false;
+    };
+    io.addEventListener("read", readHandler);
+
+    const env = exports.environmentInit(exports.gHeap(), 0);
+    exports.registerBuiltins(exports.gHeap(), env);
+
+    exports.print(exports.eval(env, exports.read()));
+    expect(written.join("")).to.equal("3");
+    exports.print(exports.eval(env, exports.read()));
+    expect(written.join("")).to.not.equal("4");
+    written.splice(0, written.length);
+
+    io.removeEventListener("read", readHandler);
+  });
+
   it("can assign variables in a let expression", () => {
     const tokens = [
       `

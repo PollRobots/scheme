@@ -1,45 +1,50 @@
 (func $if (param $env i32) (param $args i32) (result i32)
-  (local $car i32)    ;; condition
-  (local $cdar i32)   ;; true-branch
-  (local $cddar i32)  ;; false-branch
+  (local $test i32)    ;; condition
+  (local $consequent i32)   ;; true-branch
+  (local $alternate i32)  ;; false-branch
   (local $temp i32)   ;; used for cdr, cddr
 
   ;; assert(args is cons)
   (%assert-cons $args)
 
-  ;; car = args[4]
-  (local.set $car (i32.load offset=4 (local.get $args)))
-  ;; cdr = args[8]
-  ;; temp = args[8]
-  (local.set $temp (i32.load offset=8 (local.get $args)))
-  ;; assert(cdr is cons)
+  ;; test = car(args)
+  (local.set $test (%car-l $args))
+  ;; temp = cdr(args)
+  (local.set $temp (%cdr-l $args))
+  ;; assert(temp is cons)
   (%assert-cons $temp)
-  ;; cdar = cdr[4]
-  (local.set $cdar (i32.load offset=4 (local.get $temp)))
-  ;; cddr = cdr[8]
-  ;; temp = cdr[8]
-  (local.set $temp (i32.load offset=8 (local.get $temp)))
-  ;; assert (cddr is cons)
-  (%assert-cons $temp)
-  ;; cddar = cddr[4]
-  (local.set $cddar (i32.load offset=4 (local.get $temp)))
-  ;; cdddr = cddr[8]
-  ;; temp = cddr[8]
-  (local.set $temp (i32.load offset=8 (local.get $temp)))
-  ;; assert(cdddr is nil)
-  (%assert-nil $temp)
+  ;; consequent = car(cdr(args))
+  ;; consequent = car(temp)
+  (local.set $consequent (%car-l $temp))
+  ;; temp = cdr(temp)
+  (local.set $temp (%cdr-l $temp))
+  ;; if (typeof temp is nil)
+  (if (i32.eq (%get-type $temp) (%nil-type))
+    (then
+      ;; alternate = nil
+      (local.set $alternate (global.get $g-nil))
+    )
+    (else
+      ;; assert(temp is cons)
+      (%assert-cons $temp)
+      ;; alternate = car(cdr(cdr(args)))
+      ;; alternate = car(temp)
+      (local.set $alternate (%car-l $temp))
+      ;; temp = cdr(temp)
+      (local.set $temp (%cdr-l $temp))
+      ;; assert(temp is nil)
+      (%assert-nil $temp)
+    )
+  )
 
-  ;; cond = eval(env, car)
-  ;; return  eval(env, is-truthy(cond) ? cdar, cddar)
-  ;;  point-free ->
-  ;;    return eval(env, is-truthy(eval(env, car)) ? cdar, cddar)
+  ;; return eval(env, eval(env, test)  ? consequent : alternate)
   (return
     (call $eval
       (local.get $env)
-      (select 
-        (local.get $cdar)
-        (local.get $cddar)
-        (call $eval (local.get $env) (local.get $car))
+      (select
+        (local.get $consequent)
+        (local.get $alternate)
+        (call $eval (local.get $env) (local.get $test))
       )
     )
   )
