@@ -8,6 +8,7 @@
     "src/builtins.wat",
     "src/define.wat",
     "src/environment.wat",
+    "src/gc.wat",
     "src/hashtable.wat",
     "src/heap.wat",
     "src/if.wat",
@@ -35,9 +36,7 @@
       "module": "io",
       "name": "write",
       "index": "$io-write",
-      "params": [
-        "i32"
-      ]
+      "params": ["i32"]
     }
   ],
   "exports": [

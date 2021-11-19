@@ -79,9 +79,10 @@ function isHexDigit(char: string) {
 }
 
 export function* tokenize(input: string): Generator<Token> {
-  let state: "unknown" | "whitespace" | "element" | "string" | "comment" =
+  let state: "unknown" | "whitespace" | "element" | "string" | "comment" | "multi-comment"=
     "unknown";
   let accum: string[] = [];
+  let multiDepth = 0;
 
   const typeFromState = (state: string, contents: string) => {
     if (state !== "element") {
@@ -118,7 +119,9 @@ export function* tokenize(input: string): Generator<Token> {
         }
 
         if (char == "(" && next == ";") {
-          yield { type: "delimiter", content: "(;" };
+          accum.push('(;')
+          state = "multi-comment";
+          multiDepth = 1;
           i++;
         } else if (char == ";" && next == ")") {
           yield { type: "delimiter", content: ";)" };
@@ -149,6 +152,21 @@ export function* tokenize(input: string): Generator<Token> {
       accum.push(char);
       if (curr == 0x0a) {
         yield proceeds();
+      }
+    } else if(state === 'multi-comment') {
+      accum.push(char);
+      if (char == ';' && next == ')') {
+        accum.push(next);
+        i++;
+        multiDepth--;
+        if (multiDepth == 0) {
+          state = "comment";
+          yield proceeds();
+        }
+      } else if (char == '(' && next == ';') {
+        accum.push(next);
+        i++;
+        multiDepth++;
       }
     } else if (state === "element") {
       if (
@@ -507,7 +525,9 @@ export function parse(input: string): ParsedWat[] {
         currType = typeStack.pop() || "";
         curr.push(list);
       } else {
-        throw new Error(`Unmatched (;, got ${JSON.stringify(token.content)}`);
+        throw new Error(
+          `Unmatched '${currType}', got ${JSON.stringify(token.content)}`
+        );
       }
     } else {
       throw new Error(`Unexpected delimiter ${JSON.stringify(token.content)}`);

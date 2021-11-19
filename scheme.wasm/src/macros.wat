@@ -1,5 +1,7 @@
 (%define %inc (%var) (local.set %var (i32.add (local.get %var) (i32.const 1))))
 
+(%define %ginc (%var) (global.set %var (i32.add (global.get %var) (i32.const 1))))
+
 (%define %inc64 (%var) (local.set %var (i64.add (local.get %var) (i64.const 1))))
 
 (%define %dec (%var) (local.set %var (i32.sub (local.get %var) (i32.const 1))))
@@ -50,13 +52,9 @@
 (%define %cdr (%cons) (i32.load offset=8 %cons))
 (%define %cdr-l (%cons) (i32.load offset=8 (local.get %cons)))
 
-(%define %assert-cons (%arg)
-  ;; if ((%arg & 0xF) != %cons-type)
-  (if (i32.ne (%get-type %arg) (%cons-type)) 
-    ;; TODO: return error
-    (then unreachable)
-  )
-)
+(%define %assert (%cond) (if (i32.eqz %cond) (then unreachable)))
+
+(%define %assert-cons (%arg) (%assert (i32.eq (%get-type %arg) (%cons-type))))
 
 (%define %assert-nil (%arg)
   ;; if ((%arg & 0xF) != %nil-type)

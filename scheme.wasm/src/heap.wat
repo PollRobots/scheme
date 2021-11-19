@@ -51,7 +51,7 @@
 ;;   Size:      i32
 ;;   Free:      i32 ptr -- pointer to an empty cell
 ;;   next-heap: i32 ptr -- pointer to the next heap
-;;   Entryies:  HeapEntry[Size]
+;;   entries:   HeapEntry[Size]
 
 
 (func $heap-create (param $size i32) (result i32)
@@ -239,6 +239,8 @@
         )
       ;; }
       )
+
+
       ;; return heap-alloc(next-heap-ptr, type, data1, data2);
       (return (call $heap-alloc
         (local.get $next-heap-ptr) 
@@ -290,6 +292,11 @@
     ;; intern-symbol(data1, empty-ptr)
     (call $intern-symbol (local.get $data1) (local.get $empty-ptr))
   ;; }
+  )
+
+  (if (global.get $g-gc-collecting?)
+    ;; items allocated while gc is collecting are considered gray
+    (call $gc-maybe-gray-enqueue (local.get $empty-ptr))
   )
 
   ;; return empty-ptr
