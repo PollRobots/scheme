@@ -66,6 +66,36 @@
       "index": "$g-nil"
     },
     {
+      "name": "gGcIsCollecting",
+      "type": "global",
+      "index": "$g-gc-collecting?"
+    },
+    {
+      "name": "gGcCollectionCount",
+      "type": "global",
+      "index": "$g-gc-collection-count"
+    },
+    {
+      "name": "gGcTotalCollectedCount",
+      "type": "global",
+      "index": "$g-gc-total-collected-count"
+    },
+    {
+      "name": "gGcTotalNotCollectedCount",
+      "type": "global",
+      "index": "$g-gc-total-not-collected-count"
+    },
+    {
+      "name": "gGcCollectedCount",
+      "type": "global",
+      "index": "$g-gc-collected-count"
+    },
+    {
+      "name": "gGcNotCollectedCount",
+      "type": "global",
+      "index": "$g-gc-not-collected-count"
+    },
+    {
       "name": "mallocZero",
       "type": "func",
       "index": "$malloc-zero"
@@ -284,6 +314,11 @@
       "name": "registerBuiltins",
       "type": "func",
       "index": "$register-builtins"
+    },
+    {
+      "name": "gcRun",
+      "type": "func",
+      "index": "$gc-run"
     }
   ],
   "wabtOptions": {

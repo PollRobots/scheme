@@ -7,6 +7,8 @@ export interface CommonTestExports {
   malloc: (len: number) => number;
   mallocFree: (ptr: number) => void;
   gHeap: () => number;
+  gTrue: () => number;
+  gFalse: () => number;
   strFrom32: (len: number, val: number) => number;
   strFrom64: (len: number, val: bigint) => number;
   strFrom128: (len: number, val1: bigint, val2: bigint) => number;
@@ -27,6 +29,9 @@ export function commonExportsFromInstance(
     malloc: instance.exports.malloc as (len: number) => number,
     mallocFree: instance.exports.mallocFree as (ptr: number) => void,
     gHeap: () => (instance.exports.gHeap as WebAssembly.Global).value as number,
+    gTrue: () => (instance.exports.gTrue as WebAssembly.Global).value as number,
+    gFalse: () =>
+      (instance.exports.gFalse as WebAssembly.Global).value as number,
     strFrom32: instance.exports.strFrom32 as (
       len: number,
       val: number

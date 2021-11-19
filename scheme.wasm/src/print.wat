@@ -49,7 +49,7 @@
     (if (i32.eq (local.get $type) (%symbol-type))
       (then
         ;; print-symbol(ptr[4])
-        (call $print-symbol (i32.load offset=4 (local.get $ptr)))
+        (call $print-symbol (local.get $ptr))
         ;; break
         (br $b_switch)
       )
@@ -66,11 +66,34 @@
     (if (i32.eq (local.get $type) (%env-type))
       (then
         ;; print-env(ptr)
+        (call $print-other (global.get $g-env) (local.get $type) (local.get $ptr))
         ;; break
         (br $b_switch)
       )
     )
+    ;; case special:
+    (if (i32.eq (local.get $type) (%special-type))
+      (then
+        (call $print-other (global.get $g-special) (local.get $type) (local.get $ptr))
+        (br $b_switch)
+      )
+    )
+    ;; case builtin:
+    (if (i32.eq (local.get $type) (%builtin-type))
+      (then
+        (call $print-other (global.get $g-special) (local.get $type) (local.get $ptr))
+        (br $b_switch)
+      )
+    )
+    ;; case lambda:
+    (if (i32.eq (local.get $type) (%lambda-type))
+      (then
+        (call $print-other (global.get $lambda-sym) (local.get $type) (local.get $ptr))
+        (br $b_switch)
+      )
+    )
     ;; default:
+    (call $print-other (global.get $g-unknown) (local.get $type) (local.get $ptr))
       ;; print-error();
       ;; break;
   ;; }
@@ -79,6 +102,21 @@
 
 (func $print-nil 
   (call $io-write (i32.load offset=4 (global.get $g-nil-str)))
+)
+
+(func $print-other (param $sym i32) (param $type i32) (param $ptr i32)
+  (call $print-symbol (global.get $g-lt))
+  (call $print-symbol (local.get $sym))
+  (call $print-symbol (global.get $g-space))
+  (call $print-integer (i64.extend_i32_u (local.get $type)))
+  (call $print-symbol (global.get $g-space))
+  (call $print-integer (i64.extend_i32_u (local.get $ptr)))
+  (call $print-symbol (global.get $g-space))
+  (call $print-symbol (global.get $g-gt))
+)
+
+(func $print-env (param $env i32)
+  (call $print (global.get $g-env))
 )
 
 (func $print-boolean (param $bool i32)
@@ -182,7 +220,7 @@
  
 (func $print-symbol (param $sym i32)
   ;; TODO handle symbols with non-standard characters
-  (call $io-write (local.get $sym))
+  (call $io-write (i32.load offset=4 (local.get $sym)))
 )
 
 (func $print-cons (param $car i32) (param $cdr i32)
@@ -203,7 +241,7 @@
       (local.set $cdr-type (%get-type $cdr))
       ;; if (cdr-type == 1) {
         ;; break
-      (br_if $b_end (i32.eq (local.get $cdr-type) (i32.const 1)))
+      (br_if $b_end (i32.eq (local.get $cdr-type) (%nil-type)))
       ;; } else if (cdr-type == 3) {
       (if (i32.eq (local.get $cdr-type) (%cons-type))
         (then
@@ -215,9 +253,9 @@
           ;; write(str)
           (call $io-write (local.get $str))
           ;; print(cdr[4])
-          (call $print (i32.load offset=4 (local.get $cdr)))
+          (call $print (%car-l $cdr))
           ;; cdr = cdr[8]
-          (local.set $cdr (i32.load offset=8 (local.get $cdr)))
+          (local.set $cdr (%cdr-l $cdr))
         )
         ;; } else {
         (else

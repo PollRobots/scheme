@@ -197,14 +197,19 @@ while the working set is non-empty:
               )
               ;; gc-mark-white(ptr, type)
               (call $gc-mark-white (local.get $ptr) (local.get $type))
-              (%ginc $gc-not-collected-count)
-              (%ginc $gc-total-not-collected-count)
+              (%ginc $g-gc-not-collected-count)
+              (%ginc $g-gc-total-not-collected-count)
               (br $if_b_or_s_done)
             )
             ;; } else {
             ;; assert(gc-is-white(ptr))
             (%assert (call $gc-is-white (local.get $ptr)))
             ;; if (type == %str-type) {
+            ;; (call $print (global.get $g-collect))
+            ;; (call $print-integer (i64.extend_i32_u (local.get $type)))
+            ;; (call $print (global.get $g-space))
+            ;; (call $print (local.get $ptr))
+            ;; (call $print (global.get $g-newline))
             (if (i32.eq (local.get $type) (%str-type))
               ;; malloc-free(car(ptr))
               (then (call $malloc-free (%car-l $ptr)))
@@ -217,8 +222,8 @@ while the working set is non-empty:
             )
             ;; heap-free(ptr)
             (call $heap-free (local.get $heap) (local.get $ptr))
-            (%ginc $gc-collected-count)
-            (%ginc $gc-total-collected-count)
+            (%ginc $g-gc-collected-count)
+            (%ginc $g-gc-total-collected-count)
             ;; }
           )
           ;; }
@@ -397,6 +402,10 @@ while the working set is non-empty:
   (i32.store offset=12 (global.get $g-gc-state) (i32.const 1))
   ;; g-gc-state.count = 1
   (i32.store offset=16 (global.get $g-gc-state) (i32.const 1))
+
+  (call $gc-mark-black (global.get $g-nil) (%nil-type))
+  (call $gc-mark-black (global.get $g-true) (%boolean-type))
+  (call $gc-mark-black (global.get $g-false) (%boolean-type))
 
   ;; g-gc-collecting? = true
   (global.set $g-gc-collecting? (i32.const 1))
