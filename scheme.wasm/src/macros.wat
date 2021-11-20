@@ -44,13 +44,17 @@
 (%define %special-type () (i32.const 10))
 (%define %builtin-type () (i32.const 11))
 (%define %lambda-type () (i32.const 12))
+(%define %error-type () (i32.const 13))
+(%define %max-heap-type () (i32.const 13))
 
 (%define %get-type (%arg) (i32.and (i32.load (local.get %arg)) (i32.const 0xF)))
 
 (%define %car (%cons) (i32.load offset=4 %cons))
 (%define %car-l (%cons) (i32.load offset=4 (local.get %cons)))
+(%define %car-g (%cons) (i32.load offset=4 (global.get %cons)))
 (%define %cdr (%cons) (i32.load offset=8 %cons))
 (%define %cdr-l (%cons) (i32.load offset=8 (local.get %cons)))
+(%define %cdr-g (%cons) (i32.load offset=8 (global.get %cons)))
 
 (%define %assert (%cond) (if (i32.eqz %cond) (then unreachable)))
 

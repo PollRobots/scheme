@@ -720,7 +720,7 @@ describe("runtime wasm", () => {
       exports.print(exports.eval(env, exports.read()));
       const expected = outputs.shift();
       if (typeof expected === "string") {
-        const output = written.join();
+        const output = written.join('');
         expect(output).to.equal(
           expected,
           `"${input}" should evaluate to "${expected}"`
@@ -736,6 +736,12 @@ describe("runtime wasm", () => {
     const inputs = ["(define x 2)", "(+ x 1)", "(set! x 4)", "(+ x 1)"];
     const outputs = [undefined, "3", undefined, "5"];
 
+    testExpectations(inputs, outputs);
+  });
+
+  it("returns an error when read fails", () => {
+    const inputs = ["(+ 1 2"];
+    const outputs = ["<error eof>"];
     testExpectations(inputs, outputs);
   });
 });

@@ -31,6 +31,7 @@
         (call $print-cons
           (i32.load offset=4 (local.get $ptr))
           (i32.load offset=8 (local.get $ptr))
+          (i32.const 1)
         )
         ;; break
         (br $b_switch)
@@ -92,6 +93,13 @@
         (br $b_switch)
       )
     )
+    ;; case error:
+    (if (i32.eq (local.get $type (%error-type)))
+      (then
+        (call $print-error (local.get $ptr))
+        (br $b_switch)
+      )
+    )
     ;; default:
     (call $print-other (global.get $g-unknown) (local.get $type) (local.get $ptr))
       ;; print-error();
@@ -102,6 +110,16 @@
 
 (func $print-nil 
   (call $io-write (i32.load offset=4 (global.get $g-nil-str)))
+)
+
+(func $print-error (param $ptr i32)
+  (local $data i32)
+
+  (call $print-symbol (global.get $g-lt))
+  (call $print-symbol (global.get $g-error))
+  (call $print-symbol (global.get $g-space))
+  (call $print-cons (%car-l $ptr) (%cdr-l $ptr) (i32.const 0))
+  (call $print-symbol (global.get $g-gt))
 )
 
 (func $print-other (param $sym i32) (param $type i32) (param $ptr i32)
@@ -223,14 +241,15 @@
   (call $io-write (i32.load offset=4 (local.get $sym)))
 )
 
-(func $print-cons (param $car i32) (param $cdr i32)
-  (local $str i32)
+(func $print-cons (param $car i32) (param $cdr i32) (param $paren i32)
   (local $cdr-type i32)
 
-  ;; str = str-from-32(1, 0x28)
-  (local.set $str (call $str-from-32 (i32.const 1) (i32.const 0x28)))
-  ;; write(str)
-  (call $io-write (local.get $str))
+  ;; if (paren) {
+  (if (local.get $paren)
+    ;; write(g-open)
+    (then (call $io-write (%car-g $g-open)))
+  )
+  ;; }
   ;; print(car)
   (call $print (local.get $car))
 
@@ -246,12 +265,8 @@
       (if (i32.eq (local.get $cdr-type) (%cons-type))
         (then
           ;; another cons cell, continue list view
-          ;; *str = 1
-          (i32.store (local.get $str) (i32.const 1))
-          ;; str[4] = 0x20 (' ')
-          (i32.store offset=4 (local.get $str) (i32.const 0x20))
-          ;; write(str)
-          (call $io-write (local.get $str))
+          ;; write(g-dot)
+          (call $io-write (%car-g $g-space))
           ;; print(cdr[4])
           (call $print (%car-l $cdr))
           ;; cdr = cdr[8]
@@ -260,12 +275,8 @@
         ;; } else {
         (else
           ;; something else, use dot view
-          ;; *str = 3
-          (i32.store (local.get $str) (i32.const 3))
-          ;; str[4] = 0x202E20 (' . ')
-          (i32.store offset=4 (local.get $str) (i32.const 0x202E20))
-          ;; write(str)
-          (call $io-write (local.get $str))
+          ;; write(g-space)
+          (call $io-write (%car-g $g-dot))
           ;; print(cdr)
           (call $print (local.get $cdr))
           (br $b_end)
@@ -278,12 +289,10 @@
     )
   )
 
-  ;; *str = 1
-  (i32.store (local.get $str) (i32.const 1))
-  ;; str[4] = 0x29 (')')
-  (i32.store offset=4 (local.get $str) (i32.const 0x29))
-  ;; write(str)
-  (call $io-write (local.get $str))
-  ;; malloc-free(str)
-  (call $malloc-free (local.get $str))
+  (if (local.get $paren)
+    (then
+      ;; write(g-close)
+      (call $io-write (%car-g $g-close))
+    )
+  )
 )

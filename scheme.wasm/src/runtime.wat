@@ -16,6 +16,11 @@
 (global $g-gt         (mut i32) (i32.const 0))
 (global $g-unknown    (mut i32) (i32.const 0))
 (global $g-space      (mut i32) (i32.const 0))
+(global $g-error      (mut i32) (i32.const 0))
+(global $g-open       (mut i32) (i32.const 0))
+(global $g-close      (mut i32) (i32.const 0))
+(global $g-dot        (mut i32) (i32.const 0))
+(global $g-eof        (mut i32) (i32.const 0))
 
 (func $runtime-init
   (global.set $g-reader (call $reader-init))
@@ -36,6 +41,11 @@
   (global.set $g-gt (%sym-32 0x3e 1))
   (global.set $g-unknown (%sym-64 0x6e776f6e6b6e75 7))
   (global.set $g-space (%sym-32 0x20 1))
+  (global.set $g-error (%sym-64 0x726f727265 5))
+  (global.set $g-open (%sym-32 0x28 1))
+  (global.set $g-close (%sym-32 0x29 1))
+  (global.set $g-dot (%sym-32 0x202e20 3))
+  (global.set $g-eof (%sym-32 0x666f65 3))
 )
 
 (func $runtime-cleanup
@@ -75,6 +85,23 @@
   (local $head i32)
   (local $curr i32)
 
+  (%define %check-str (%str) 
+    (if (i32.eqz (local.get %str))
+      (then
+        (return 
+          (call $heap-alloc
+            (global.get $g-heap)
+            (%error-type)
+            (global.get $g-eof)
+            (global.get $g-nil)
+          )
+        )
+      )
+    )
+  )
+
+  (%check-str $token-str)
+
   ;; if (token-str == '(') {
   (if (call $short-str-eq (local.get $token-str) (i32.const 0x28) (i32.const 1))
     (then
@@ -83,6 +110,7 @@
 
       ;; car-str = reader-read-token(g-reader)
       (local.set $car-str (call $reader-read-token (global.get $g-reader)))
+      (%check-str $car-str)
       ;; if (car-str == ')') {
       (if (call $short-str-eq (local.get $car-str) (i32.const 0x29) (i32.const 1))
         (then
@@ -106,6 +134,7 @@
       (loop $forever
         ;; cdr-str = reader-read-token(g-reader)
         (local.set $cdr-str (call $reader-read-token (global.get $g-reader)))
+        (%check-str $cdr-str)
         ;; if (cdr-str == ')') {
         (if (call $short-str-eq (local.get $cdr-str) (i32.const 0x29) (i32.const 1))
           (then
@@ -123,15 +152,14 @@
             (call $malloc-free (local.get $cdr-str))
             ;; cdr-str = reader-read-token(g-reader)
             (local.set $cdr-str (call $reader-read-token (global.get $g-reader)))
+            (%check-str $cdr-str)
             ;; cdr = string->datum(cdr-str)
             (local.set $cdr (call $string->datum (local.get $cdr-str)))
             ;; curr[8] = cdr
-            (i32.store
-              (i32.add (local.get $curr) (i32.const 8))
-              (local.get $cdr)
-            )
+            (i32.store offset=8 (local.get $curr) (local.get $cdr))
             ;; cdr-str = reader-read-token(g-reader)
             (local.set $cdr-str (call $reader-read-token (global.get $g-reader)))
+            (%check-str $cdr-str)
             ;; if (cdr-str == ')') {
             (if (call $short-str-eq (local.get $cdr-str) (i32.const 0x29) (i32.const 1))
               (then
@@ -156,7 +184,8 @@
 
         ;; curr[8] = heap-alloc(3, cdr, g-nil)
         (i32.store
-          (i32.add (local.get $curr) (i32.const 8))
+          offset=8
+          (local.get $curr)
           (call $heap-alloc (global.get $g-heap) (%cons-type) (local.get $cdr) (global.get $g-nil))
         )
 
@@ -192,21 +221,9 @@
       (call $malloc-free (local.get $token-str))
       ;; return cons('quote', cons(read(), nil))
       (return
-        (call $heap-alloc
-          (global.get $g-heap)
-          (%cons-type)
-          (call $heap-alloc 
-            (global.get $g-heap) 
-            (%symbol-type)
-            (call $str-from-64 (i32.const 5) (i64.const 0x65746f7571)) ;; 'quote'
-            (i32.const 0)
-          )
-          (call $heap-alloc
-            (global.get $g-heap)
-            (%cons-type) 
-            (call $read)
-            (global.get $g-nil)
-          )
+        (%alloc-cons 
+          (global.get $quote-sym) 
+          (%alloc-cons (call $read) (global.get $g-nil))
         )
       )
     )
@@ -224,7 +241,7 @@
   (local $atom i32)
 
   ;; if ((token[0] & 0xF) != 7 {
-  (if (i32.ne (i32.and (i32.load (local.get $token)) (i32.const 0xF)) (i32.const 7))
+  (if (i32.ne (%get-type $token) (%str-type))
     ;; trap
     (then unreachable)
   ;; }
@@ -336,7 +353,7 @@
 
   ;; check that it is a string
   ;; if ((*str & 0xF) != 7) {
-  (if (i32.ne (i32.and (i32.load (local.get $str)) (i32.const 0xF)) (i32.const 7)) 
+  (if (i32.ne (%get-type $str) (%str-type)) 
     (then (return (global.get $g-false)))
     ;; return #f
   ;; }
@@ -617,8 +634,6 @@
   ;; return args
   (return (local.get $args))
   ;; }
-
-  (unreachable)
 )
 
 (func $eval-list (param $env i32) (param $args i32) (result i32)

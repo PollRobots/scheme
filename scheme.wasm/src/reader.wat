@@ -34,9 +34,9 @@
   (i64.store (local.get $reader) (i64.const 0))
 
   ;; reader[8] = accum
-  (i32.store (i32.add (local.get $reader) (i32.const 8)) (local.get $accum))
+  (i32.store offset=8 (local.get $reader) (local.get $accum))
   ;; reader[12] = 16
-  (i32.store (i32.add (local.get $reader) (i32.const 12)) (i32.const 16))
+  (i32.store offset=12 (local.get $reader) (i32.const 16))
   
   ;; return reader
   (return (local.get $reader))
@@ -66,7 +66,6 @@
 (func $reader-read-token (param $reader i32) (result i32)
   (local $input i32)  ;; input string
   (local $in-off i32) ;; code point offset within input string
-  (local $in-off-ptr i32) ;; code point offset ptr
   (local $char i32)   ;; code point of the current character
   (local $first i32)  ;; is this the first character
   (local $acc-off i32) ;; accumulator offset
@@ -75,8 +74,6 @@
 
   ;; input = reader[0];
   (local.set $input (i32.load (local.get $reader)))
-  ;; in-off-ptr = reader + 4
-  (local.set $in-off-ptr (i32.add (local.get $reader) (i32.const 4)))
   ;; acuum = reader[8];
   (local.set $accum (i32.load offset=8 (local.get $reader)))
   ;; size = reader[12]
@@ -94,16 +91,17 @@
       (if (i32.eqz (local.get $input))
         (then (return (i32.const 0)))
       )
-      ;; *in-off-ptr = in-off = 0;
+      ;; reader.in-off = in-off = 0;
       (i32.store
-        (local.get $in-off-ptr)
+        offset=4
+        (local.get $reader)
         (local.tee $in-off (i32.const 0))
       )
     )
     ;; } else {
     (else
-      ;; in-off = *in-off-ptr
-      (local.set $in-off (i32.load (local.get $in-off-ptr)))
+      ;; in-off = reader.in-off
+      (local.set $in-off (i32.load offset=4 (local.get $reader)))
     )
   ;; }
   )
@@ -136,9 +134,10 @@
         (if (i32.eqz (local.get $input))
           (then (return (i32.const 0)))
         )
-        ;; $in-off-ptr = in-off = 0
+        ;; reader.in_off = in-off = 0
         (i32.store
-          (local.get $in-off-ptr)
+          offset=4
+          (local.get $reader)
           (local.tee $in-off (i32.const 0))
         )
         ;; Continue here rather than trying to read the first character,
@@ -148,9 +147,10 @@
       )
       ;; } else {
       (else
-        ;; *in-off-ptr = in-off++
+        ;; reader.in-off = in-off++
         (i32.store
-          (local.get $in-off-ptr)
+          offset=4
+          (local.get $reader)
           (local.tee $in-off (i32.add (local.get $in-off) (i32.const 1)))
         )
       )
@@ -198,9 +198,10 @@
         ;; if (is-delimiter(char)) {
         (if (call $is-delimiter (local.get $char))
           (then
-            ;; in-off-ptr = in-off = in-off - 1
+            ;; reader.in_off= in-off = in-off - 1
             (i32.store
-              (local.get $in-off-ptr)
+              offset=4
+              (local.get $reader)
               (local.tee $in-off (i32.sub (local.get $in-off) (i32.const 1)))
             )
           )

@@ -21,7 +21,8 @@
 ;;   special = 10
 ;;   builtin = 11
 ;;   lambda = 12
-;; kMaxType = 12
+;;   error = 13
+;; kMaxType = 13
 
 ;;  Empty cell
 ;;    next-empty: i32 ptr
@@ -46,6 +47,10 @@
 ;; Lambda
 ;;    env : i32
 ;;    cons (formals, body): i32
+
+;; Error
+;;    symbol: i32
+;;    data: i32
 
 ;; Heap
 ;;   Size:      i32
@@ -260,7 +265,7 @@
   ;; }
   )
   ;; if (type > kMaxType(12) ) {
-  (if (i32.gt_u (local.get $type) (i32.const 12))
+  (if (i32.gt_u (local.get $type) (%max-heap-type))
     ;; trap
     (then unreachable)
   ;; }
