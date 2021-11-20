@@ -6,6 +6,9 @@ export interface CommonTestExports {
   memory: WebAssembly.Memory;
   malloc: (len: number) => number;
   mallocFree: (ptr: number) => void;
+  mallocInit: () => void;
+  runtimeInit: () => void;
+  runtimeCleanup: () => void;
   gHeap: () => number;
   gTrue: () => number;
   gFalse: () => number;
@@ -28,6 +31,9 @@ export function commonExportsFromInstance(
     memory: instance.exports.memory as WebAssembly.Memory,
     malloc: instance.exports.malloc as (len: number) => number,
     mallocFree: instance.exports.mallocFree as (ptr: number) => void,
+    mallocInit: instance.exports.mallocInit as () => void,
+    runtimeInit: instance.exports.runtimeInit as () => void,
+    runtimeCleanup: instance.exports.runtimeCleanup as () => void,
     gHeap: () => (instance.exports.gHeap as WebAssembly.Global).value as number,
     gTrue: () => (instance.exports.gTrue as WebAssembly.Global).value as number,
     gFalse: () =>
@@ -245,7 +251,7 @@ export function checkMemory(
       if (checkForLeaks) {
         const slice = view.slice(ptr, ptr + size);
         console.log(
-          `Bad alloc at ${ptr}..${ptr + size} = {ptr: ${ptr}, size: ${size}}`
+          `Leaked alloc at ${ptr}..${ptr + size} = {ptr: ${ptr}, size: ${size}}`
         );
         console.log(`ptr: ${hdr[0]}, size: ${hdr[1]}`);
         for (let ii = 0; ii < size; ii += 16) {

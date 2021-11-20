@@ -56,35 +56,23 @@
 (%define %cdr-l (%cons) (i32.load offset=8 (local.get %cons)))
 (%define %cdr-g (%cons) (i32.load offset=8 (global.get %cons)))
 
+(%define %set-car!-l (%cons %val) (i32.store offset=4 (local.get %cons) (local.get %val)))
+(%define %set-cdr!-l (%cons %val) (i32.store offset=8 (local.get %cons) (local.get %val)))
+
 (%define %assert (%cond) (if (i32.eqz %cond) (then unreachable)))
 
 (%define %assert-cons (%arg) (%assert (i32.eq (%get-type %arg) (%cons-type))))
 
-(%define %assert-nil (%arg)
-  ;; if ((%arg & 0xF) != %nil-type)
-  (if (i32.ne (%get-type %arg) (%nil-type)) 
-    ;; TODO: return error
-    (then unreachable)
-  )
-)
+(%define %assert-nil (%arg) (%assert (i32.eq (%get-type %arg) (%nil-type))))
 
-(%define %assert-num (%arg)
-  ;; if ((%arg & 0xF) != %i64-type)
-  (if (i32.ne (%get-type %arg) (%i64-type)) 
-    ;; TODO: return error
-    (then unreachable)
-  )
-)
+(%define %assert-num (%arg) (%assert (i32.eq (%get-type %arg) (%i64-type))))
 
-(%define %assert-symbol (%arg)
-  ;; if ((%arg & 0xF) != %symbol-type)
-  (if (i32.ne (%get-type %arg) (%symbol-type)) 
-    ;; TODO: return error
-    (then unreachable)
-  )
-)
+(%define %assert-symbol (%arg) (%assert (i32.eq (%get-type %arg) (%symbol-type))))
+
+(%define %assert-str (%arg) (%assert (i32.eq (%get-type %arg) (%str-type))))
 
 (%define %sym-32 (%name %len) (call $heap-alloc (global.get $g-heap) (%symbol-type) (call $str-from-32 (i32.const %len) (i32.const %name)) (i32.const 0)))
 (%define %sym-64 (%name %len) (call $heap-alloc (global.get $g-heap) (%symbol-type) (call $str-from-64 (i32.const %len) (i64.const %name)) (i32.const 0)))
 
 (%define %alloc-cons (%car %cdr) (call $heap-alloc (global.get $g-heap) (%cons-type) %car %cdr))
+(%define %alloc-str (%str) (call $heap-alloc (global.get $g-heap) (%str-type) %str (i32.const 0)))

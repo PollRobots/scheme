@@ -18,9 +18,6 @@ interface TestExports extends CommonTestExports {
   gHeap: () => number;
   gTrue: () => number;
   gFalse: () => number;
-  mallocInit: () => void;
-  runtimeInit: () => void;
-  runtimeCleanup: () => void;
   environmentInit: (heap: number, outer: number) => number;
   stringToNumber: (str: number) => number;
   shortStrEq: (str: number, shortStr: number, shortStrLen: number) => number;
@@ -40,9 +37,6 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
     gTrue: () => (instance.exports.gTrue as WebAssembly.Global).value as number,
     gFalse: () =>
       (instance.exports.gFalse as WebAssembly.Global).value as number,
-    mallocInit: instance.exports.mallocInit as () => void,
-    runtimeInit: instance.exports.runtimeInit as () => void,
-    runtimeCleanup: instance.exports.runtimeCleanup as () => void,
     environmentInit: instance.exports.environmentInit as (
       heap: number,
       outer: number
@@ -739,9 +733,12 @@ describe("runtime wasm", () => {
     testExpectations(inputs, outputs);
   });
 
-  it("returns an error when read fails", () => {
+  it("returns an error when read fails, and can resume reading", () => {
     const inputs = ["(+ 1 2"];
     const outputs = ["<error eof>"];
+    testExpectations(inputs, outputs);
+    inputs.push(')');
+    outputs.push('3')
     testExpectations(inputs, outputs);
   });
 });

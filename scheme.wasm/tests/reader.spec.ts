@@ -43,9 +43,11 @@ describe("reader wasm", () => {
     exports = exportsFromInstance(instance);
     io.exports = exports;
     exports.mallocInit();
+    exports.runtimeInit();
   });
 
   after(() => {
+    exports.runtimeCleanup();
     checkForLeaks(exports);
   });
 
