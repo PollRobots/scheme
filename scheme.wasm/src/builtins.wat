@@ -8,7 +8,8 @@
 (%define %special-quote ()      (i32.const 5))
 (%define %special-define ()     (i32.const 6))
 (%define %special-set! ()       (i32.const 7))
-(table $table-builtin 8 anyfunc)
+(%define %builtin-sub ()        (i32.const 8))
+(table $table-builtin 9 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -20,6 +21,11 @@
     (local.get $env)
     (%sym-32 0x2b 1) ;; '+'
     (call $heap-alloc (local.get $heap) (%builtin-type) (%builtin-add) (i32.const 0))
+  )
+  (call $environment-add
+    (local.get $env)
+    (%sym-32 0x2d 1) ;; '-'
+    (call $heap-alloc (local.get $heap) (%builtin-type) (%builtin-sub) (i32.const 0))
   )
   (call $environment-add
     (local.get $env)
@@ -69,6 +75,7 @@
 )
 
 (elem $table-builtin (%builtin-add) $add)
+(elem $table-builtin (%builtin-sub) $sub)
 (elem $table-builtin (%builtin-mult) $mult)
 (elem $table-builtin (%special-if) $if)
 (elem $table-builtin (%special-let) $let)

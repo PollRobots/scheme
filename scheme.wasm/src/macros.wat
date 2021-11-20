@@ -76,3 +76,4 @@
 
 (%define %alloc-cons (%car %cdr) (call $heap-alloc (global.get $g-heap) (%cons-type) %car %cdr))
 (%define %alloc-str (%str) (call $heap-alloc (global.get $g-heap) (%str-type) %str (i32.const 0)))
+(%define %alloc-error (%sym %args) (call $heap-alloc (global.get $g-heap) (%error-type) %sym %args))

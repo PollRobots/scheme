@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import { Console } from "console";
 import fs from "fs/promises";
 
 export interface CommonTestExports {

@@ -4,21 +4,159 @@
     "limit": 1
   },
   "files": [
+    "src/macros.wat",
+    "src/builtins.wat",
+    "src/define.wat",
+    "src/environment.wat",
+    "src/gc.wat",
+    "src/hashtable.wat",
+    "src/heap.wat",
+    "src/if.wat",
+    "src/lambda.wat",
+    "src/let.wat",
+    "src/string.wat",
     "src/malloc.wat",
+    "src/math.wat",
+    "src/print.wat",
+    "src/quote.wat",
+    "src/reader.wat",
+    "src/runtime.wat",
     "src/start.wat",
     "src/xxh3.wat"
   ],
   "start": "$start",
+  "importFuncs": [
+    {
+      "module": "io",
+      "name": "read",
+      "index": "$io-read",
+      "params": [],
+      "result": "i32"
+    },
+    {
+      "module": "io",
+      "name": "write",
+      "index": "$io-write",
+      "params": [
+        "i32"
+      ]
+    }
+  ],
   "exports": [
     {
       "name": "memory",
       "type": "memory",
       "index": "$memory"
+    },
+    {
+      "name": "gHeap",
+      "type": "global",
+      "index": "$g-heap"
+    },
+    {
+      "name": "gReader",
+      "type": "global",
+      "index": "$g-reader"
+    },
+    {
+      "name": "gGcIsCollecting",
+      "type": "global",
+      "index": "$g-gc-collecting?"
+    },
+    {
+      "name": "gGcCollectionCount",
+      "type": "global",
+      "index": "$g-gc-collection-count"
+    },
+    {
+      "name": "gGcTotalCollectedCount",
+      "type": "global",
+      "index": "$g-gc-total-collected-count"
+    },
+    {
+      "name": "gGcTotalNotCollectedCount",
+      "type": "global",
+      "index": "$g-gc-total-not-collected-count"
+    },
+    {
+      "name": "gGcCollectedCount",
+      "type": "global",
+      "index": "$g-gc-collected-count"
+    },
+    {
+      "name": "gGcNotCollectedCount",
+      "type": "global",
+      "index": "$g-gc-not-collected-count"
+    },
+    {
+      "name": "strFromCodePoints",
+      "type": "func",
+      "index": "$str-from-code-points"
+    },
+    {
+      "name": "readerRollback",
+      "type": "func",
+      "index": "$reader-rollback"
+    },
+    {
+      "name": "mallocInit",
+      "type": "func",
+      "index": "$malloc-init"
+    },
+    {
+      "name": "runtimeInit",
+      "type": "func",
+      "index": "$runtime-init"
+    },
+    {
+      "name": "runtimeCleanup",
+      "type": "func",
+      "index": "$runtime-cleanup"
+    },
+    {
+      "name": "registerBuiltins",
+      "type": "func",
+      "index": "$register-builtins"
+    },
+    {
+      "name": "read",
+      "type": "func",
+      "index": "$read"
+    },
+    {
+      "name": "environmentInit",
+      "type": "func",
+      "index": "$environment-init"
+    },
+    {
+      "name": "print",
+      "type": "func",
+      "index": "$print"
+    },
+    {
+      "name": "eval",
+      "type": "func",
+      "index": "$eval"
+    },
+    {
+      "name": "malloc",
+      "type": "func",
+      "index": "$malloc"
+    },
+    {
+      "name": "free",
+      "type": "func",
+      "index": "$malloc-free"
+    },
+    {
+      "name": "gcRun",
+      "type": "func",
+      "index": "$gc-run"
     }
   ],
   "wabtOptions": {
     "wasmFeatures": {
-      "threads": true
+      "threads": false
     },
     "binaryOptions": {
       "log": false,

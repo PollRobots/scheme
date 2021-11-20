@@ -39,7 +39,7 @@
   ))
 )
 
-(func $malloc (export "malloc") (param $size i32) (result i32)
+(func $malloc (param $size i32) (result i32)
   ;; previous free ptr
   (local $prev i32)
   ;; a current free ptr
@@ -143,7 +143,7 @@
   (return (call $malloc (local.get $size)))
 )
 
-(func $malloc-free (export "free") (param $ptr i32)
+(func $malloc-free (param $ptr i32)
   (local $hdr i32)
   (local $h_next i32)
   (local $h_size i32)
