@@ -58,7 +58,7 @@
     ;; case str (7):
     (if (i32.eq (local.get $type) (%str-type))
       (then
-        ;; print-str(ptr[4])
+        (call $print-str (local.get $ptr))
         ;; break
         (br $b_switch)
       )
@@ -239,6 +239,13 @@
 (func $print-symbol (param $sym i32)
   ;; TODO handle symbols with non-standard characters
   (call $io-write (i32.load offset=4 (local.get $sym)))
+)
+
+(func $print-str (param $str i32)
+  ;; TODO handle strings with non-print characters
+  (call $print-symbol (global.get $g-quote))
+  (call $print-symbol (local.get $str))
+  (call $print-symbol (global.get $g-quote))
 )
 
 (func $print-cons (param $car i32) (param $cdr i32) (param $paren i32)

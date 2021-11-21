@@ -116,6 +116,11 @@
       "index": "$malloc-load-list"
     },
     {
+      "name": "malloc",
+      "type": "func",
+      "index": "$malloc"
+    },
+    {
       "name": "mallocFree",
       "type": "func",
       "index": "$malloc-free"

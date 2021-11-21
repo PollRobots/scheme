@@ -21,6 +21,7 @@
 (global $g-close      (mut i32) (i32.const 0))
 (global $g-dot        (mut i32) (i32.const 0))
 (global $g-eof        (mut i32) (i32.const 0))
+(global $g-quote      (mut i32) (i32.const 0))
 
 (func $runtime-init
   (global.set $g-reader (call $reader-init))
@@ -46,6 +47,7 @@
   (global.set $g-close (%sym-32 0x29 1))
   (global.set $g-dot (%sym-32 0x202e20 3))
   (global.set $g-eof (%sym-32 0x666f65 3))
+  (global.set $g-quote (%sym-32 0x22 1))
 )
 
 (func $runtime-cleanup
@@ -76,9 +78,17 @@
   ;; return string->datum(token-str)
   (local.set $result (call $string->datum (local.get $token-str)))
   (if (i32.eq (%get-type $result) (%error-type))
-    (then (call $reader-rollback (global.get $g-reader)))
-    (else (call $reader-commit (global.get $g-reader)))
+    (then 
+      (if (i32.eq (global.get $g-eof) (%car-l $result))
+        (then 
+          (call $reader-rollback (global.get $g-reader))
+          (return (local.get $result))
+        )
+      )
+    )
   )
+
+  (call $reader-commit (global.get $g-reader))
   (return (local.get $result))
 )
 
@@ -327,6 +337,49 @@
   unreachable
 )
 
+(func $short-str-start-with
+  (param $str i32)
+  (param $offset i32)
+  (param $short-str i32)
+  (param $short-str-len i32)
+  (result i32)
+
+  (local $word i32)
+  (local $mask i32)
+
+  (if (i32.gt_u (local.get $short-str-len) (i32.const 4))
+    (then unreachable)
+  )
+
+  ;; if (offset + short-str-len > *ptr) {
+  (if (i32.gt_u (i32.add (local.get $offset) (local.get $short-str-len))
+                (i32.load (local.get $str)))
+    (then
+      ;; return 0;
+      (return (i32.const 0))
+    )
+  )
+
+  ;; word = str[4 + offset] 
+  (local.set $word (i32.load offset=4 (i32.add (local.get $str) (local.get $offset))))
+  ;; mask = -1 >> (4-len) << 3
+  (local.set $mask 
+    (i32.shr_u 
+      (i32.const -1) 
+      (i32.shl 
+        (i32.sub (i32.const 4) (local.get $short-str-len))
+        (i32.const 3)
+      )
+    )
+  )
+  (return 
+    (i32.eq 
+      (i32.and (local.get $mask) (local.get $word))
+      (local.get $short-str)
+    )
+  )
+)
+
 (func $is-truthy (param $token i32) (result i32)
   ;; if (token[0] & 0xF == 2) {
   (if (i32.eq (i32.and (i32.load (local.get $token)) (i32.const 0xF)) (i32.const 2))
@@ -345,253 +398,382 @@
   (return (i32.const 1))
 )
 
+(func $get-radix-digit (param $str i32) (param $offset i32) (param $radix i32) (result i32)
+  (local $c i32)
+  (local $digit i32)
+
+  (local.set $c (i32.load8_u offset=4 (i32.add (local.get $str) (local.get $offset))))
+
+  (block $b_digit
+    ;; c >= 0x30 && c <= 0x39 ('0' <= c <= '9')
+    (if (i32.ge_u (local.get $c) (i32.const 0x30))
+      (then
+        (if (i32.le_u (local.get $c) (i32.const 0x39))
+          (then
+            (local.set $digit (i32.sub (local.get $c) (i32.const 0x30)))
+            (br $b_digit)
+          )
+        )
+      )
+    )
+    ;; c >= 0x61 && c <= 66 ('a' <= c <= 'f')
+    (if (i32.ge_u (local.get $c) (i32.const 0x61))
+      (then
+        (if (i32.le_u (local.get $c) (i32.const 0x66))
+          (then
+            ;; digit = c - 0x61 + 0x0A
+            ;; digit = c - 0x57
+            (local.set $digit (i32.sub (local.get $c) (i32.const 0x57)))
+            (br $b_digit)
+          )
+        )
+      )
+    )
+    ;; c >= 0x41 && c <= 46 ('A' <= c <= 'F')
+    (if (i32.ge_u (local.get $c) (i32.const 0x41))
+      (then
+        (if (i32.le_u (local.get $c) (i32.const 0x46))
+          (then
+            ;; digit = c - 0x41 + 0x0A
+            ;; digit = c - 0x37
+            (local.set $digit (i32.sub (local.get $c) (i32.const 0x37)))
+            (br $b_digit)
+          )
+        )
+      )
+    )
+
+    ;; else
+    (return (i32.const -1))
+  )
+
+  (return 
+    (select 
+      (local.get $digit) 
+      (i32.const -1) 
+      (i32.lt_u (local.get $digit) (local.get $radix))
+    )
+  )
+)
+
 (func $string->number (param $str i32) (result i32)
-  (local $str-ptr i32)   ;; pointer to the actual string
-  (local $i i32)         ;; code-point-index in the string
-  (local $cp i32)        ;; current code-point
-  (local $valid i32)     ;; boolean indicating whether this is a valid number
-  (local $accum i64)     ;; the currently accumulated unsigned value of the number
-  (local $radix i64)     ;; the radix (or base) of the number, valid values are 2 8 10 16
-  (local $prefix i32)    ;; boolean indicating whether we are processing the prefix
-  (local $mod i32)       ;; boolean indicating whether we have got a # and are waiting for a modifier letter
-  (local $negative i32)  ;; boolean indicating whether this is a negative number
-  (local $digit i32)     ;; the current digit in the range [0-radix[
+  (local $str-ptr i32)    ;; pointer to the string
+  (local $offset i32)     ;; byte offset in the string
+  (local $str-len i32)
+  (local $exact i32)      ;; is exact
+  (local $inexact i32)    ;; is inexact
+  (local $radix i32)      ;; the radix
+  (local $radix-count i32);; count of radix prefixes (greater than 1 is an error)
+  (local $negative i32)   ;; is negative
+  (local $integer i64)
+  (local $fraction-digits i32)
+  (local $fraction i64)
+  (local $integer-digits i32)
+  (local $digit i32)
+  (local $decimal i32)
+  (local $have-exp i32)
+  (local $exponent i64)
+  (local $exponent-digits i32)
+  (local $neg-exp i32)
 
-  ;; check that it is a string
-  ;; if ((*str & 0xF) != 7) {
-  (if (i32.ne (%get-type $str) (%str-type)) 
+
+  (if (i32.ne (%get-type $str) (%str-type))
     (then (return (global.get $g-false)))
-    ;; return #f
-  ;; }
   )
 
-  ;; str-ptr = str[4]
-  (local.set $str-ptr (i32.load offset=4 (local.get $str)))
-
-  ;; i = 0
-  (local.set $i (i32.const 0))
-  ;; cp = 0
-  (local.set $cp (i32.const 0))
-  ;; valid = false
-  (local.set $valid (i32.const 0))
-  ;; accum = 0
-  (local.set $accum (i64.const 0))
-  ;; radix = 10
-  (local.set $radix (i64.const 10))
-  ;; prefix = true
-  (local.set $prefix (i32.const 1))
-  ;; mod = false
-  (local.set $mod (i32.const 0))
-  ;; negative = false
+  (local.set $str-ptr (%car-l $str))
+  (local.set $str-len (i32.load (local.get $str-ptr)))
+  (local.set $offset (i32.const 0))
+  (local.set $exact (i32.const 0))
+  (local.set $inexact (i32.const 0))
+  (local.set $radix (i32.const 10))
+  (local.set $radix-count (i32.const 0))
   (local.set $negative (i32.const 0))
+  (local.set $decimal (i32.const 0))
+  (local.set $integer (i64.const 0))
+  (local.set $fraction (i64.const 0))
+  (local.set $fraction-digits (i32.const 0))
+  (local.set $integer-digits (i32.const 0))
+  (local.set $exponent-digits (i32.const 0))
+  (local.set $have-exp (i32.const 0))
+  (local.set $exponent (i64.const 0))
+  (local.set $neg-exp (i32.const 0))
 
+  (%define %sssw (%cmp %len) (call $short-str-start-with (local.get $str-ptr) (local.get $offset) (i32.const %cmp) (i32.const %len)))
+
+  ;; look for prefix elements #e #i #b #d #o #x
   ;; while (true) {
-  (loop $forever
-    ;; cp = str-code-point-at(str-ptr, i)
-    (local.set $cp (call $str-code-point-at (local.get $str-ptr) (local.get $i)))
-    ;; if (cp == 0) {
-    (if (i32.eqz (local.get $cp))
+  (loop $prefix_loop
+    (if (%sssw 0x4523 2) ;; #E
       (then
-        ;; if (valid) {
-        (if (local.get $valid)
-          (then
-            ;; if (negative) {
-            (if (local.get $negative)
-              (then
-                ;; accum = 0 - accum
-                (local.set $accum (i64.sub (i64.const 0) (local.get $accum)))
-              )
-            )
-            ;; return heap-alloc(4, (i32)accum, (i32)(accum >> 32))
-            (return 
-              (call $heap-alloc
-                (global.get $g-heap) 
-                (i32.const 4) 
-                (i32.wrap_i64 (local.get $accum))
-                (i32.wrap_i64 (i64.shr_u (local.get $accum) (i64.const 32)))
-              )
-            )
-          )
-          ;; }
-          ;; } else {
-          (else 
-            ;; return g-false
-            (return (global.get $g-false))
-            ;; }
-          )
-        )
-        ;; }
+        (%inc $exact)
+        (%plus-eq $offset 2)
+        (br $prefix_loop)
       )
     )
-
-    ;; if (prefix) {
-    (if (local.get $prefix)
+    (if (%sssw 0x6523 2) ;; #e
       (then
-        ;; if (mod) {
-        (if (local.get $mod)
-          (then
-            (block $b_radix
-            ;; if (cp == 'b') 0x62 {
-              (if (i32.eq (local.get $cp) (i32.const 0x62))
-                (then
-                  ;; radix = 2
-                  (local.set $radix (i64.const 2))
-                  (br $b_radix)
-                )
-              )
-              ;; } else if (cp == 'o') 0x6f {
-              (if (i32.eq (local.get $cp) (i32.const 0x6f))
-                (then
-                  ;; radix = 8
-                  (local.set $radix (i64.const 8))
-                  (br $b_radix)
-                )
-              )
-              ;; } else if (cp == 'd') 0x64 {
-              (if (i32.eq (local.get $cp) (i32.const 0x64))
-                (then 
-                  ;; radix = 10
-                  (local.set $radix (i64.const 10))
-                  (br $b_radix)
-                )
-              )
-              ;; } else if (cp == 'x') 0x78 {
-              (if (i32.eq (local.get $cp) (i32.const 0x78))
-                (then 
-                  ;; radix = 16
-                  (local.set $radix (i64.const 16))
-                  (br $b_radix)
-                )
-              ;; }
-              )
-
-              ;; TODO handle exact/inexact prefixes
-              ;; return g-false
-              (return (global.get $g-false))
-            )
-            ;; mod = false
-            (local.set $mod (i32.const 0))
-          )
-          ;; } else {
-          (else
-            ;; if (cp == '#') (0x23) {
-            (if (i32.eq (local.get $cp) (i32.const 0x23))
-              (then 
-                ;; mod = true
-                (local.set $mod (i32.const 1))
-              )
-              ;; } else {
-              (else
-                ;; prefix = false
-                (local.set $prefix (i32.const 0))
-                ;; if (cp == '-') 0x2d {
-                (if (i32.eq (local.get $cp) (i32.const 0x2D))
-                  (then
-                    ;; negative = true
-                    (local.set $negative (i32.const 1))
-                  )
-                  ;; } else if (cp == '+') 0x2B{
-                  (else
-                    (if (i32.eq (local.get $cp) (i32.const 0x2B))
-                      ;; negative = false
-                      (then
-                        (local.set $negative (i32.const 1))
-                      )
-                      ;; } else {
-                      (else
-                        ;; continue
-                        (br $forever)
-                      )
-                    )
-                    ;; }
-                  )
-                )
-              )
-            ;; }
-            )
-          ;; }
-          )
-        )
+        (%inc $exact)
+        (%plus-eq $offset 2)
+        (br $prefix_loop)
       )
-      ;; } else {
-      (else
-        (block $b_digit
-          ;; if (cp >= 0x30 && cp <= 0x39) '0' - '9' {
-          (if (i32.ge_u (local.get $cp) (i32.const 0x30))
-            (then
-              (if (i32.le_u (local.get $cp) (i32.const 0x39))
-                (then
-                  ;; digit = cp - 0x30
-                  (local.set $digit (i32.sub (local.get $cp) (i32.const 0x30)))
-                  (br $b_digit)
-                )
-              )
-            )
-          )
-          ;; } else if (cp >= 0x61 && cp <= 0x66) 'a' - 'f' {
-          (if (i32.ge_u (local.get $cp) (i32.const 0x61))
-            (then
-              (if (i32.le_u (local.get $cp) (i32.const 0x66))
-                (then
-                  ;; digit = cp - 0x61 + 10
-                  ;; digit = cp - 87
-                  (local.set $digit (i32.sub (local.get $cp) (i32.const 87)))
-                  (br $b_digit)
-                )
-              )
-            )
-          )
-          ;; } else if (cp >= 0x41 && cp <= 0x46) 'A' - 'F' {
-          (if (i32.ge_u (local.get $cp) (i32.const 0x41))
-            (then
-              (if (i32.le_u (local.get $cp) (i32.const 0x46))
-                (then
-                  ;; digit = cp - 0x41 + 10
-                  ;; digit = cp - 55
-                  (local.set $digit (i32.sub (local.get $cp) (i32.const 55)))
-                  (br $b_digit)
-                )
-              )
-            )
-          )
-          ;; else {
-            ;; unknown character in number
-            ;; return g-false
-            (return (global.get $g-false))
-          ;; }
-        )
-
-        ;; if (digit < radix) {
-        (if (i32.lt_s (local.get $digit) (i32.wrap_i64 (local.get $radix)))
-          (then
-            ;; accum = accum * radix + digit
-            (local.set $accum 
-              (i64.add
-                (i64.mul (local.get $accum) (local.get $radix)) 
-                (i64.extend_i32_u (local.get $digit))
-              )
-            )
-            ;; valid = true
-            (local.set $valid (i32.const 1))
-          )
-          ;; } else { 
-          (else
-            ;; return g-false
-            (return (global.get $g-false))
-          )
-          ;; }
-        )
-      )
-      ;; }
     )
-
-    ;; i++
-    (%inc $i)
-    (br $forever)
+    (if (%sssw 0x4923 2) ;; #I
+      (then
+        (%inc $inexact)
+        (%plus-eq $offset 2)
+        (br $prefix_loop)
+      )
+    )
+    (if (%sssw 0x6923 2) ;; #i
+      (then
+        (%inc $inexact)
+        (%plus-eq $offset 2)
+        (br $prefix_loop)
+      )
+    )
+    (if (%sssw 0x4223 2) ;; #B
+      (then
+        (local.set $radix (i32.const 2))
+        (%inc $radix-count)
+        (%plus-eq $offset 2)
+        (br $prefix_loop)
+      )
+    )
+    (if (%sssw 0x6223 2) ;; #b
+      (then
+        (local.set $radix (i32.const 2))
+        (%inc $radix-count)
+        (%plus-eq $offset 2)
+        (br $prefix_loop)
+      )
+    )
+    (if (%sssw 0x4423 2) ;; #D
+      (then
+        (local.set $radix (i32.const 10))
+        (%inc $radix-count)
+        (%plus-eq $offset 2)
+        (br $prefix_loop)
+      )
+    )
+    (if (%sssw 0x6423 2) ;; #d
+      (then
+        (local.set $radix (i32.const 10))
+        (%inc $radix-count)
+        (%plus-eq $offset 2)
+        (br $prefix_loop)
+      )
+    )
+    (if (%sssw 0x4F23 2) ;; #O
+      (then
+        (local.set $radix (i32.const 8))
+        (%inc $radix-count)
+        (%plus-eq $offset 2)
+        (br $prefix_loop)
+      )
+    )
+    (if (%sssw 0x6F23 2) ;; #0
+      (then
+        (local.set $radix (i32.const 8))
+        (%inc $radix-count)
+        (%plus-eq $offset 2)
+        (br $prefix_loop)
+      )
+    )
+    (if (%sssw 0x5823 2) ;; #X
+      (then
+        (local.set $radix (i32.const 16))
+        (%inc $radix-count)
+        (%plus-eq $offset 2)
+        (br $prefix_loop)
+      )
+    )
+    (if (%sssw 0x7823 2) ;; #x
+      (then
+        (local.set $radix (i32.const 16))
+        (%inc $radix-count)
+        (%plus-eq $offset 2)
+        (br $prefix_loop)
+      )
+    )
+    ;; }
+  )
   ;; }
+
+  (block $prefix_fail
+    (block $prefix_check
+      ;; multiple inexact
+      (br_if $prefix_check (i32.gt_u (local.get $inexact) (i32.const 1)))
+      ;; multiple exact
+      (br_if $prefix_check (i32.gt_u (local.get $exact) (i32.const 1)))
+      ;; multiple radix
+      (br_if $prefix_check (i32.gt_u (local.get $radix-count) (i32.const 1)))
+      ;; inexact and exact
+      (br_if $prefix_check (i32.and (local.get $inexact) (local.get $exact)))
+      ;; prefix was ok
+      (br $prefix_fail)
+    )
+    (return (%alloc-error (%sym-64 0x786966657270 6) (local.get $str)))
   )
 
-  unreachable
+  (if (local.get $exact)
+    (then
+      (return (%alloc-error (%sym-64 0x7463617865 5) (local.get $str)))
+    )
+  )
+  (if (local.get $inexact)
+    (then
+      (return (%alloc-error (%sym-64 0x74636178656e69 7) (local.get $str)))
+    )
+  )
+
+  ;; check for sign
+  (if (%sssw 0x2d 1) ;; '-'
+    (then
+      (local.set $negative (i32.const 1))
+      (%inc $offset)
+    )
+    (else 
+      (if (%sssw 0x2B 1) ;; '+'
+        (then (%inc $offset))
+      )
+    )
+  )
+
+  (block $b_integer_end
+    (loop $b_integer
+      ;; break if offset >= str-len
+      (br_if $b_integer_end (i32.ge_u (local.get $offset) (local.get $str-len)))
+
+      (local.set $digit (call $get-radix-digit (local.get $str-ptr) (local.get $offset) (local.get $radix)))
+      (br_if $b_integer_end (i32.lt_s (local.get $digit) (i32.const 0)))
+      (%inc $offset)
+
+      ;; integer = integer * radix + digit
+      (local.set $integer
+        (i64.add
+          (i64.mul (local.get $integer) (i64.extend_i32_u (local.get $radix)))
+          (i64.extend_i32_u (local.get $digit))
+        )
+      )
+      (%inc $integer-digits)
+
+      (br $b_integer)
+    )
+  )
+
+  (if (i32.eq (local.get $radix) (i32.const 10))
+    (then
+      ;; check for decimal
+      (if (%sssw 0x2e 1) ;; '.'
+        (then
+          (local.set $decimal (i32.const 1))
+          (%inc $offset)
+
+          (block $b_fraction_end
+            (loop $b_fraction
+              ;; break if offset >= str-len
+              (br_if $b_fraction_end (i32.ge_u (local.get $offset) (local.get $str-len)))
+
+              (local.set $digit (call $get-radix-digit (local.get $str-ptr) (local.get $offset) (local.get $radix)))
+              (br_if $b_fraction_end (i32.lt_s (local.get $digit) (i32.const 0)))
+              (%inc $offset)
+
+              ;; fraction = fraction * radix + digit
+              (local.set $fraction
+                (i64.add
+                  (i64.mul (local.get $fraction) (i64.extend_i32_u (local.get $radix)))
+                  (i64.extend_i32_u (local.get $digit))
+                )
+              )
+              (%inc $fraction-digits)
+
+              (br $b_fraction)
+            )
+          )
+        )
+      )
+
+      ;; check for exponent
+      (if (i32.or (%sssw 0x65 1) (%sssw 0x45 1))
+        (then
+          (local.set $have-exp (i32.const 1))
+          (%inc $offset)
+
+          ;; check for sign
+          (if (%sssw 0x2d 1) ;; '-'
+            (then
+              (local.set $neg-exp (i32.const 1))
+              (%inc $offset)
+            )
+            (else 
+              (if (%sssw 0x2B 1) ;; '+'
+                (then (%inc $offset))
+              )
+            )
+          )
+
+          (block $b_exponent_end
+            (loop $b_exponent
+              ;; break if offset >= str-len
+              (br_if $b_exponent_end (i32.ge_u (local.get $offset) (local.get $str-len)))
+
+              (local.set $digit (call $get-radix-digit (local.get $str-ptr) (local.get $offset) (local.get $radix)))
+              (br_if $b_exponent_end (i32.lt_s (local.get $digit) (i32.const 0)))
+              (%inc $offset)
+
+              ;; exponent = fraction * radix + digit
+              (local.set $exponent
+                (i64.add
+                  (i64.mul (local.get $exponent) (i64.extend_i32_u (local.get $radix)))
+                  (i64.extend_i32_u (local.get $digit))
+                )
+              )
+              (%inc $exponent-digits)
+
+              (br $b_exponent)
+            )
+          )
+
+          (if (i32.eqz (local.get $exponent-digits))
+            (then (%dec $offset))
+          )
+        )
+      )
+    )
+  )
+
+  (if (i32.ne (local.get $offset) (local.get $str-len))
+    (then (return (global.get $g-false)))
+  )
+  
+  (if (i32.eqz (i32.add (local.get $integer-digits) (local.get $fraction-digits)))
+    (then (return (global.get $g-false)))
+  )
+
+  (if (i32.eqz (i32.or (local.get $decimal) (local.get $have-exp)))
+    (then
+      (if (local.get $negative)
+        (then
+          (local.set $integer (i64.sub (i64.const 0) (local.get $integer)))
+        )
+      ) 
+      (return 
+        (call $heap-alloc
+          (global.get $g-heap) 
+          (%i64-type) 
+          (i32.wrap_i64 (local.get $integer))
+          (i32.wrap_i64 (i64.shr_u (local.get $integer) (i64.const 32)))
+        )
+      )
+    )
+    (else
+      ;; TODO actual floating point support lol
+      (return (%alloc-error (%sym-32 0x6c616572 4) (local.get $str)))
+    )
+  ) 
+
+  (return (global.get $g-false))
 )
 
 (func $eval (param $env i32) (param $args i32) (result i32)
@@ -707,8 +889,9 @@
     )
     ;; default:
     ;;   any other type:
-    (call $print (call $cons (local.get $op-type) (call $cons (local.get $op) (local.get $args))))
-    (unreachable)
+    (return
+      (%alloc-error-cons (%sym-64 0x796c707061 5) (%alloc-cons (local.get $op) (local.get $args)))
+    )
   )
 
   (local.get $env)

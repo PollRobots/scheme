@@ -139,38 +139,40 @@ describe("runtime wasm", () => {
       }
     }
 
-    const kTestInvalidNumbers: string[] = [
-      "1#x",
-      "1_200",
-      "1,200",
-      "--2",
-      "#i43",
-      "#e8",
-      "#b107",
-      "#o108",
-      "#x1G",
-      "#d1e",
+    const kTestInvalidNumbers: [string, string][] = [
+      ["1#x", "#f"],
+      ["1_200", "#f"],
+      ["1,200", "#f"],
+      ["--2", "#f"],
+      ["#i43", '<error inexact "#i43">'],
+      ["#e8", '<error exact "#e8">'],
+      ["#b107", "#f"],
+      ["#o108", "#f"],
+      ["#x1G", "#f"],
+      ["#d1e", "#f"],
     ];
 
-    for (const str of kTestInvalidNumbers) {
+    for (const [str, exp] of kTestInvalidNumbers) {
       const strPtr = createString(exports, str);
       const strHeapPtr = exports.heapAlloc(exports.gHeap(), 7, strPtr, 0);
       const numHeapPtr = exports.stringToNumber(strHeapPtr);
-      const words = new Int32Array(
-        exports.memory.buffer.slice(numHeapPtr, numHeapPtr + 12)
-      );
-      expect(words[0]).to.equal(
-        2,
-        `string->number(${str}) return value should be a boolean`
-      );
-      expect(words[1]).to.equal(
-        0,
-        `string->number(${str}) return value should be false`
-      );
-      expect(numHeapPtr).to.equal(
-        exports.gFalse(),
-        `should use the global false value`
-      );
+      exports.print(numHeapPtr);
+      expect(written.splice(0, written.length).join("")).to.equal(exp);
+      // const words = new Int32Array(
+      //   exports.memory.buffer.slice(numHeapPtr, numHeapPtr + 12)
+      // );
+      // expect(words[0]).to.equal(
+      //   2,
+      //   `string->number(${str}) return value should be a boolean`
+      // );
+      // expect(words[1]).to.equal(
+      //   0,
+      //   `string->number(${str}) return value should be false`
+      // );
+      // expect(numHeapPtr).to.equal(
+      //   exports.gFalse(),
+      //   `should use the global false value`
+      // );
     }
   });
 
@@ -714,7 +716,7 @@ describe("runtime wasm", () => {
       exports.print(exports.eval(env, exports.read()));
       const expected = outputs.shift();
       if (typeof expected === "string") {
-        const output = written.join('');
+        const output = written.join("");
         expect(output).to.equal(
           expected,
           `"${input}" should evaluate to "${expected}"`
@@ -737,8 +739,8 @@ describe("runtime wasm", () => {
     const inputs = ["(+ 1 2"];
     const outputs = ["<error eof>"];
     testExpectations(inputs, outputs);
-    inputs.push(')');
-    outputs.push('3')
+    inputs.push(")");
+    outputs.push("3");
     testExpectations(inputs, outputs);
   });
 });

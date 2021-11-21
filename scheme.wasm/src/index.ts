@@ -150,6 +150,14 @@ class SchemeRuntime {
     return (this.heapItem(ptr)[0] & 0xf) == 13;
   }
 
+  isEofError(ptr: number) {
+    const heapWords = this.heapItem(ptr);
+    if ((heapWords[0] & 0xf) != 13) {
+      return false;
+    }
+    return this.getString(heapWords[1]) == "eof";
+  }
+
   isNil(ptr: number) {
     return (this.heapItem(ptr)[0] & 0xf) == 1;
   }
@@ -203,27 +211,35 @@ class SchemeRuntime {
   }
 
   private ioWrite(ptr: number) {
+    const str = this.getString(ptr);
+    fs.writeSync(process.stdout.fd, str);
+  }
+
+  private getString(ptr: number) {
     const len = new Uint32Array(this.memory.buffer.slice(ptr, ptr + 4))[0];
     const utf8 = new Uint8Array(
       this.memory.buffer.slice(ptr + 4, ptr + len + 4)
     );
     const str = new TextDecoder().decode(utf8);
-    fs.writeSync(process.stdout.fd, str);
+    return str;
   }
 
   runRepl() {
     const env = this.environmentInit(this.gHeap, 0);
     this.registerBuiltins(this.gHeap, env);
     const prompt = "\n> ";
+    const noprompt = "\n  ";
     let usePrompt = true;
 
     while (true) {
       if (usePrompt) {
         fs.writeSync(process.stdout.fd, prompt);
         usePrompt = false;
+      } else {
+        fs.writeSync(process.stdout.fd, noprompt);
       }
       const input = this.read();
-      if (this.isError(input)) {
+      if (this.isEofError(input)) {
         this.readerRollback(this.gReader);
         continue;
       }
@@ -236,7 +252,7 @@ class SchemeRuntime {
   }
 
   public static async create(): Promise<SchemeRuntime> {
-    console.log("Loading runtime...")
+    console.log("Loading runtime...");
     const wasm = fs.readFileSync("dist/scheme.wasm");
 
     let reader = () => 0;
@@ -247,7 +263,7 @@ class SchemeRuntime {
         read: () => reader(),
         write: (ptr: number) => writer(ptr),
       };
-      console.log("Instatiating runtime...")
+      console.log("Instatiating runtime...");
       const module = await WebAssembly.instantiate(wasm, imports);
       const runtime = new SchemeRuntime(module.instance);
       reader = () => runtime.ioRead();
@@ -261,8 +277,8 @@ class SchemeRuntime {
 }
 
 async function main() {
-  console.log("Scheme.wasm")
-  console.log("===========")
+  console.log("Scheme.wasm");
+  console.log("===========");
   const runtime = await SchemeRuntime.create();
   runtime.runRepl();
 }
