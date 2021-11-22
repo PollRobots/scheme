@@ -22,7 +22,8 @@
 ;;   builtin = 11
 ;;   lambda = 12
 ;;   error = 13
-;; kMaxType = 13
+;;   values = 14
+;; kMaxType = 14
 
 ;;  Empty cell
 ;;    next-empty: i32 ptr
@@ -51,6 +52,10 @@
 ;; Error
 ;;    symbol: i32
 ;;    data: i32
+
+;;  Values
+;;    car: i32 ptr
+;;    cdr: 132 ptr
 
 ;; Heap
 ;;   Size:      i32

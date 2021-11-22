@@ -24,8 +24,12 @@
 (%define %builtin-num-truncate/ ()            (i32.const 21))
 (%define %builtin-num-exact-integer-sqrt ()   (i32.const 22))
 (%define %builtin-num-string->number ()       (i32.const 23))
-(%define %builtin-num-number->string ()        (i32.const 24))
-(table $table-builtin 25 anyfunc)
+(%define %builtin-num-number->string ()       (i32.const 24))
+(%define %builtin-bool-not ()                 (i32.const 25))
+(%define %builtin-bool-boolean? ()            (i32.const 26))
+(%define %builtin-bool-boolean=? ()           (i32.const 27))
+
+(table $table-builtin 28 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -61,6 +65,9 @@
   (%add-builtin (%sym-192 0x6e692D7463617865 0x71732D7265676574 0x7472 18) (%builtin-num-exact-integer-sqrt)) ;; '
   (%add-builtin (%sym-128 0x3e2d676e69727473 0x7265626d756e 14 ) (%builtin-num-string->number)) ;; 'string->number'
   (%add-builtin (%sym-128 0x3e2d7265626d756e 0x676e69727473 14 ) (%builtin-num-number->string)) ;; 'number->string'
+  (%add-builtin (%sym-32 0x746f6e 3) (%builtin-bool-not))
+  (%add-builtin (%sym-64 0x3f6e61656c6f6f62 8) (%builtin-bool-boolean?))
+  (%add-builtin (%sym-128 0x3d6e61656c6f6f62 0x3f 9) (%builtin-bool-boolean=?))
 
   (call $environment-add
     (local.get $env)
@@ -131,3 +138,6 @@
 (elem $table-builtin (%builtin-num-exact-integer-sqrt) $num-exact-integer-sqrt)
 (elem $table-builtin (%builtin-num-string->number) $num-string->number)
 (elem $table-builtin (%builtin-num-number->string) $num-number->string)
+(elem $table-builtin (%builtin-bool-not) $bool-not)
+(elem $table-builtin (%builtin-bool-boolean?) $bool-boolean?)
+(elem $table-builtin (%builtin-bool-boolean=?) $bool-boolean=?)
