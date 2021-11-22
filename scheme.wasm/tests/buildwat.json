@@ -261,9 +261,9 @@
       "index": "$runtime-cleanup"
     },
     {
-      "name": "stringToNumber",
+      "name": "stringToNumberImpl",
       "type": "func",
-      "index": "$string->number"
+      "index": "$string->number-impl"
     },
     {
       "name": "shortStrEq",

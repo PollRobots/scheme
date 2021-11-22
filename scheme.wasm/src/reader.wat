@@ -72,13 +72,19 @@
 )
 
 (func $reader-read-token (param $reader i32) (result i32)
-  (local $input i32)  ;; input string
-  (local $in-off i32) ;; code point offset within input string
-  (local $char i32)   ;; code point of the current character
-  (local $first i32)  ;; is this the first character
-  (local $acc-off i32) ;; accumulator offset
+  (local $input i32)      ;; input string
+  (local $in-off i32)     ;; code point offset within input string
+  (local $char i32)       ;; code point of the current character
+  (local $first i32)      ;; is this the first character
+  (local $is-string i32)  ;; is this a string
+  (local $acc-off i32)    ;; accumulator offset
   (local $accum i32)
   (local $size i32)
+  (local $escaping i32)
+  (local $hex-escape i32)
+  (local $hex-value i32)
+  (local $ws-escape i32)
+  (local $digit i32)
 
   ;; input = reader[0];
   (local.set $input (i32.load (local.get $reader)))
@@ -165,12 +171,212 @@
         ;; assert(acc-off == 0)
         (if (local.get $acc-off) (then unreachable))
 
-        ;; *accum = $char
-        (i32.store (local.get $accum) (local.get $char))
-        ;; acc-off = 1
-        (local.set $acc-off (i32.const 1))
+        (if (i32.eq (local.get $char) (i32.const 0x22))
+          (then
+            (local.set $is-string (i32.const 1))
+            (local.set $escaping (i32.const 0))
+            (local.set $hex-escape (i32.const 0))
+            (local.set $hex-value (i32.const 0))
+            (local.set $ws-escape (i32.const 0))
+
+            ;; start token with 'str '
+            (i32.store (local.get $accum) (i32.const 0x73))
+            (i32.store offset=4 (local.get $accum) (i32.const 0x74))
+            (i32.store offset=8 (local.get $accum) (i32.const 0x72))
+            (i32.store offset=12 (local.get $accum) (i32.const 0x20))
+            (local.set $acc-off (i32.const 4))
+          )
+          (else
+            ;; *accum = $char
+            (i32.store (local.get $accum) (local.get $char))
+            ;; acc-off = 1
+            (local.set $acc-off (i32.const 1))
+            (local.set $is-string (i32.const 0))
+          )
+        )
+
         ;; first = 0
         (local.set $first (i32.const 0))
+        (br $forever)
+      )
+    )
+
+    ;; if (acc-off >= size) {
+    (if (i32.ge_u (local.get $acc-off) (local.get $size))
+      (then
+        ;; TODO grow accum'
+        (local.set $accum (call $reader-grow-accum (local.get $reader)))
+        (local.set $size (i32.load offset=12 (local.get $reader)))
+      )
+    ;; }
+    )
+
+    ;; if (is-string)
+    (if (local.get $is-string)
+      (then
+        (if (local.get $escaping)
+          (then
+            (if (local.get $ws-escape)
+              (then
+                (if (i32.eq (local.get $char) (i32.const 0x0A))
+                  (then
+                    (local.set $escaping (i32.const 0))
+                    (local.set $ws-escape (i32.const 0))
+                  )
+                )
+                (br $forever)
+              )
+            )
+            (if (local.get $hex-escape)
+              (then
+                (if (i32.eq (local.get $char) (i32.const 0x3b)) ;; ';'
+                  (then
+                    (i32.store 
+                      (i32.add (local.get $accum) (i32.shl (local.get $acc-off) (i32.const 2)))
+                      (local.get $hex-value)
+                    )
+                    (%inc $acc-off)
+                    (local.set $hex-escape (i32.const 0))
+                    (local.set $escaping (i32.const 0))
+                    (br $forever)
+                  )
+                )
+
+                (block $b_digit
+                  ;; check if digit is in range 0x30-0x39
+                  (local.set $digit (i32.sub (local.get $char) (i32.const 0x30)))
+                  (br_if $b_digit (i32.lt_u (local.get $digit) (i32.const 10)))
+                  ;; check if digit is in range 0x41-46 A-F
+                  (%minus-eq $digit 0x11)
+                  (if (i32.lt_u (local.get $digit) (i32.const 6))
+                    (then
+                      (%plus-eq $digit 10)
+                      (br $b_digit) 
+                    )
+                  )
+                  ;; check if digit is in range 0x61-66 a-f
+                  (%minus-eq $digit 0x20)
+                  (if (i32.lt_u (local.get $digit) (i32.const 6))
+                    (then
+                      (%plus-eq $digit 10)
+                      (br $b_digit) 
+                    )
+                  )
+
+                  ;; not a hex digit
+                  (i32.store 
+                    (i32.add (local.get $accum) (i32.shl (local.get $acc-off) (i32.const 2)))
+                    (i32.const 0xFFFD)
+                  )
+                  (%inc $acc-off)
+                  (local.set $hex-escape (i32.const 0))
+                  (local.set $escaping (i32.const 0))
+                  (br $forever)
+                )
+                ;; hex-value = hex-value << 4 + digit
+                (local.set $hex-value
+                  (i32.add
+                    (i32.shl (local.get $hex-value) (i32.const 4))
+                    (local.get $digit)
+                  )
+                )
+                (br $forever)
+              )
+            )
+
+
+            (block $b_switch
+              (if (i32.eq (local.get $char) (i32.const 0x61)) ;; '\a'
+                (then
+                  (local.set $char (i32.const 0x07)) ;; alarm
+                  (br $b_switch)
+                )
+              )
+              (if (i32.eq (local.get $char) (i32.const 0x62)) ;; '\b'
+                (then
+                  (local.set $char (i32.const 0x07)) ;; backspace
+                  (br $b_switch)
+                )
+              )
+              (if (i32.eq (local.get $char) (i32.const 0x74)) ;; '\t'
+                (then
+                  (local.set $char (i32.const 0x09)) ;; tab
+                  (br $b_switch)
+                )
+              )
+              (if (i32.eq (local.get $char) (i32.const 0x6e)) ;; '\n'
+                (then
+                  (local.set $char (i32.const 0x0A)) ;; linefeed
+                  (br $b_switch)
+                )
+              )
+              (if (i32.eq (local.get $char) (i32.const 0x72)) ;; '\r'
+                (then
+                  (local.set $char (i32.const 0x0D)) ;; carriage return
+                  (br $b_switch)
+                )
+              )
+              (br_if $b_switch (i32.eq (local.get $char) (i32.const 0x22))) ;; '\"'
+              (br_if $b_switch (i32.eq (local.get $char) (i32.const 0x5c))) ;; '\\'
+              (br_if $b_switch (i32.eq (local.get $char) (i32.const 0x7c))) ;; '\|'
+              (if (i32.eq (local.get $char) (i32.const 0x78)) ;; '\x'
+                (then
+                  (local.set $hex-escape (i32.const 1))
+                  (local.set $hex-value (i32.const 0))
+                  (br $forever)
+                )
+              )
+              (if (call $is-whitespace (local.get $char))
+                (then
+                  (if (i32.eq (local.get $char) (i32.const 0x0A))
+                    (then
+                      (local.set $escaping (i32.const 0))
+                      (local.set $ws-escape (i32.const 0))
+                    )
+                    (else
+                      (local.set $ws-escape (i32.const 1))
+                    )
+                  )
+                  (br $forever)
+                )
+              )
+            )
+
+            (i32.store 
+              (i32.add (local.get $accum) (i32.shl (local.get $acc-off) (i32.const 2)))
+              (local.get $char)
+            )
+            (%inc $acc-off)
+            (local.set $escaping (i32.const 0))
+            (br $forever)
+          )
+          (else
+            ;; if (char == '"')
+            (if (i32.eq (local.get $char) (i32.const 0x22))
+              (then
+                ;; end string
+                (return (call $str-from-code-points
+                  (local.get $accum)
+                  (local.get $acc-off)
+                ))
+              )
+            )
+            ;; if (char == '\')
+            (if (i32.eq (local.get $char) (i32.const 0x5c)) ;; \
+              (then
+                ;; escape
+                (local.set $escaping (i32.const 1))
+                (br $forever)
+              )
+            )
+            (i32.store 
+              (i32.add (local.get $accum) (i32.shl (local.get $acc-off) (i32.const 2)))
+              (local.get $char)
+            )
+            (%inc $acc-off)
+            (br $forever)
+          )
+        )
       )
       ;; } else {
       (else
@@ -192,15 +398,6 @@
           (else
             (if (i32.eqz (call $is-whitespace (local.get $char)))
               (then
-                ;; if (acc-off >= size) {
-                (if (i32.ge_u (local.get $acc-off) (local.get $size))
-                  (then
-                    ;; TODO grow accum'
-                    (local.set $accum (call $reader-grow-accum (local.get $reader)))
-                    (local.set $size (i32.load offset=12 (local.get $reader)))
-                  )
-                ;; }
-                )
                 ;; accum[acc-off] = char
                 (i32.store
                   (i32.add (local.get $accum) (i32.shl (local.get $acc-off) (i32.const 2)))

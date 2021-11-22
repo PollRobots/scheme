@@ -22,6 +22,7 @@
 (global $g-dot        (mut i32) (i32.const 0))
 (global $g-eof        (mut i32) (i32.const 0))
 (global $g-quote      (mut i32) (i32.const 0))
+(global $g-args       (mut i32) (i32.const 0))
 
 (func $runtime-init
   (global.set $g-reader (call $reader-init))
@@ -48,6 +49,7 @@
   (global.set $g-dot (%sym-32 0x202e20 3))
   (global.set $g-eof (%sym-32 0x666f65 3))
   (global.set $g-quote (%sym-32 0x22 1))
+  (global.set $g-args (%sym-32 0x73677261 4))
 )
 
 (func $runtime-cleanup
@@ -246,14 +248,16 @@
   ;; }
   )
 
-  ;; raw-token = heap-alloc(6, token-str, 0)
-  (local.set $raw-token (call $heap-alloc (global.get $g-heap) (i32.const 7) (local.get $token-str) (i32.const 0)))
+  ;; raw-token = heap-alloc(7, token-str, 0)
+  (local.set $raw-token (%alloc-str (local.get $token-str)))
   ;; return atom(raw-token);
   (return (call $atom (local.get $raw-token)))
 )
 
 (func $atom (param $token i32)  (result i32)
   (local $token-str i32)
+  (local $str-len i32)
+  (local $atom-str i32)
   (local $atom i32)
 
   ;; if ((token[0] & 0xF) != 7 {
@@ -283,8 +287,24 @@
     ;; }
   )
 
-  ;; atom = string->number(token)
-  (local.set $atom (call $string->number (local.get $token)))
+  ;; if token-str.startsWith('str ')
+  ;; if (short-str-start-with(token-str, 0, 'str ', 4)) {
+  (if (call $short-str-start-with (local.get $token-str) (i32.const 0) (i32.const 0x20727473) (i32.const 4))
+    (then
+      (local.set $str-len (i32.load (local.get $token-str)))
+      (i32.store offset=4 
+        (local.get $token-str) 
+        (i32.sub (local.get $str-len) (i32.const 4))
+      )
+      (local.set $atom-str (call $str-dup (i32.add (local.get $token-str) (i32.const 4))))
+      (i32.store offset=4 (local.get $token-str) (i32.const 0x20727473))
+      (return (%alloc-str (local.get $atom-str)))
+    )
+    ;; }
+  )
+
+  ;; atom = string->number-impl(token, 10)
+  (local.set $atom (call $string->number-impl (local.get $token) (i32.const 10)))
   ;; if (is-truthy(atom)) {
   (if (call $is-truthy (local.get $atom))
     (then
@@ -456,13 +476,12 @@
   )
 )
 
-(func $string->number (param $str i32) (result i32)
+(func $string->number-impl (param $str i32) (param $radix i32) (result i32)
   (local $str-ptr i32)    ;; pointer to the string
   (local $offset i32)     ;; byte offset in the string
   (local $str-len i32)
   (local $exact i32)      ;; is exact
   (local $inexact i32)    ;; is inexact
-  (local $radix i32)      ;; the radix
   (local $radix-count i32);; count of radix prefixes (greater than 1 is an error)
   (local $negative i32)   ;; is negative
   (local $integer i64)
@@ -486,7 +505,6 @@
   (local.set $offset (i32.const 0))
   (local.set $exact (i32.const 0))
   (local.set $inexact (i32.const 0))
-  (local.set $radix (i32.const 10))
   (local.set $radix-count (i32.const 0))
   (local.set $negative (i32.const 0))
   (local.set $decimal (i32.const 0))
@@ -996,3 +1014,8 @@
   )
 )
 
+(func $argument-error (param $args i32) (result i32)
+  (return
+    (%alloc-error-cons (global.get $g-args) (local.get $args))
+  )
+)

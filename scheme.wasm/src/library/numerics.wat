@@ -8,7 +8,7 @@
       (br_if $b_fail (i32.ne (%get-type $temp) (%nil-type)))
       (br $b_check)
     )
-    (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $ptr)))
+    (return (call $argument-error (local.get $ptr)))
   )
 
   (local.set $temp (%car-l $ptr))
@@ -80,7 +80,7 @@
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
       (br $b_check)
     )
-    (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
   )
 
   (return (call $num-cmp-impl (local.get $args) (i32.const 0)))
@@ -97,7 +97,7 @@
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
       (br $b_check)
     )
-    (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
   )
 
   (return (call $num-cmp-impl (local.get $args) (i32.const 1)))
@@ -114,7 +114,7 @@
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
       (br $b_check)
     )
-    (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
   )
 
   (return (call $num-cmp-impl (local.get $args) (i32.const 2)))
@@ -131,7 +131,7 @@
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
       (br $b_check)
     )
-    (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
   )
 
   (return (call $num-cmp-impl (local.get $args) (i32.const 3)))
@@ -148,7 +148,7 @@
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
       (br $b_check)
     )
-    (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
   )
 
   (return (call $num-cmp-impl (local.get $args) (i32.const 4)))
@@ -278,7 +278,7 @@
 
   (if (i32.eqz (call $all-numeric (local.get $args)))
     (then
-      (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
     )
   )
 
@@ -317,7 +317,7 @@
 
   (if (i32.eqz (call $all-numeric (local.get $args)))
     (then
-      (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
     )
   )
 
@@ -360,7 +360,7 @@
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
       (br $b_check)
     )
-    (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
   )
 
   ;; car = car(args) 
@@ -415,7 +415,7 @@
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
       (br $b_check)
     )
-    (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
   )
 
   (local.set $arg (%car-l $args))
@@ -458,7 +458,7 @@
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
       (br $b_check)
     )
-    (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
   )
 
   (local.set $arg-num (%car-l $args))
@@ -506,7 +506,7 @@
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
       (br $b_check)
     )
-    (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
   )
 
   (local.set $arg-num (%car-l $args))
@@ -556,7 +556,7 @@
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
       (br $b_check)
     )
-    (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
   )
 
   (local.set $arg-num (%car-l $args))
@@ -613,7 +613,7 @@
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
       (br $b_check)
     )
-    (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
   )
 
   (local.set $arg-num (%car-l $args))
@@ -669,7 +669,7 @@
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
       (br $b_check)
     )
-    (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
   )
 
   (local.set $arg-num (%car-l $args))
@@ -735,7 +735,7 @@
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
       (br $b_check)
     )
-    (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
   )
 
   (local.set $arg-num (%car-l $args))
@@ -805,13 +805,13 @@
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
       (br $b_check)
     )
-    (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+    (return (call $argument-error (local.get $args)))
   )
 
   (local.set $arg (%car-l $args))
   (if (i32.ne (%get-type $arg) (%i64-type))
     (then
-      (return (%alloc-error-cons (%sym-32 0x677261 3) (local.get $args)))
+      (return (call $argument-error (local.get $args)))
     )
   )
 
@@ -846,4 +846,106 @@
       )
     )
   )
+)
+
+(func $num-string->number (param $env i32) (param $args i32) (result i32)
+  (local $args-len i32)
+  (local $radix i32)
+  (local $str i32)
+
+  (local.set $args-len (call $list-len (local.get $args)))
+
+  (block $b_check
+    (block $b_fail
+      (if (i32.eq (local.get $args-len) (i32.const 1))
+        (then
+          (local.set $radix (i32.const 10))
+          (br $b_check)
+        ) 
+      )
+      (if (i32.eq (local.get $args-len) (i32.const 2))
+        (then
+          (local.set $radix (%car (%cdr-l $args)))
+          (br_if $b_fail (i32.ne (%get-type $radix) (%i64-type)))
+          (br_if $b_fail (i64.gt_u (i64.load offset=4 (local.get $radix)) (i64.const 16)))
+          (local.set $radix (i32.wrap_i64 (i64.load offset=4 (local.get $radix))))
+          (if (i32.ne (local.get $radix) (i32.const 16))
+            (then
+              (if (i32.ne (local.get $radix) (i32.const 10))
+                (then
+                  (if (i32.ne (local.get $radix) (i32.const 8))
+                    (then
+                      (br_if $b_fail (i32.ne (local.get $radix) (i32.const 2)))
+                    )
+                  )
+                )
+              )
+            )
+          )
+          (br $b_check)
+        )
+      )
+    )
+    (return (call $argument-error (local.get $args)))
+  )
+
+  (local.set $str (%car-l $args))
+  (if (i32.ne (%get-type $str) (%str-type))
+    (then (return (call $argument-error (local.get $args))))
+  )
+
+  (return (call $string->number-impl (local.get $str) (local.get $radix)))
+)
+
+(func $num-number->string (param $env i32) (param $args i32) (result i32)
+  (local $args-len i32)
+  (local $radix i32)
+  (local $num i32)
+  (local $str i32)
+
+  (local.set $args-len (call $list-len (local.get $args)))
+
+  (block $b_check
+    (block $b_fail
+      (if (i32.eq (local.get $args-len) (i32.const 1))
+        (then
+          (local.set $radix (i32.const 10))
+          (br $b_check)
+        ) 
+      )
+      (if (i32.eq (local.get $args-len) (i32.const 2))
+        (then
+          (local.set $radix (%car (%cdr-l $args)))
+          (br_if $b_fail (i32.ne (%get-type $radix) (%i64-type)))
+          (br_if $b_fail (i64.gt_u (i64.load offset=4 (local.get $radix)) (i64.const 16)))
+          (local.set $radix (i32.wrap_i64 (i64.load offset=4 (local.get $radix))))
+          (if (i32.ne (local.get $radix) (i32.const 16))
+            (then
+              (if (i32.ne (local.get $radix) (i32.const 10))
+                (then
+                  (if (i32.ne (local.get $radix) (i32.const 8))
+                    (then
+                      (br_if $b_fail (i32.ne (local.get $radix) (i32.const 2)))
+                    )
+                  )
+                )
+              )
+            )
+          )
+          (br $b_check)
+        )
+      )
+    )
+    (return (call $argument-error (local.get $args)))
+  )
+
+  (local.set $num (%car-l $args))
+  (if (i32.ne (%get-type $num) (%i64-type))
+    ;; TODO implement float support
+    (then (return (call $argument-error (local.get $args))))
+  )
+
+  (local.set $str (call $integer->string-impl (i64.load offset=4 (local.get $num)) (local.get $radix)))
+
+  (return (%alloc-str (local.get $str)))
 )

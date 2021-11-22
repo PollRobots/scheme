@@ -23,7 +23,9 @@
 (%define %builtin-num-floor/ ()               (i32.const 20))
 (%define %builtin-num-truncate/ ()            (i32.const 21))
 (%define %builtin-num-exact-integer-sqrt ()   (i32.const 22))
-(table $table-builtin 23 anyfunc)
+(%define %builtin-num-string->number ()       (i32.const 23))
+(%define %builtin-num-number->string ()        (i32.const 24))
+(table $table-builtin 25 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -57,6 +59,8 @@
   (%add-builtin (%sym-64 0x2F726f6f6c66 6) (%builtin-num-floor/)) ;; 'floor/'
   (%add-builtin (%sym-128 0x657461636e757274 0x2F 9) (%builtin-num-truncate/)) ;; 'truncate/'
   (%add-builtin (%sym-192 0x6e692D7463617865 0x71732D7265676574 0x7472 18) (%builtin-num-exact-integer-sqrt)) ;; '
+  (%add-builtin (%sym-128 0x3e2d676e69727473 0x7265626d756e 14 ) (%builtin-num-string->number)) ;; 'string->number'
+  (%add-builtin (%sym-128 0x3e2d7265626d756e 0x676e69727473 14 ) (%builtin-num-number->string)) ;; 'number->string'
 
   (call $environment-add
     (local.get $env)
@@ -125,3 +129,5 @@
 (elem $table-builtin (%builtin-num-floor/) $num-floor/)
 (elem $table-builtin (%builtin-num-truncate/) $num-truncate/)
 (elem $table-builtin (%builtin-num-exact-integer-sqrt) $num-exact-integer-sqrt)
+(elem $table-builtin (%builtin-num-string->number) $num-string->number)
+(elem $table-builtin (%builtin-num-number->string) $num-number->string)

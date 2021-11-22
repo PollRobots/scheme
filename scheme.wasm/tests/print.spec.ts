@@ -20,7 +20,7 @@ interface TestExports extends CommonTestExports {
   mallocInit: () => void;
   runtimeInit: () => void;
   runtimeCleanup: () => void;
-  stringToNumber: (str: number) => number;
+  stringToNumberImpl: (str: number, radix: number) => number;
   shortStrEq: (str: number, shortStr: number, shortStrLen: number) => number;
   atom: (token: number) => number;
   stringToDatum: (str: number) => number;
@@ -39,7 +39,7 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
     mallocFree: instance.exports.mallocFree as (ptr: number) => void,
     runtimeInit: instance.exports.runtimeInit as () => void,
     runtimeCleanup: instance.exports.runtimeCleanup as () => void,
-    stringToNumber: instance.exports.stringToNumber as (str: number) => number,
+    stringToNumberImpl: instance.exports.stringToNumberImpl as (str: number, radix: number) => number,
     shortStrEq: instance.exports.shortStrEq as (
       str: number,
       shortStr: number,

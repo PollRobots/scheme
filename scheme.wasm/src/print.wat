@@ -41,7 +41,7 @@
     (if (i32.eq (local.get $type) (%i64-type))
       (then
         ;; print-integer((i64)ptr[4])
-        (call $print-integer (i64.load offset=4 (local.get $ptr)))
+        (call $print-integer (i64.load offset=4 (local.get $ptr)) (i32.const 10))
         ;; break
         (br $b_switch)
       )
@@ -137,9 +137,9 @@
   (call $print-symbol (global.get $g-lt))
   (call $print-symbol (local.get $sym))
   (call $print-symbol (global.get $g-space))
-  (call $print-integer (i64.extend_i32_u (local.get $type)))
+  (call $print-integer (i64.extend_i32_u (local.get $type)) (i32.const 10))
   (call $print-symbol (global.get $g-space))
-  (call $print-integer (i64.extend_i32_u (local.get $ptr)))
+  (call $print-integer (i64.extend_i32_u (local.get $ptr)) (i32.const 16))
   (call $print-symbol (global.get $g-space))
   (call $print-symbol (global.get $g-gt))
 )
@@ -156,13 +156,24 @@
   )
 )
 
-(func $print-integer (param $num i64)
+(func $print-integer (param $num i64) (param $radix i32)
+  (local $str-ptr i32) 
+
+  (local.set $str-ptr (call $integer->string-impl (local.get $num) (local.get $radix)))
+  (call $io-write (local.get $str-ptr))
+  (call $malloc-free (local.get $str-ptr))
+)
+
+(func $integer->string-impl (param $num i64) (param $radix i32) (result i32)
   (local $buffer i32) ;; buffer for characters
   (local $ptr i32)
   (local $digit i32)
   (local $len i32)    ;; number of characters
   (local $is-negative i32)
   (local $str i32)
+  (local $r64 i64)
+
+  (local.set $r64 (i64.extend_i32_u (local.get $radix)))
 
   ;; if (num < 0) {
   (if (i64.lt_s (local.get $num) (i64.const 0))
@@ -180,10 +191,10 @@
     ;; }
   )
 
-  ;; buffer = malloc(80) ;; 20 characters 
-  (local.set $buffer (call $malloc (i32.const 80)))
-  ;; ptr = buffer + 80;
-  (local.set $ptr (i32.add (local.get $buffer) (i32.const 80)))
+  ;; buffer = malloc(0x100) ;; 100 characters 
+  (local.set $buffer (call $malloc (i32.const 0x100)))
+  ;; ptr = buffer + 0x100;
+  (local.set $ptr (i32.add (local.get $buffer) (i32.const 0x100)))
   ;; len = 0
   (local.set $len (i32.const 0))
 
@@ -205,14 +216,23 @@
         (loop $b_start
           (br_if $b_end (i64.eqz (local.get $num)))
 
-          ;; digit = num % 10
-          (local.set $digit (i32.wrap_i64 (i64.rem_u (local.get $num) (i64.const 10))))
-          ;; num = num / 10
-          (local.set $num (i64.div_u (local.get $num) (i64.const 10)))
+          ;; digit = num % radix
+          (local.set $digit (i32.wrap_i64 (i64.rem_u (local.get $num) (local.get $r64))))
+          ;; num = num / radix
+          (local.set $num (i64.div_u (local.get $num) (local.get $r64)))
           ;; ptr -= 4;
           (%minus-eq $ptr 4)
-          ;; *ptr = 0x30 + digit
-          (i32.store (local.get $ptr) (i32.add (i32.const 0x30) (local.get $digit)))
+          (if (i32.lt_u (local.get $digit) (i32.const 10)) 
+            (then
+              ;; *ptr = 0x30 + digit
+              (i32.store (local.get $ptr) (i32.add (i32.const 0x30) (local.get $digit)))
+            )
+            (else
+              ;; *ptr = 0x41 + digit - 10
+              ;; *ptr = 0x37 + digit
+              (i32.store (local.get $ptr) (i32.add (i32.const 0x37) (local.get $digit)))
+            )
+          )
           ;; len++
           (%inc $len)
           (br $b_start)
@@ -238,13 +258,10 @@
 
   ;; str = str-from-code-points(ptr, len)
   (local.set $str (call $str-from-code-points (local.get $ptr) (local.get $len)))
-  ;; write(str)
-  (call $io-write (local.get $str))
-
   ;; malloc-free(buffer)
   (call $malloc-free (local.get $buffer))
-  ;; malloc-free(str)
-  (call $malloc-free (local.get $str))
+
+  (return (local.get $str))
 )
  
 (func $print-symbol (param $sym i32)

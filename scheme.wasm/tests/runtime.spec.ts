@@ -19,7 +19,7 @@ interface TestExports extends CommonTestExports {
   gTrue: () => number;
   gFalse: () => number;
   environmentInit: (heap: number, outer: number) => number;
-  stringToNumber: (str: number) => number;
+  stringToNumberImpl: (str: number, radius: number) => number;
   shortStrEq: (str: number, shortStr: number, shortStrLen: number) => number;
   atom: (token: number) => number;
   stringToDatum: (str: number) => number;
@@ -41,7 +41,7 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
       heap: number,
       outer: number
     ) => number,
-    stringToNumber: instance.exports.stringToNumber as (str: number) => number,
+    stringToNumberImpl: instance.exports.stringToNumberImpl as (str: number, radix: number) => number,
     shortStrEq: instance.exports.shortStrEq as (
       str: number,
       shortStr: number,
@@ -113,7 +113,7 @@ describe("runtime wasm", () => {
     for (const { str, ex } of kTestNumbers) {
       const strPtr = createString(exports, str);
       const strHeapPtr = exports.heapAlloc(exports.gHeap(), 7, strPtr, 0);
-      const numHeapPtr = exports.stringToNumber(strHeapPtr);
+      const numHeapPtr = exports.stringToNumberImpl(strHeapPtr, 10);
 
       const words = new Int32Array(
         exports.memory.buffer.slice(numHeapPtr, numHeapPtr + 12)
@@ -155,7 +155,7 @@ describe("runtime wasm", () => {
     for (const [str, exp] of kTestInvalidNumbers) {
       const strPtr = createString(exports, str);
       const strHeapPtr = exports.heapAlloc(exports.gHeap(), 7, strPtr, 0);
-      const numHeapPtr = exports.stringToNumber(strHeapPtr);
+      const numHeapPtr = exports.stringToNumberImpl(strHeapPtr, 10);
       exports.print(numHeapPtr);
       expect(written.splice(0, written.length).join("")).to.equal(exp);
       // const words = new Int32Array(
