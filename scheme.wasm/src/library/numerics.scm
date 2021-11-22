@@ -1,0 +1,33 @@
+(define (number? (x)) (integer? x))
+(define (complex? (x)) #f)
+(define (real? (x)) #f)
+(define (rational? (x)) #f)
+
+(define (exact? (x)) (integer? x))
+(define (inexact? (x)) #f)
+(define (exact-integer? (x)) (integer? x))
+(define (finite? (x)) (integer? x))
+(define (infinite? (x)) #f)
+(define (nan? (x)) #f)
+
+(define (zero? (x)) (= x 0))
+(define (positive? (x)) (> x 0))
+(define (negative? (x)) (< x 0))
+(define (even? (x)) (zero? (floor-remainder x 2)))
+(define (odd? (x)) (not (even? x)))
+
+(define (quotient (x y)) (truncate-quotient x y))
+(define (remainder (x y)) (truncate-remainder x y))
+(define (modulo (x y)) (floor-remainder x y))
+(define (gcd (a b))
+  (if (zero? b) 
+    a
+    (if (> a b)
+      (gcd b (floor-remainder a b))
+      (gcd a (floor-remainder b a))))
+(define (lcm (a b))
+  (if (or (zero? a) (zero? b))
+    (+ a b)
+    (* a (truncate-quotient b (gcd a b)))))
+(define (square (x)) (* x x))
+

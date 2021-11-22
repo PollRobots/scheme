@@ -38,7 +38,7 @@
   ;; *ptr = len
   (i32.store (local.get $ptr) (local.get $len))
   ;; *(ptr + 4) = data
-  (i64.store (i32.add (local.get $ptr) (i32.const 4)) (local.get $data))
+  (i64.store offset=4 (local.get $ptr) (local.get $data))
 
   ;; return ptr
   (return (local.get $ptr))
@@ -69,9 +69,49 @@
   ;; *ptr = len
   (i32.store (local.get $ptr) (local.get $len))
   ;; *(ptr + 4) = data1
-  (i64.store (i32.add (local.get $ptr) (i32.const 4)) (local.get $data1))
+  (i64.store offset=4 (local.get $ptr) (local.get $data1))
   ;; *(ptr + 12) = data2
-  (i64.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $data2))
+  (i64.store offset=12 (local.get $ptr) (local.get $data2))
+
+  ;; return ptr
+  (return (local.get $ptr))
+)
+
+(func $str-from-192 (param $len i32) (param $data1 i64) (param $data2 i64) (param $data3 i64) (result i32)
+  (local $ptr i32)  ;; the return value and pointer to the string
+
+  ;; if (len > 24) {
+  (if (i32.gt_u (local.get $len) (i32.const 24))
+    ;; trap
+    (then unreachable)
+  )
+  ;; } else if (len <= 8) {
+  (if (i32.le_s (local.get $len) (i32.const 8))
+    (then
+      ;; return str-from-64(len, data1)
+      (return (call $str-from-64 (local.get $len) (local.get $data1)))
+    )
+  )
+  ;; } else if (len <= 16) {
+  (if (i32.le_s (local.get $len) (i32.const 16))
+    (then
+      ;; return str-from-128(len, data1, data2)
+      (return (call $str-from-128 (local.get $len) (local.get $data1) (local.get $data2)))
+      ;; }
+    )
+  )
+
+  ;; ptr = malloc(28)
+  (local.set $ptr (call $malloc (i32.const 28)))
+
+  ;; *ptr = len
+  (i32.store (local.get $ptr) (local.get $len))
+  ;; *(ptr + 4) = data1
+  (i64.store offset=4 (local.get $ptr) (local.get $data1))
+  ;; *(ptr + 12) = data2
+  (i64.store offset=12 (local.get $ptr) (local.get $data2))
+  ;; *(ptr + 20) = data3
+  (i64.store offset=20 (local.get $ptr) (local.get $data3))
 
   ;; return ptr
   (return (local.get $ptr))

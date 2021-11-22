@@ -142,9 +142,18 @@ while the working set is non-empty:
           (br $b_switch)
         )
       )
-
       ;; case error-type
       (if (i32.eq (local.get $type) (%error-type))
+        (then
+        ;; gc-maybe-gray-enqueue(car(curr))
+        (call $gc-maybe-gray-enqueue (%car-l $curr))
+        ;; gc-maybe-gray-enqueue(cdr(curr))
+        (call $gc-maybe-gray-enqueue (%cdr-l $curr))
+        (br $b_switch)
+        )
+      )
+      ;; case values-type
+      (if (i32.eq (local.get $type) (%values-type))
         (then
         ;; gc-maybe-gray-enqueue(car(curr))
         (call $gc-maybe-gray-enqueue (%car-l $curr))

@@ -100,6 +100,17 @@
         (br $b_switch)
       )
     )
+    ;; case values:
+    (if (i32.eq (local.get $type (%values-type)))
+      (then
+        (call $print-cons
+          (i32.load offset=4 (local.get $ptr))
+          (i32.load offset=8 (local.get $ptr))
+          (i32.const 0)
+        )
+        (br $b_switch)
+      )
+    )
     ;; default:
     (call $print-other (global.get $g-unknown) (local.get $type) (local.get $ptr))
       ;; print-error();

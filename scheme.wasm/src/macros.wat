@@ -30,7 +30,9 @@
 ;;   special = 10
 ;;   builtin = 11
 ;;   lambda = 12
-;; kMaxType = 12
+;;   error = 13
+;;   values = 14
+;; kMaxType = 14
 (%define %empty-type () (i32.const 0))
 (%define %nil-type () (i32.const 1))
 (%define %boolean-type () (i32.const 2))
@@ -45,7 +47,8 @@
 (%define %builtin-type () (i32.const 11))
 (%define %lambda-type () (i32.const 12))
 (%define %error-type () (i32.const 13))
-(%define %max-heap-type () (i32.const 13))
+(%define %values-type () (i32.const 14))
+(%define %max-heap-type () (i32.const 14))
 
 (%define %get-type (%arg) (i32.and (i32.load (local.get %arg)) (i32.const 0xF)))
 
@@ -73,8 +76,12 @@
 
 (%define %sym-32 (%name %len) (call $heap-alloc (global.get $g-heap) (%symbol-type) (call $str-from-32 (i32.const %len) (i32.const %name)) (i32.const 0)))
 (%define %sym-64 (%name %len) (call $heap-alloc (global.get $g-heap) (%symbol-type) (call $str-from-64 (i32.const %len) (i64.const %name)) (i32.const 0)))
+(%define %sym-128 (%name1 %name2 %len) (call $heap-alloc (global.get $g-heap) (%symbol-type) (call $str-from-128 (i32.const %len) (i64.const %name1) (i64.const %name2)) (i32.const 0)))
+(%define %sym-192 (%name1 %name2 %name3 %len) (call $heap-alloc (global.get $g-heap) (%symbol-type) (call $str-from-192 (i32.const %len) (i64.const %name1) (i64.const %name2) (i64.const %name3)) (i32.const 0)))
 
+(%define %alloc-i64 (%val) (call $heap-alloc (global.get $g-heap) (%i64-type) (i32.wrap_i64 %val) (i32.wrap_i64 (i64.shr_u %val (i64.const 32)))))
 (%define %alloc-cons (%car %cdr) (call $heap-alloc (global.get $g-heap) (%cons-type) %car %cdr))
 (%define %alloc-str (%str) (call $heap-alloc (global.get $g-heap) (%str-type) %str (i32.const 0)))
 (%define %alloc-error-cons (%sym %args) (call $heap-alloc (global.get $g-heap) (%error-type) %sym %args))
 (%define %alloc-error (%sym %args) (call $heap-alloc (global.get $g-heap) (%error-type) %sym (%alloc-cons %args (global.get $g-nil))))
+(%define %alloc-values (%car %cdr) (call $heap-alloc (global.get $g-heap) (%values-type) %car %cdr))

@@ -196,7 +196,8 @@
                 (if (i32.ge_u (local.get $acc-off) (local.get $size))
                   (then
                     ;; TODO grow accum'
-                    unreachable
+                    (local.set $accum (call $reader-grow-accum (local.get $reader)))
+                    (local.set $size (i32.load offset=12 (local.get $reader)))
                   )
                 ;; }
                 )
@@ -230,6 +231,41 @@
 
   ;; trap
   unreachable
+)
+
+(func $reader-grow-accum (param $reader i32) (result i32)
+  (local $old-accum i32)
+  (local $old-size i32)
+  (local $new-accum i32)
+  (local $new-size i32)
+  (local $src-ptr i32)
+  (local $dest-ptr i32)
+
+  (local.set $src-ptr (local.tee $old-accum (i32.load offset=8 (local.get $reader))))
+  (local.set $old-size (i32.load offset=12 (local.get $reader)))
+
+  (local.set $new-size (i32.shl (local.get $old-size) (i32.const 1)))
+  (local.set $dest-ptr (local.tee $new-accum (call $malloc (i32.shl (local.get $new-size) (i32.const 2)))))
+
+  (block $b_end
+    (loop $b_start
+      (br_if $b_end (i32.eqz (local.get $old-size)))
+
+      (i32.store 
+        (local.get $dest-ptr) 
+        (i32.load (local.get $src-ptr))
+      )
+
+      (%plus-eq $src-ptr 4)
+      (%plus-eq $dest-ptr 4)
+      (%dec $old-size)
+      (br $b_start)
+    )
+  )
+
+  (i32.store offset=8 (local.get $reader) (local.get $new-accum))
+  (i32.store offset=12 (local.get $reader) (local.get $new-size))
+  (return (local.get $new-accum))
 )
 
 (func $primitive-read (param $reader i32) (result i32)

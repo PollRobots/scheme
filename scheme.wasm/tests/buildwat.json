@@ -16,13 +16,13 @@
     "src/let.wat",
     "src/string.wat",
     "src/malloc.wat",
-    "src/math.wat",
     "src/print.wat",
     "src/quote.wat",
     "src/reader.wat",
     "src/runtime.wat",
     "src/start.wat",
-    "src/xxh3.wat"
+    "src/xxh3.wat",
+    "src/library/numerics.wat"
   ],
   "importFuncs": [
     {

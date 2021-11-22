@@ -38,13 +38,14 @@
   )
 
   ;; return eval(env, eval(env, test)  ? consequent : alternate)
+
   (return
     (call $eval
       (local.get $env)
       (select
         (local.get $consequent)
         (local.get $alternate)
-        (call $eval (local.get $env) (local.get $test))
+        (call $is-truthy (call $eval (local.get $env) (local.get $test)))
       )
     )
   )

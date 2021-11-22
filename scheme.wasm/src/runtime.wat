@@ -882,6 +882,8 @@
     ;; case %lambda-type:
     (if (i32.eq (local.get $op-type) (%lambda-type))
       (then
+        (local.set $args
+          (call $eval-list (local.get $env) (local.get $args)))
         (return 
           (call $apply-lambda (local.get $env) (local.get $op) (local.get $args))
         )

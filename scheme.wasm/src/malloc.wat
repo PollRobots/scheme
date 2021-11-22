@@ -24,12 +24,12 @@
   ;; set free pointer to first address after the header
   (i32.store (global.get $malloc-hdr-offset) (local.get $first))
   ;; set memory size (this is the total size of the memory in bytes)
-  (i32.store (i32.add (global.get $malloc-hdr-offset) (i32.const 4)) (local.get $size))
+  (i32.store offset=4 (global.get $malloc-hdr-offset) (local.get $size))
 )
 
 (func $malloc-store-list (param $ptr i32) (param $next i32) (param $size i32)
   (i32.store (local.get $ptr) (local.get $next))
-  (i32.store (i32.add (local.get $ptr) (i32.const 4)) (local.get $size))
+  (i32.store offset=4 (local.get $ptr) (local.get $size))
 )
 
 (func $malloc-load-list (param $ptr i32) (result i64)
@@ -125,6 +125,9 @@
   ;; memsize = memory.size << 16
   (local.set $memsize (i32.shl (memory.size) (i32.const 16)))
 
+  ;; convert from pages to address
+  (local.set $oldsize (i32.shl (local.get $oldsize) (i32.const 16)))
+
   ;; new free list item (marked as an inuse item)
   ;; malloc-store-list(oldsize, oldsize, memsize - oldsize - 8)
   (call $malloc-store-list
@@ -135,7 +138,7 @@
 
   ;; give the new memory to malloc by 'free'ing it
   ;; *(malloc-hdr_offset + 4) = memsize
-  (i32.store (i32.add (global.get $malloc-hdr-offset) (i32.const 4)) (local.get $memsize))
+  (i32.store offset=4 (global.get $malloc-hdr-offset) (local.get $memsize))
   ;; malloc-free(oldsize + 8)
   (call $malloc-free (i32.add (local.get $oldsize) (i32.const 8)))
 
