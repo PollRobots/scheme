@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { use } from "chai";
 import fs from "fs";
+import { exit } from "process";
 
 interface CoreExports {
   memory: WebAssembly.Memory;
@@ -25,6 +26,19 @@ interface CoreExports {
   gcRun: (env: number) => void;
   malloc: (size: number) => number;
   free: (ptr: number) => void;
+}
+
+class RuntimeExitError extends Error {
+  private readonly exitCode_: number;
+
+  constructor(exitCode: number, message?: string) {
+    super(message);
+    this.exitCode_ = exitCode;
+  }
+
+  public get exitCode(): number {
+    return this.exitCode_;
+  }
 }
 
 class SchemeRuntime {
@@ -215,6 +229,10 @@ class SchemeRuntime {
     fs.writeSync(process.stdout.fd, str);
   }
 
+  private exit(exitCode: number) {
+    throw new RuntimeExitError(exitCode);
+  }
+
   private getString(ptr: number) {
     const len = new Uint32Array(this.memory.buffer.slice(ptr, ptr + 4))[0];
     const utf8 = new Uint8Array(
@@ -231,22 +249,29 @@ class SchemeRuntime {
     const noprompt = "\n  ";
     let usePrompt = true;
 
-    while (true) {
-      if (usePrompt) {
-        fs.writeSync(process.stdout.fd, prompt);
-        usePrompt = false;
-      } else {
-        fs.writeSync(process.stdout.fd, noprompt);
+    try {
+      while (true) {
+        if (usePrompt) {
+          fs.writeSync(process.stdout.fd, prompt);
+          usePrompt = false;
+        } else {
+          fs.writeSync(process.stdout.fd, noprompt);
+        }
+        const input = this.read();
+        if (this.isEofError(input)) {
+          this.readerRollback(this.gReader);
+          continue;
+        }
+        usePrompt = true;
+        const result = this.eval(env, input);
+        if (!this.isNil(result)) {
+          this.print(result);
+        }
       }
-      const input = this.read();
-      if (this.isEofError(input)) {
-        this.readerRollback(this.gReader);
-        continue;
-      }
-      usePrompt = true;
-      const result = this.eval(env, input);
-      if (!this.isNil(result)) {
-        this.print(result);
+    } catch (err) {
+      if (err instanceof RuntimeExitError) {
+        console.log(`Scheme exited with : ${err.exitCode}`);
+        process.exit(err.exitCode);
       }
     }
   }
@@ -257,17 +282,22 @@ class SchemeRuntime {
 
     let reader = () => 0;
     let writer = (ptr: number) => {};
+    let exit = (exitCode: number) => {};
     try {
       const imports: WebAssembly.Imports = {};
       imports["io"] = {
         read: () => reader(),
         write: (ptr: number) => writer(ptr),
       };
+      imports["process"] = {
+        exit: (exitCode: number) => exit(exitCode),
+      };
       console.log("Instatiating runtime...");
       const module = await WebAssembly.instantiate(wasm, imports);
       const runtime = new SchemeRuntime(module.instance);
       reader = () => runtime.ioRead();
       writer = (ptr: number) => runtime.ioWrite(ptr);
+      exit = (exitCode: number) => runtime.exit(exitCode);
       return runtime;
     } catch (err) {
       console.error(err);

@@ -54,8 +54,13 @@
 (%define %builtin-assv ()                     (i32.const 51))
 (%define %builtin-assoc ()                    (i32.const 52))
 (%define %builtin-list-copy ()                (i32.const 53))
+(%define %builtin-symbol? ()                  (i32.const 54))
+(%define %builtin-symbol=? ()                 (i32.const 55))
+(%define %builtin-symbol->string ()           (i32.const 56))
+(%define %builtin-string->symbol ()           (i32.const 57))
+(%define %builtin-exit ()                     (i32.const 58))
 
-(table $table-builtin 54 anyfunc)
+(table $table-builtin 59 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -120,6 +125,11 @@
   (%add-builtin (%sym-32 0x76737361 4) (%builtin-assv)) ;; assv
   (%add-builtin (%sym-64 0x636f737361 5) (%builtin-assoc)) ;; assoc
   (%add-builtin (%sym-128 0x706f632d7473696c 0x79 9) (%builtin-list-copy)) ;; list-copy
+  (%add-builtin (%sym-64 0x3f6c6f626d7973 7) (%builtin-symbol?)) ;; symbol?
+  (%add-builtin (%sym-64 0x3f3d6c6f626d7973 8) (%builtin-symbol=?)) ;; symbol=?
+  (%add-builtin (%sym-128 0x3e2d6c6f626d7973 0x676e69727473 14) (%builtin-symbol->string)) ;; symbol->string
+  (%add-builtin (%sym-128 0x3e2d676e69727473 0x6c6f626d7973 14) (%builtin-string->symbol)) ;; symbol->string
+  (%add-builtin (%sym-32 0x74697865 4) (%builtin-exit)) ;; exit
 
   (call $environment-add
     (local.get $env)
@@ -219,3 +229,8 @@
 (elem $table-builtin (%builtin-assv) $assv)
 (elem $table-builtin (%builtin-assoc) $assoc)
 (elem $table-builtin (%builtin-list-copy) $list-copy)
+(elem $table-builtin (%builtin-symbol?) $symbol?)
+(elem $table-builtin (%builtin-symbol=?) $symbol=?)
+(elem $table-builtin (%builtin-symbol->string) $symbol->string)
+(elem $table-builtin (%builtin-string->symbol) $string->symbol)
+(elem $table-builtin (%builtin-exit) $exit)

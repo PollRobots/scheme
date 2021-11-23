@@ -25,7 +25,9 @@
     "src/library/boolean.wat",
     "src/library/equiv.wat",
     "src/library/numerics.wat",
-    "src/library/pair.wat"
+    "src/library/pair.wat",
+    "src/library/process.wat",
+    "src/library/symbol.wat"
   ],
   "start": "$start",
   "importFuncs": [
@@ -43,7 +45,16 @@
       "params": [
         "i32"
       ]
+    },
+    {
+      "module": "process",
+      "name": "exit",
+      "index": "$process-exit",
+      "params": [
+        "i32"
+      ]
     }
+
   ],
   "exports": [
     {
