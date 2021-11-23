@@ -28,8 +28,34 @@
 (%define %builtin-bool-not ()                 (i32.const 25))
 (%define %builtin-bool-boolean? ()            (i32.const 26))
 (%define %builtin-bool-boolean=? ()           (i32.const 27))
+(%define %builtin-pair? ()                    (i32.const 28))
+(%define %builtin-pair-cons ()                (i32.const 29))
+(%define %builtin-pair-car ()                 (i32.const 30))
+(%define %builtin-pair-cdr ()                 (i32.const 31))
+(%define %builtin-pair-set-car! ()            (i32.const 32))
+(%define %builtin-pair-set-cdr! ()            (i32.const 33))
+(%define %builtin-null? ()                    (i32.const 34))
+(%define %builtin-list? ()                    (i32.const 35))
+(%define %builtin-make-list ()                (i32.const 36))
+(%define %builtin-list ()                     (i32.const 37))
+(%define %builtin-length ()                   (i32.const 38))
+(%define %builtin-eq? ()                      (i32.const 39))
+(%define %builtin-eqv? ()                     (i32.const 40))
+(%define %builtin-equal? ()                   (i32.const 41))
+(%define %builtin-append ()                   (i32.const 42))
+(%define %builtin-reverse ()                  (i32.const 43))
+(%define %builtin-list-tail ()                (i32.const 44))
+(%define %builtin-list-ref ()                 (i32.const 45))
+(%define %builtin-list-set! ()                (i32.const 46))
+(%define %builtin-memq ()                     (i32.const 47))
+(%define %builtin-memv ()                     (i32.const 48))
+(%define %builtin-member ()                   (i32.const 49))
+(%define %builtin-assq ()                     (i32.const 50))
+(%define %builtin-assv ()                     (i32.const 51))
+(%define %builtin-assoc ()                    (i32.const 52))
+(%define %builtin-list-copy ()                (i32.const 53))
 
-(table $table-builtin 28 anyfunc)
+(table $table-builtin 54 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -41,7 +67,7 @@
     (call $environment-add 
       (local.get $env)
       %sym 
-      (call $heap-alloc (local.get $heap) (%builtin-type) %num (i32.const 0)))
+      (call $heap-alloc (local.get $heap) (%builtin-type) %num %sym))
   )
 
   (%add-builtin (%sym-32 0x2B 1) (%builtin-add)) ;; '+'
@@ -68,6 +94,32 @@
   (%add-builtin (%sym-32 0x746f6e 3) (%builtin-bool-not))
   (%add-builtin (%sym-64 0x3f6e61656c6f6f62 8) (%builtin-bool-boolean?))
   (%add-builtin (%sym-128 0x3d6e61656c6f6f62 0x3f 9) (%builtin-bool-boolean=?))
+  (%add-builtin (%sym-64 0x3f72696170 5) (%builtin-pair?)) ;; pair?
+  (%add-builtin (%sym-32 0x736e6f63 4) (%builtin-pair-cons)) ;; cons
+  (%add-builtin (%sym-32 0x726163 3) (%builtin-pair-car)) ;; car
+  (%add-builtin (%sym-32 0x726463 3) (%builtin-pair-cdr)) ;; cdr
+  (%add-builtin (%sym-64 0x217261632d746573 8) (%builtin-pair-set-car!)) ;; set-car!
+  (%add-builtin (%sym-64 0x217264632d746573 8) (%builtin-pair-set-cdr!)) ;; set-cdr!
+  (%add-builtin (%sym-64 0x3f6c6c756e 5) (%builtin-null?)) ;; null?
+  (%add-builtin (%sym-64 0x3f7473696c 5) (%builtin-list?)) ;; list?
+  (%add-builtin (%sym-128 0x73696c2d656b616d 0x74 9) (%builtin-make-list)) ;; make-list
+  (%add-builtin (%sym-32 0x7473696c 4) (%builtin-list)) ;; list
+  (%add-builtin (%sym-64 0x6874676e656c 6) (%builtin-length)) ;; length
+  (%add-builtin (%sym-32 0x3f7165 3) (%builtin-eq?)) ;; eq?
+  (%add-builtin (%sym-32 0x3f767165 4) (%builtin-eqv?)) ;; eqv?
+  (%add-builtin (%sym-64 0x3f6c61757165 6) (%builtin-equal?)) ;; equal?
+  (%add-builtin (%sym-64 0x646e65707061 6) (%builtin-append)) ;; append
+  (%add-builtin (%sym-64 0x65737265766572 7) (%builtin-reverse)) ;; reverse
+  (%add-builtin (%sym-128 0x6961742d7473696c 0x6c 9) (%builtin-list-tail)) ;; list-tail
+  (%add-builtin (%sym-64 0x6665722d7473696c 8) (%builtin-list-ref)) ;; list-ref
+  (%add-builtin (%sym-128 0x7465732d7473696c 0x21 9) (%builtin-list-set!)) ;; list-set!
+  (%add-builtin (%sym-32 0x716d656d 4) (%builtin-memq)) ;; memq
+  (%add-builtin (%sym-32 0x766d656d 4) (%builtin-memv)) ;; memv
+  (%add-builtin (%sym-64 0x7265626d656d 6) (%builtin-member)) ;; member
+  (%add-builtin (%sym-32 0x71737361 4) (%builtin-assq)) ;; assq
+  (%add-builtin (%sym-32 0x76737361 4) (%builtin-assv)) ;; assv
+  (%add-builtin (%sym-64 0x636f737361 5) (%builtin-assoc)) ;; assoc
+  (%add-builtin (%sym-128 0x706f632d7473696c 0x79 9) (%builtin-list-copy)) ;; list-copy
 
   (call $environment-add
     (local.get $env)
@@ -141,3 +193,29 @@
 (elem $table-builtin (%builtin-bool-not) $bool-not)
 (elem $table-builtin (%builtin-bool-boolean?) $bool-boolean?)
 (elem $table-builtin (%builtin-bool-boolean=?) $bool-boolean=?)
+(elem $table-builtin (%builtin-pair?) $pair?)
+(elem $table-builtin (%builtin-pair-cons) $pair-cons)
+(elem $table-builtin (%builtin-pair-car) $pair-car)
+(elem $table-builtin (%builtin-pair-cdr) $pair-cdr)
+(elem $table-builtin (%builtin-pair-set-car!) $pair-set-car!)
+(elem $table-builtin (%builtin-pair-set-cdr!) $pair-set-cdr!)
+(elem $table-builtin (%builtin-null?) $null?)
+(elem $table-builtin (%builtin-list?) $list?)
+(elem $table-builtin (%builtin-make-list) $make-list)
+(elem $table-builtin (%builtin-list) $list)
+(elem $table-builtin (%builtin-length) $length)
+(elem $table-builtin (%builtin-eq?) $eq?)
+(elem $table-builtin (%builtin-eqv?) $eqv?)
+(elem $table-builtin (%builtin-equal?) $equal?)
+(elem $table-builtin (%builtin-append) $append)
+(elem $table-builtin (%builtin-reverse) $reverse)
+(elem $table-builtin (%builtin-list-tail) $list-tail)
+(elem $table-builtin (%builtin-list-ref) $list-ref)
+(elem $table-builtin (%builtin-list-set!) $list-set!)
+(elem $table-builtin (%builtin-memq) $memq)
+(elem $table-builtin (%builtin-memv) $memv)
+(elem $table-builtin (%builtin-member) $member)
+(elem $table-builtin (%builtin-assq) $assq)
+(elem $table-builtin (%builtin-assv) $assv)
+(elem $table-builtin (%builtin-assoc) $assoc)
+(elem $table-builtin (%builtin-list-copy) $list-copy)

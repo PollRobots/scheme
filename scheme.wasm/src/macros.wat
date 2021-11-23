@@ -86,3 +86,4 @@
 (%define %alloc-error-cons (%sym %args) (call $heap-alloc (global.get $g-heap) (%error-type) %sym %args))
 (%define %alloc-error (%sym %args) (call $heap-alloc (global.get $g-heap) (%error-type) %sym (%alloc-cons %args (global.get $g-nil))))
 (%define %alloc-values (%car %cdr) (call $heap-alloc (global.get $g-heap) (%values-type) %car %cdr))
+(%define %alloc-quote (%val) (%alloc-cons (global.get $quote-sym) (%alloc-cons %val (global.get $g-nil))))

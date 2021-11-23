@@ -82,7 +82,7 @@
     ;; case builtin:
     (if (i32.eq (local.get $type) (%builtin-type))
       (then
-        (call $print-other (global.get $g-special) (local.get $type) (local.get $ptr))
+        (call $print-builtin (local.get $type) (local.get $ptr))
         (br $b_switch)
       )
     )
@@ -140,7 +140,18 @@
   (call $print-integer (i64.extend_i32_u (local.get $type)) (i32.const 10))
   (call $print-symbol (global.get $g-space))
   (call $print-integer (i64.extend_i32_u (local.get $ptr)) (i32.const 16))
+  (call $print-symbol (global.get $g-gt))
+)
+
+(func $print-builtin (param $type i32) (param $ptr i32)
+  (call $print-symbol (global.get $g-lt))
+  (call $print-symbol (global.get $g-builtin))
   (call $print-symbol (global.get $g-space))
+  (call $print-integer (i64.extend_i32_u (local.get $type)) (i32.const 10))
+  (call $print-symbol (global.get $g-space))
+  (call $print-integer (i64.extend_i32_u (local.get $ptr)) (i32.const 16))
+  (call $print-symbol (global.get $g-space))
+  (call $print (%cdr-l $ptr))
   (call $print-symbol (global.get $g-gt))
 )
 

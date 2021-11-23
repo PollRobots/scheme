@@ -827,11 +827,8 @@
       (return
         (call $apply
           (local.get $env)
-          (call $eval
-            (local.get $env)
-            (i32.load offset=4 (local.get $args))
-          )
-          (i32.load offset=8 (local.get $args))
+          (call $eval (local.get $env) (%car-l $args))
+          (%cdr-l $args)
         )
       )
     )
@@ -886,22 +883,16 @@
     ;;   special forms are called without having their arguments executed first
     ;;   break
     (br_if $b_check (i32.eq (local.get $op-type) (%special-type)))
+
+    ;; all other calls to apply execute arguments
+    ;; args = eval-list(env, args)
+    (local.set $args (call $eval-list (local.get $env) (local.get $args)))
     ;; case $builtin-type:
-    (if (i32.eq (local.get $op-type) (%builtin-type))
-      (then
-        ;; args = eval-list(env, args)
-        (local.set $args
-          (call $eval-list (local.get $env) (local.get $args))
-        )
-        ;; break
-        (br $b_check)
-      )
-    )
+    (br_if $b_check (i32.eq (local.get $op-type) (%builtin-type)))
+
     ;; case %lambda-type:
     (if (i32.eq (local.get $op-type) (%lambda-type))
       (then
-        (local.set $args
-          (call $eval-list (local.get $env) (local.get $args)))
         (return 
           (call $apply-lambda (local.get $env) (local.get $op) (local.get $args))
         )

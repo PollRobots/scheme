@@ -23,7 +23,9 @@
     "src/start.wat",
     "src/xxh3.wat",
     "src/library/boolean.wat",
-    "src/library/numerics.wat"
+    "src/library/equiv.wat",
+    "src/library/numerics.wat",
+    "src/library/pair.wat"
   ],
   "importFuncs": [
     {
