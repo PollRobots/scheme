@@ -68,7 +68,11 @@ export interface IoModule extends Record<string, Function> {
   write: (ptr: number) => void;
 }
 
-export async function loadWasm(io?: IoModule): Promise<WebAssembly.Instance> {
+export interface ProcessModule extends Record<string, Function> {
+  exit: (exitCode: number) => void;
+}
+
+export async function loadWasm(io?: IoModule, process?: ProcessModule): Promise<WebAssembly.Instance> {
   const wasm = await fs.readFile("dist/test.wasm");
   try {
     const imports: WebAssembly.Imports = {};
@@ -82,6 +86,11 @@ export async function loadWasm(io?: IoModule): Promise<WebAssembly.Instance> {
         console.warn(`WRITE: 0x${ptr.toString(16).padStart(8, "0")}`);
       },
     };
+    imports["process"] = process || {
+      exit: (exitCode: number) => {
+        console.warn(`EXIT: ${exitCode}`);
+      }
+    }
 
     const module = await WebAssembly.instantiate(wasm, imports);
     return module.instance;

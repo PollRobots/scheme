@@ -50,9 +50,13 @@
   (global.set $g-eof (%sym-32 0x666f65 3))
   (global.set $g-quote (%sym-32 0x22 1))
   (global.set $g-args (%sym-32 0x73677261 4))
+
+  (call $char-init)
 )
 
 (func $runtime-cleanup
+  (call $char-cleanup)
+
   (global.set $g-nil (i32.const 0))
   (global.set $g-nil-str (i32.const 0))
   (global.set $g-false (i32.const 0))
@@ -301,6 +305,13 @@
       (return (%alloc-str (local.get $atom-str)))
     )
     ;; }
+  )
+
+  ;; if token.str.startsWith('#\')
+  (if (call $short-str-start-with (local.get $token-str) (i32.const 0) (i32.const 0x5c23) (i32.const 2))
+    (then
+      (return (call $read-char (local.get $token-str)))
+    )
   )
 
   ;; atom = string->number-impl(token, 10)

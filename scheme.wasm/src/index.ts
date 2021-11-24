@@ -197,12 +197,8 @@ class SchemeRuntime {
   }
 
   onLine(input: string) {
-    this.lines.push(input);
+    this.lines.push(input + "\n");
     this.resolveLine();
-  }
-
-  readLine(): string {
-    return this.lines.shift() || "";
   }
 
   private ioRead(): number {
@@ -212,7 +208,7 @@ class SchemeRuntime {
 
   private ioWrite(ptr: number) {
     const str = this.getString(ptr);
-    this.rl.write(str);
+    fs.writeSync(process.stdout.fd, str);
   }
 
   private exit(exitCode: number) {
