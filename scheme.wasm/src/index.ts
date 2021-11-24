@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-import { use } from "chai";
 import fs from "fs";
-import { exit } from "process";
+import readline from "readline";
 
 interface CoreExports {
   memory: WebAssembly.Memory;
@@ -44,12 +43,18 @@ class RuntimeExitError extends Error {
 class SchemeRuntime {
   private instance: WebAssembly.Instance;
   private exports: WebAssembly.Exports;
-  private readonly readlineBuffer: Buffer = Buffer.alloc(4096);
-  private rlbOffset: number = 0;
+  private readonly rl: readline.Interface;
+  private readonly lines: string[] = [];
+  private resolveLine: () => void = () => {};
 
   constructor(instance: WebAssembly.Instance) {
     this.instance = instance;
     this.exports = this.instance.exports;
+    this.rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    this.rl.addListener("line", (input) => this.onLine(input));
   }
 
   get memory(): WebAssembly.Memory {
@@ -191,42 +196,23 @@ class SchemeRuntime {
     return strPtr;
   }
 
-  readline(): string {
-    while (true) {
-      const bytesRead = fs.readSync(
-        process.stdin.fd,
-        this.readlineBuffer,
-        this.rlbOffset,
-        this.readlineBuffer.length - this.rlbOffset,
-        null
-      );
+  onLine(input: string) {
+    this.lines.push(input);
+    this.resolveLine();
+  }
 
-      this.rlbOffset += bytesRead;
-
-      for (let i = 0; i < this.rlbOffset; i++) {
-        if (this.readlineBuffer[i] == 0x0a) {
-          const rawline = this.readlineBuffer.slice(0, i);
-          const line = rawline.toString("utf-8");
-          i++;
-          let j: number;
-          for (j = 0; i < this.rlbOffset; i++, j++) {
-            this.readlineBuffer[j] = this.readlineBuffer[i];
-          }
-          this.rlbOffset = j;
-          return line;
-        }
-      }
-    }
+  readLine(): string {
+    return this.lines.shift() || "";
   }
 
   private ioRead(): number {
-    const line = this.readline();
+    const line = this.lines.shift() || "";
     return this.createString(line);
   }
 
   private ioWrite(ptr: number) {
     const str = this.getString(ptr);
-    fs.writeSync(process.stdout.fd, str);
+    this.rl.write(str);
   }
 
   private exit(exitCode: number) {
@@ -242,7 +228,7 @@ class SchemeRuntime {
     return str;
   }
 
-  runRepl() {
+  async runRepl(): Promise<void> {
     const env = this.environmentInit(this.gHeap, 0);
     this.registerBuiltins(this.gHeap, env);
     const prompt = "\n> ";
@@ -256,6 +242,11 @@ class SchemeRuntime {
           usePrompt = false;
         } else {
           fs.writeSync(process.stdout.fd, noprompt);
+        }
+        if (this.lines.length == 0) {
+          await new Promise<void>((resolve) => {
+            this.resolveLine = resolve;
+          });
         }
         const input = this.read();
         if (this.isEofError(input)) {
@@ -292,7 +283,7 @@ class SchemeRuntime {
       imports["process"] = {
         exit: (exitCode: number) => exit(exitCode),
       };
-      console.log("Instatiating runtime...");
+      console.log("Instantiating runtime...");
       const module = await WebAssembly.instantiate(wasm, imports);
       const runtime = new SchemeRuntime(module.instance);
       reader = () => runtime.ioRead();
@@ -307,10 +298,15 @@ class SchemeRuntime {
 }
 
 async function main() {
+  const i = setInterval(() => {}, 1000);
   console.log("Scheme.wasm");
   console.log("===========");
   const runtime = await SchemeRuntime.create();
-  runtime.runRepl();
+  try {
+    await runtime.runRepl();
+  } finally {
+    clearInterval(i);
+  }
 }
 
 main().catch((err) => console.error(err));
