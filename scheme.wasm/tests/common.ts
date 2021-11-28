@@ -72,7 +72,15 @@ export interface ProcessModule extends Record<string, Function> {
   exit: (exitCode: number) => void;
 }
 
-export async function loadWasm(io?: IoModule, process?: ProcessModule): Promise<WebAssembly.Instance> {
+export interface UnicodeModule extends Record<string, Function> {
+  loadData: (block: number, ptr: number) => void;
+}
+
+export async function loadWasm(
+  io?: IoModule,
+  process?: ProcessModule,
+  unicode?: UnicodeModule
+): Promise<WebAssembly.Instance> {
   const wasm = await fs.readFile("dist/test.wasm");
   try {
     const imports: WebAssembly.Imports = {};
@@ -89,8 +97,16 @@ export async function loadWasm(io?: IoModule, process?: ProcessModule): Promise<
     imports["process"] = process || {
       exit: (exitCode: number) => {
         console.warn(`EXIT: ${exitCode}`);
-      }
-    }
+      },
+    };
+    imports["unicode"] = unicode || {
+      loadData: (block: number, ptr: number) => {
+        const path = `./dist/unicode/${block
+          .toString(16)
+          .padStart(4, "0")}.bin`;
+        throw new Error(`Unicode data file ${path} loading not implemented`);
+      },
+    };
 
     const module = await WebAssembly.instantiate(wasm, imports);
     return module.instance;

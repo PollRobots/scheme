@@ -63,6 +63,15 @@
         (br $b_switch)
       )
     )
+    ;; case char (8)
+    (if (i32.eq (local.get $type) (%char-type))
+      (then
+        (call $print-char (local.get $ptr))
+        ;; break
+        (br $b_switch)
+      )
+    )
+
     ;; case env (9):
     (if (i32.eq (local.get $type) (%env-type))
       (then
@@ -121,6 +130,52 @@
 
 (func $print-nil 
   (call $io-write (i32.load offset=4 (global.get $g-nil-str)))
+)
+
+(func $print-char (param $ptr i32)
+  (local $code-point i32)
+  (local $props i32)
+  (local $str i32)
+
+  (local.set $code-point (%car-l $ptr))
+
+  (%define %named-char (%name %val) (if (i32.eq (i32.const %val) (local.get $code-point))
+    (then
+      (call $print-symbol (global.get %name))
+      (return)
+    )
+  ))
+
+  (%named-char $g-char-alarm 0x7)
+  (%named-char $g-char-backspace 0x8)
+  (%named-char $g-char-delete 0x7f)
+  (%named-char $g-char-escape 0x1b)
+  (%named-char $g-char-newline 0xa)
+  (%named-char $g-char-null 0x0)
+  (%named-char $g-char-return 0xd)
+  (%named-char $g-char-space 0x20)
+  (%named-char $g-char-tab 0x09)
+
+  (call $print-symbol (global.get $g-char-prefix))
+
+  (local.set $props (call $char-get-code-point-props (local.get $code-point)))
+
+  (if (i32.and (local.get $props) (i32.const 0x10))
+    (then
+      (local.set $str
+        (call $str-from-32
+          (call $utf8-code-point-size (local.get $code-point))
+          (call $utf8-from-code-point (local.get $code-point))
+        )
+      )
+      (call $io-write (local.get $str))
+      (call $malloc-free (local.get $str))
+    )
+    (else
+      (call $print-integer (i64.extend_i32_u (local.get $code-point)) (i32.const 16))
+    )
+  )
+
 )
 
 (func $print-error (param $ptr i32)

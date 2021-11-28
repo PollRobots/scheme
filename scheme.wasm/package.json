@@ -13,6 +13,7 @@
     "build": "tsc -p . && npm run assemble",
     "assemble": "ts-node src/scripts/buildwat.ts ./buildwat.json --macros --output dist/scheme.wasm --tempfile dist/scheme.wat",
     "pretest": "ts-node src/scripts/buildwat.ts tests/buildwat.json --macros --output dist/test.wasm --tempfile dist/test.wat",
+    "unicode": "ts-node src/scripts/unicodedata.ts",
     "test": "node node_modules/mocha/bin/_mocha -r ts-node/register --no-timeouts tests/**/*.spec.ts"
   },
   "keywords": [],

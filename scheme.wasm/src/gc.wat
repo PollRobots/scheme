@@ -428,6 +428,7 @@ while the working set is non-empty:
   (call $gc-mark-black (global.get $g-false) (%boolean-type))
   (call $gc-maybe-gray-enqueue (i32.load offset=16 (global.get $g-reader)))
   (call $gc-maybe-gray-enqueue (i32.load offset=20 (global.get $g-reader)))
+  (call $gc-maybe-gray-enqueue (global.get $g-char-env))
 
   ;; g-gc-collecting? = true
   (global.set $g-gc-collecting? (i32.const 1))

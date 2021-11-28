@@ -59,8 +59,29 @@
 (%define %builtin-symbol->string ()           (i32.const 56))
 (%define %builtin-string->symbol ()           (i32.const 57))
 (%define %builtin-exit ()                     (i32.const 58))
+(%define %builtin-char? ()                    (i32.const 59))
+(%define %builtin-char-equal ()               (i32.const 60))
+(%define %builtin-char-lt ()                  (i32.const 61))
+(%define %builtin-char-le ()                  (i32.const 62))
+(%define %builtin-char-gt ()                  (i32.const 63))
+(%define %builtin-char-ge ()                  (i32.const 64))
+(%define %builtin-char-alphabetic? ()         (i32.const 65))
+(%define %builtin-char-numeric? ()            (i32.const 66))
+(%define %builtin-char-whitespace? ()         (i32.const 67))
+(%define %builtin-char-upper-case? ()         (i32.const 68))
+(%define %builtin-char-lower-case? ()         (i32.const 69))
+(%define %builtin-digit-value ()              (i32.const 70))
+(%define %builtin-char->integer ()            (i32.const 71))
+(%define %builtin-integer->char ()            (i32.const 72))
+(%define %builtin-char-upcase ()              (i32.const 73))
+(%define %builtin-char-downcase ()            (i32.const 74))
+(%define %builtin-char-equal-ci ()            (i32.const 75))
+(%define %builtin-char-lt-ci ()               (i32.const 76))
+(%define %builtin-char-le-ci ()               (i32.const 77))
+(%define %builtin-char-gt-ci ()               (i32.const 78))
+(%define %builtin-char-ge-ci ()               (i32.const 79))
 
-(table $table-builtin 59 anyfunc)
+(table $table-builtin 80 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -130,6 +151,28 @@
   (%add-builtin (%sym-128 0x3e2d6c6f626d7973 0x676e69727473 14) (%builtin-symbol->string)) ;; symbol->string
   (%add-builtin (%sym-128 0x3e2d676e69727473 0x6c6f626d7973 14) (%builtin-string->symbol)) ;; symbol->string
   (%add-builtin (%sym-32 0x74697865 4) (%builtin-exit)) ;; exit
+  (%add-builtin (%sym-64 0x3f72616863 5) (%builtin-char?)) ;; char?
+  (%add-builtin (%sym-64 0x3f3d72616863  6) (%builtin-char-equal)) ;; 'char=?'
+  (%add-builtin (%sym-64 0x3f3C72616863  6) (%builtin-char-lt)) ;; 'char<?'
+  (%add-builtin (%sym-64 0x3f3D3C72616863  7) (%builtin-char-le)) ;; 'char<=?'
+  (%add-builtin (%sym-64 0x3f3E72616863  6) (%builtin-char-gt)) ;; 'char>?'
+  (%add-builtin (%sym-64 0x3f3D3E72616863  7) (%builtin-char-ge)) ;; 'char>=?'
+  (%add-builtin (%sym-128 0x706c612d72616863 0x3f63697465626168 16) (%builtin-char-alphabetic?)) ;; 'char-alphabetic?'
+  (%add-builtin (%sym-128 0x6d756e2d72616863 0x3f63697265 13) (%builtin-char-numeric?)) ;; 'char-numeric?'
+  (%add-builtin (%sym-128 0x6968772d72616863 0x3f65636170736574 16) (%builtin-char-whitespace?)) ;; 'char-whitespace?'
+  (%add-builtin (%sym-128 0x7070752d72616863 0x3f657361632d7265 16) (%builtin-char-upper-case?)) ;; 'char-upper-case?'
+  (%add-builtin (%sym-128 0x776f6c2d72616863 0x3f657361632d7265 16) (%builtin-char-lower-case?)) ;; 'char-lower-case?'
+  (%add-builtin (%sym-128 0x61762d7469676964 0x65756c 11) (%builtin-digit-value)) ;; 'digit-value'
+  (%add-builtin (%sym-128 0x6e693e2d72616863 0x7265676574 13) (%builtin-char->integer)) ;; 'char->integer'
+  (%add-builtin (%sym-128 0x2d72656765746e69 0x726168633e 13) (%builtin-integer->char)) ;; 'integer->char'
+  (%add-builtin (%sym-128 0x6370752d72616863 0x657361 11) (%builtin-char-upcase)) ;; 'char-upcase'
+  (%add-builtin (%sym-128 0x776f642d72616863 0x657361636e 13) (%builtin-char-downcase)) ;; 'char-downcase'
+  (%add-builtin (%sym-128 0x6c6f662d72616863 0x6573616364 13) (%builtin-char-downcase)) ;; 'char-foldcase'
+  (%add-builtin (%sym-128 0x3d69632d72616863 0x3f 9) (%builtin-char-equal-ci)) ;; 'char-ci=?'
+  (%add-builtin (%sym-128 0x3C69632d72616863 0x3f 9) (%builtin-char-lt-ci)) ;; 'char-ci<?'
+  (%add-builtin (%sym-128 0x3C69632D72616863 0x3f3D 10) (%builtin-char-le-ci)) ;; 'char-ci<=?'
+  (%add-builtin (%sym-128 0x3E69632D72616863 0x3f 9) (%builtin-char-gt-ci)) ;; 'char-ci>?'
+  (%add-builtin (%sym-128 0x3E69632D72616863 0x3f3D 10) (%builtin-char-ge-ci)) ;; 'char-ci>=?'
 
   (call $environment-add
     (local.get $env)
@@ -234,3 +277,24 @@
 (elem $table-builtin (%builtin-symbol->string) $symbol->string)
 (elem $table-builtin (%builtin-string->symbol) $string->symbol)
 (elem $table-builtin (%builtin-exit) $exit)
+(elem $table-builtin (%builtin-char?) $char?)
+(elem $table-builtin (%builtin-char-equal) $char-equal)
+(elem $table-builtin (%builtin-char-gt) $char-gt)
+(elem $table-builtin (%builtin-char-ge) $char-ge)
+(elem $table-builtin (%builtin-char-lt) $char-lt)
+(elem $table-builtin (%builtin-char-le) $char-le)
+(elem $table-builtin (%builtin-char-alphabetic?) $char-alphabetic?)
+(elem $table-builtin (%builtin-char-numeric?) $char-numeric?)
+(elem $table-builtin (%builtin-char-whitespace?) $char-whitespace?)
+(elem $table-builtin (%builtin-char-upper-case?) $char-upper-case?)
+(elem $table-builtin (%builtin-char-lower-case?) $char-lower-case?)
+(elem $table-builtin (%builtin-digit-value) $digit-value)
+(elem $table-builtin (%builtin-char->integer) $char->integer)
+(elem $table-builtin (%builtin-integer->char) $integer->char)
+(elem $table-builtin (%builtin-char-upcase) $char-upcase)
+(elem $table-builtin (%builtin-char-downcase) $char-downcase)
+(elem $table-builtin (%builtin-char-equal-ci) $char-equal-ci)
+(elem $table-builtin (%builtin-char-gt-ci) $char-gt-ci)
+(elem $table-builtin (%builtin-char-ge-ci) $char-ge-ci)
+(elem $table-builtin (%builtin-char-lt-ci) $char-lt-ci)
+(elem $table-builtin (%builtin-char-le-ci) $char-le-ci)

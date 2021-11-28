@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "fs";
 import readline from "readline";
+import child_process from "child_process";
 
 interface CoreExports {
   memory: WebAssembly.Memory;
@@ -211,6 +212,19 @@ class SchemeRuntime {
     fs.writeSync(process.stdout.fd, str);
   }
 
+  private unicodeLoadData(block: number, ptr: number) {
+    const path = `./dist/unicode/${block.toString(16).padStart(4, "0")}.bin`;
+    if (!fs.existsSync(path)) {
+      throw new Error(
+        `No unicode data file ${path} for block 0x${block.toString(16)}`
+      );
+    }
+    const data = fs.readFileSync(path);
+    const src = new Uint8Array(data);
+    const dst = new Uint8Array(this.memory.buffer);
+    dst.set(src, ptr);
+  }
+
   private exit(exitCode: number) {
     throw new RuntimeExitError(exitCode);
   }
@@ -270,6 +284,7 @@ class SchemeRuntime {
     let reader = () => 0;
     let writer = (ptr: number) => {};
     let exit = (exitCode: number) => {};
+    let unicodeLoadData = (block: number, ptr: number) => {};
     try {
       const imports: WebAssembly.Imports = {};
       imports["io"] = {
@@ -279,12 +294,17 @@ class SchemeRuntime {
       imports["process"] = {
         exit: (exitCode: number) => exit(exitCode),
       };
+      imports["unicode"] = {
+        loadData: (block: number, ptr: number) => unicodeLoadData(block, ptr),
+      };
       console.log("Instantiating runtime...");
       const module = await WebAssembly.instantiate(wasm, imports);
       const runtime = new SchemeRuntime(module.instance);
       reader = () => runtime.ioRead();
       writer = (ptr: number) => runtime.ioWrite(ptr);
       exit = (exitCode: number) => runtime.exit(exitCode);
+      unicodeLoadData = (block: number, ptr: number) =>
+        runtime.unicodeLoadData(block, ptr);
       return runtime;
     } catch (err) {
       console.error(err);
@@ -294,6 +314,10 @@ class SchemeRuntime {
 }
 
 async function main() {
+  if (process.platform == "win32") {
+    // Tell windows that we will be using UTF-8
+    child_process.exec("chcp 65001");
+  }
   const i = setInterval(() => {}, 1000);
   console.log("Scheme.wasm");
   console.log("===========");

@@ -54,8 +54,16 @@
       "params": [
         "i32"
       ]
+    },
+    {
+      "module": "unicode",
+      "name": "loadData",
+      "index": "$unicode-load-data",
+      "params": [
+        "i32",
+        "i32"
+      ]
     }
-
   ],
   "exports": [
     {
