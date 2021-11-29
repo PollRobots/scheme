@@ -1,21 +1,21 @@
 (type $builtin-type (func (param i32 i32) (result i32)))
 
-(%define %builtin-add ()        (i32.const 0))
-(%define %builtin-mult ()       (i32.const 1))
-(%define %special-if ()         (i32.const 2))
-(%define %special-let ()        (i32.const 3))
-(%define %special-lambda ()     (i32.const 4))
-(%define %special-quote ()      (i32.const 5))
-(%define %special-define ()     (i32.const 6))
-(%define %special-set! ()       (i32.const 7))
-(%define %builtin-sub ()        (i32.const 8))
-(%define %builtin-integer? ()   (i32.const 9))
-(%define %builtin-num-equal ()  (i32.const 10))
-(%define %builtin-num-lt ()     (i32.const 11))
-(%define %builtin-num-le ()     (i32.const 12))
-(%define %builtin-num-gt ()     (i32.const 13))
-(%define %builtin-num-ge ()     (i32.const 14))
-(%define %builtin-num-abs ()    (i32.const 15))
+(%define %builtin-add ()                      (i32.const 0))
+(%define %builtin-mult ()                     (i32.const 1))
+(%define %special-if ()                       (i32.const 2))
+(%define %special-let ()                      (i32.const 3))
+(%define %special-lambda ()                   (i32.const 4))
+(%define %special-quote ()                    (i32.const 5))
+(%define %special-define ()                   (i32.const 6))
+(%define %special-set! ()                     (i32.const 7))
+(%define %builtin-sub ()                      (i32.const 8))
+(%define %builtin-integer? ()                 (i32.const 9))
+(%define %builtin-num-equal ()                (i32.const 10))
+(%define %builtin-num-lt ()                   (i32.const 11))
+(%define %builtin-num-le ()                   (i32.const 12))
+(%define %builtin-num-gt ()                   (i32.const 13))
+(%define %builtin-num-ge ()                   (i32.const 14))
+(%define %builtin-num-abs ()                  (i32.const 15))
 (%define %builtin-num-truncate-quotient ()    (i32.const 16))
 (%define %builtin-num-truncate-remainder ()   (i32.const 17))
 (%define %builtin-num-floor-quotient ()       (i32.const 18))
@@ -80,8 +80,29 @@
 (%define %builtin-char-le-ci ()               (i32.const 77))
 (%define %builtin-char-gt-ci ()               (i32.const 78))
 (%define %builtin-char-ge-ci ()               (i32.const 79))
+(%define %builtin-string? ()                  (i32.const 80))
+(%define %builtin-make-string ()              (i32.const 81))
+(%define %builtin-string ()                   (i32.const 82))
+(%define %builtin-string-length ()            (i32.const 83))
+(%define %builtin-string-ref ()               (i32.const 84))
+(%define %builtin-string-set! ()              (i32.const 85))
+(%define %builtin-string=? ()                 (i32.const 86))
+(%define %builtin-string-ci=? ()              (i32.const 87))
+(%define %builtin-string>? ()                 (i32.const 88))
+(%define %builtin-string-ci>? ()              (i32.const 89))
+(%define %builtin-string>=? ()                (i32.const 90))
+(%define %builtin-string-ci>=? ()             (i32.const 91))
+(%define %builtin-string<? ()                 (i32.const 92))
+(%define %builtin-string-ci<? ()              (i32.const 93))
+(%define %builtin-string<=? ()                (i32.const 94))
+(%define %builtin-string-ci<=? ()             (i32.const 95))
+(%define %builtin-string-upcase ()            (i32.const 96))
+(%define %builtin-string-downcase ()          (i32.const 97))
+(%define %builtin-substring ()                (i32.const 98))
+(%define %builtin-string-copy ()              (i32.const 99))
+(%define %builtin-string-list ()              (i32.const 100))
 
-(table $table-builtin 80 anyfunc)
+(table $table-builtin 101 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -173,6 +194,28 @@
   (%add-builtin (%sym-128 0x3C69632D72616863 0x3f3D 10) (%builtin-char-le-ci)) ;; 'char-ci<=?'
   (%add-builtin (%sym-128 0x3E69632D72616863 0x3f 9) (%builtin-char-gt-ci)) ;; 'char-ci>?'
   (%add-builtin (%sym-128 0x3E69632D72616863 0x3f3D 10) (%builtin-char-ge-ci)) ;; 'char-ci>=?'
+  (%add-builtin (%sym-64 0x3f676e69727473 7) (%builtin-string?)) ;; 'string?'
+  (%add-builtin (%sym-128 0x7274732d656b616d 0x676e69 11) (%builtin-make-string)) ;; 'make-string'
+  (%add-builtin (%sym-64 0x676e69727473 6) (%builtin-string)) ;; 'string'
+  (%add-builtin (%sym-128 0x6c2d676e69727473 0x6874676e65 13) (%builtin-string-length)) ;; 'string-length'
+  (%add-builtin (%sym-128 0x722d676e69727473 0x6665 10) (%builtin-string-ref)) ;; 'string-ref'
+  (%add-builtin (%sym-128 0x732d676e69727473 0x217465 11) (%builtin-string-set!)) ;; 'string-set!'
+  (%add-builtin (%sym-64 0x3f3d676e69727473 8) (%builtin-string=?)) ;; 'string=?'
+  (%add-builtin (%sym-128 0x632d676e69727473 0x3f3d69 11) (%builtin-string-ci=?)) ;; 'string-ci=?'
+  (%add-builtin (%sym-64 0x3f3e676e69727473 8) (%builtin-string>?)) ;; 'string>?'
+  (%add-builtin (%sym-128 0x632d676e69727473 0x3f3e69 11) (%builtin-string-ci>?)) ;; 'string-ci>?'
+  (%add-builtin (%sym-128 0x3d3e676e69727473 0x3f 9) (%builtin-string>=?)) ;; 'string>=?'
+  (%add-builtin (%sym-128 0x632d676e69727473 0x3f3d3e69 12) (%builtin-string-ci>=?)) ;; 'string-ci>=?'
+  (%add-builtin (%sym-64 0x3f3c676e69727473 8) (%builtin-string<?)) ;; 'string<?'
+  (%add-builtin (%sym-128 0x632d676e69727473 0x3f3c69 11) (%builtin-string-ci<?)) ;; 'string-ci<?'
+  (%add-builtin (%sym-128 0x3c3e676e69727473 0x3f3e 9) (%builtin-string<=?)) ;; 'string<=?'
+  (%add-builtin (%sym-128 0x632d676e69727473 0x3f3e3c69 12) (%builtin-string-ci<=?)) ;; 'string-ci<=?'
+  (%add-builtin (%sym-128 0x752D676e69727473 0x6573616370 13) (%builtin-string-upcase)) ;; 'string-upcase'
+  (%add-builtin (%sym-128 0x642D676e69727473 0x657361636e776f 15) (%builtin-string-downcase)) ;; 'string-downcase'
+  (%add-builtin (%sym-128 0x662D676e69727473 0x65736163646c6f 15) (%builtin-string-downcase)) ;; 'string-foldcase'
+  (%add-builtin (%sym-128 0x6e69727473627573 0x67 9) (%builtin-substring)) ;; 'substring'
+  (%add-builtin (%sym-128 0x632D676e69727473 0x79706f 11) (%builtin-string-copy)) ;; 'string-copy'
+  (%add-builtin (%sym-128 0x6c2D676e69727473 0x747369 11) (%builtin-string-list)) ;; 'string-list'
 
   (call $environment-add
     (local.get $env)
@@ -298,3 +341,24 @@
 (elem $table-builtin (%builtin-char-ge-ci) $char-ge-ci)
 (elem $table-builtin (%builtin-char-lt-ci) $char-lt-ci)
 (elem $table-builtin (%builtin-char-le-ci) $char-le-ci)
+(elem $table-builtin (%builtin-string?) $string?)
+(elem $table-builtin (%builtin-make-string) $make-string)
+(elem $table-builtin (%builtin-string) $string)
+(elem $table-builtin (%builtin-string-length) $string-length)
+(elem $table-builtin (%builtin-string-ref) $string-ref)
+(elem $table-builtin (%builtin-string-set!) $string-set!)
+(elem $table-builtin (%builtin-string=?) $string=?)
+(elem $table-builtin (%builtin-string-ci=?) $string-ci=?)
+(elem $table-builtin (%builtin-string>?) $string>?)
+(elem $table-builtin (%builtin-string-ci>?) $string-ci>?)
+(elem $table-builtin (%builtin-string>=?) $string>=?)
+(elem $table-builtin (%builtin-string-ci>=?) $string-ci>=?)
+(elem $table-builtin (%builtin-string<?) $string<?)
+(elem $table-builtin (%builtin-string-ci<?) $string-ci<?)
+(elem $table-builtin (%builtin-string<=?) $string<=?)
+(elem $table-builtin (%builtin-string-ci<=?) $string-ci<=?)
+(elem $table-builtin (%builtin-string-upcase) $string-upcase)
+(elem $table-builtin (%builtin-string-downcase) $string-downcase)
+(elem $table-builtin (%builtin-substring) $substring)
+(elem $table-builtin (%builtin-string-copy) $string-copy)
+(elem $table-builtin (%builtin-string-list) $string-list)

@@ -3,6 +3,7 @@ import * as fluent from "./fluent";
 interface Token {
   type: string;
   content: string;
+  line: number;
 }
 
 interface WhitespaceToken extends Token {
@@ -79,10 +80,16 @@ function isHexDigit(char: string) {
 }
 
 export function* tokenize(input: string): Generator<Token> {
-  let state: "unknown" | "whitespace" | "element" | "string" | "comment" | "multi-comment"=
-    "unknown";
+  let state:
+    | "unknown"
+    | "whitespace"
+    | "element"
+    | "string"
+    | "comment"
+    | "multi-comment" = "unknown";
   let accum: string[] = [];
   let multiDepth = 0;
+  let line = 0;
 
   const typeFromState = (state: string, contents: string) => {
     if (state !== "element") {
@@ -101,13 +108,17 @@ export function* tokenize(input: string): Generator<Token> {
     const type = typeFromState(state, contents);
     accum = [];
     state = "unknown";
-    return { type: type, content: contents };
+    return { type: type, content: contents, line: line };
   };
 
   for (let i = 0; i < input.length; i++) {
     const char = input[i];
     const next = i < input.length - 1 ? input[i + 1] : "";
     const curr = input.charCodeAt(i);
+
+    if (char == "\n") {
+      line++;
+    }
 
     if (state === "unknown" || state === "whitespace") {
       if (isWhitespaceChar(curr)) {
@@ -119,17 +130,17 @@ export function* tokenize(input: string): Generator<Token> {
         }
 
         if (char == "(" && next == ";") {
-          accum.push('(;')
+          accum.push("(;");
           state = "multi-comment";
           multiDepth = 1;
           i++;
         } else if (char == ";" && next == ")") {
-          yield { type: "delimiter", content: ";)" };
+          yield { type: "delimiter", content: ";)", line: line };
           i++;
         } else if (char == "(") {
-          yield { type: "delimiter", content: "(" };
+          yield { type: "delimiter", content: "(", line: line };
         } else if (char === ")") {
-          yield { type: "delimiter", content: ")" };
+          yield { type: "delimiter", content: ")", line: line };
         } else if (char === ";" && next == ";") {
           accum.push(";;");
           state = "comment";
@@ -153,9 +164,9 @@ export function* tokenize(input: string): Generator<Token> {
       if (curr == 0x0a) {
         yield proceeds();
       }
-    } else if(state === 'multi-comment') {
+    } else if (state === "multi-comment") {
       accum.push(char);
-      if (char == ';' && next == ')') {
+      if (char == ";" && next == ")") {
         accum.push(next);
         i++;
         multiDepth--;
@@ -163,7 +174,7 @@ export function* tokenize(input: string): Generator<Token> {
           state = "comment";
           yield proceeds();
         }
-      } else if (char == '(' && next == ';') {
+      } else if (char == "(" && next == ";") {
         accum.push(next);
         i++;
         multiDepth++;
@@ -511,7 +522,11 @@ export function parse(input: string): ParsedWat[] {
         currType = typeStack.pop() || "";
         curr.push(list);
       } else {
-        throw new Error(`Unmatched (, got ${JSON.stringify(token.content)}`);
+        throw new Error(
+          `Unmatched (, got ${JSON.stringify(token.content)} at line ${
+            token.line
+          }`
+        );
       }
     } else if (token.content === "(;") {
       listStack.push(curr);
@@ -526,16 +541,24 @@ export function parse(input: string): ParsedWat[] {
         curr.push(list);
       } else {
         throw new Error(
-          `Unmatched '${currType}', got ${JSON.stringify(token.content)}`
+          `Unmatched '${currType}', got ${JSON.stringify(
+            token.content
+          )}, at line ${token.line}`
         );
       }
     } else {
-      throw new Error(`Unexpected delimiter ${JSON.stringify(token.content)}`);
+      throw new Error(
+        `Unexpected delimiter ${JSON.stringify(token.content)} at line ${
+          token.line
+        }`
+      );
     }
   }
 
   if (listStack.length) {
-    throw new Error("Unbalanced paren");
+    const top = listStack.pop() || [];
+    const first = top.find(isAtom);
+    throw new Error(`Unbalanced paren at line ${first?.token.line}`);
   }
 
   return parsed;

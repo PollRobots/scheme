@@ -28,6 +28,7 @@
     "src/library/numerics.wat",
     "src/library/pair.wat",
     "src/library/process.wat",
+    "src/library/string.wat",
     "src/library/symbol.wat"
   ],
   "importFuncs": [
@@ -42,7 +43,9 @@
       "module": "io",
       "name": "write",
       "index": "$io-write",
-      "params": ["i32"]
+      "params": [
+        "i32"
+      ]
     },
     {
       "module": "process",

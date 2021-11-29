@@ -812,7 +812,7 @@
 
 
   ;; type = *args & 0xf
-  (local.set $type (i32.and (i32.load (local.get $args)) (i32.const 0x0F)))
+  (local.set $type (%get-type $args))
 
   ;; switch (type) {
   ;; case symbol:

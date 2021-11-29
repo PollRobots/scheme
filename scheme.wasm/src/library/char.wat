@@ -88,7 +88,7 @@
     (local.set $first (call $str-code-point-at (local.get $str) (i32.const 2)))
 
     ;; if there is nothing at position 3, then this is a literal character 
-    (if (i32.eqz (call $str-code-point-at (local.get $str) (i32.const 3)))
+    (if (i32.eq (call $str-code-point-at (local.get $str) (i32.const 3)) (i32.const -1))
       (then (return (%alloc-char (local.get $first))))
     )
 
@@ -724,11 +724,30 @@
   (return (%alloc-char (i32.wrap_i64 (local.get $val))))
 )
 
+(func $char-upcase-impl (param $code-point i32) (result i32)
+  (local $data-ptr i32)
+  (local $offset i32)
+
+  (local.set $data-ptr 
+    (call $char-get-data-block 
+      (global.get $g-char-data) 
+      (i32.shr_u (local.get $code-point) (i32.const 8))
+    )
+  )
+  ;; offset = (code-point & 0xFF) * 8
+  (local.set $offset (i32.shl (i32.and (local.get $code-point) (i32.const 0xFF)) (i32.const 3)))
+
+  (return
+    (i32.and
+      (i32.load offset=2 (i32.add (local.get $data-ptr) (local.get $offset)))
+      (i32.const 0x1FFFFF)
+    )
+  )
+)
+
 (func $char-upcase (param $env i32) (param $args i32) (result i32)
   (local $arg i32)
   (local $code-point i32)
-  (local $data-ptr i32)
-  (local $offset i32)
   (local $upper i32)
 
   (block $b_check
@@ -742,21 +761,7 @@
   )
 
   (local.set $code-point (%car-l $arg))
-  (local.set $data-ptr 
-    (call $char-get-data-block 
-      (global.get $g-char-data) 
-      (i32.shr_u (local.get $code-point) (i32.const 8))
-    )
-  )
-  ;; offset = (code-point & 0xFF) * 8
-  (local.set $offset (i32.shl (i32.and (local.get $code-point) (i32.const 0xFF)) (i32.const 3)))
-
-  (local.set $upper 
-    (i32.and
-      (i32.load offset=2 (i32.add (local.get $data-ptr) (local.get $offset)))
-      (i32.const 0x1FFFFF)
-    )
-  )
+  (local.set $upper (call $char-upcase-impl (local.get $code-point)))
 
   (if 
     (i32.or 

@@ -117,8 +117,8 @@
   (loop $forever
     ;; char = str-code-point-at
     (local.set $char (call $str-code-point-at (local.get $input) (local.get $in-off)))
-    ;; if (char == 0)
-    (if (i32.eqz (local.get $char))
+    ;; if (char == 1)
+    (if (i32.eq (local.get $char) (i32.const -1))
       ;; {
       (then
         (local.set $input (call $primitive-read (local.get $reader)))

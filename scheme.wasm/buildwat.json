@@ -28,6 +28,7 @@
     "src/library/numerics.wat",
     "src/library/pair.wat",
     "src/library/process.wat",
+    "src/library/string.wat",
     "src/library/symbol.wat"
   ],
   "start": "$start",
