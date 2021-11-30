@@ -100,9 +100,13 @@
 (%define %builtin-string-downcase ()          (i32.const 97))
 (%define %builtin-substring ()                (i32.const 98))
 (%define %builtin-string-copy ()              (i32.const 99))
-(%define %builtin-string-list ()              (i32.const 100))
+(%define %builtin-string->list ()             (i32.const 100))
+(%define %builtin-list->string ()             (i32.const 101))
+(%define %builtin-string-append ()            (i32.const 102))
+(%define %builtin-string-copy! ()             (i32.const 103))
+(%define %builtin-string-fill! ()             (i32.const 104))
 
-(table $table-builtin 101 anyfunc)
+(table $table-builtin 105 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -215,7 +219,11 @@
   (%add-builtin (%sym-128 0x662D676e69727473 0x65736163646c6f 15) (%builtin-string-downcase)) ;; 'string-foldcase'
   (%add-builtin (%sym-128 0x6e69727473627573 0x67 9) (%builtin-substring)) ;; 'substring'
   (%add-builtin (%sym-128 0x632D676e69727473 0x79706f 11) (%builtin-string-copy)) ;; 'string-copy'
-  (%add-builtin (%sym-128 0x6c2D676e69727473 0x747369 11) (%builtin-string-list)) ;; 'string-list'
+  (%add-builtin (%sym-128 0x3E2D676e69727473 0x7473696c 12) (%builtin-string->list)) ;; 'string->list'
+  (%add-builtin (%sym-128 0x74733E2D7473696c 0x676e6972 12) (%builtin-list->string)) ;; 'list->string'
+  (%add-builtin (%sym-128 0x612D676e69727473 0x646e657070 13) (%builtin-string-append)) ;; 'string-append'
+  (%add-builtin (%sym-128 0x632D676e69727473 0x2179706f 12) (%builtin-string-copy!)) ;; 'string-copy!'
+  (%add-builtin (%sym-128 0x662D676e69727473 0x216c6c69 12) (%builtin-string-fill!)) ;; 'string-fill!'
 
   (call $environment-add
     (local.get $env)
@@ -361,4 +369,8 @@
 (elem $table-builtin (%builtin-string-downcase) $string-downcase)
 (elem $table-builtin (%builtin-substring) $substring)
 (elem $table-builtin (%builtin-string-copy) $string-copy)
-(elem $table-builtin (%builtin-string-list) $string-list)
+(elem $table-builtin (%builtin-string->list) $string->list)
+(elem $table-builtin (%builtin-list->string) $list->string)
+(elem $table-builtin (%builtin-string-append) $string-append)
+(elem $table-builtin (%builtin-string-copy!) $string-copy!)
+(elem $table-builtin (%builtin-string-fill!) $string-fill!)

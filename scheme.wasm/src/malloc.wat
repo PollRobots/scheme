@@ -414,3 +414,32 @@
 
   (return (local.get $ptr))
 )
+
+(func $memcpy (param $dest i32) (param $src i32) (param $len i32)
+  (block $b_end
+    (loop $b_start
+      (br_if $b_end (i32.lt_u (local.get $len) (i32.const 4)))
+
+      (i32.store
+        (local.get $dest)
+        (i32.load (local.get $src)))
+
+      (%plus-eq $dest 4)
+      (%plus-eq $src 4)
+      (%minus-eq $len 4)
+      (br $b_start)))
+
+  (block $b_one
+    (br_if $b_one (i32.eqz (local.get $len)))
+    (i32.store8 (local.get $dest) (i32.load8_u (local.get $src)))
+    (%dec $len)
+    (br_if $b_one (i32.eqz (local.get $len)))
+    (%inc $dest)
+    (%inc $src)
+    (i32.store8 (local.get $dest) (i32.load8_u (local.get $src)))
+    (%dec $len)
+    (br_if $b_one (i32.eqz (local.get $len)))
+    (%inc $dest)
+    (%inc $src)
+    (i32.store8 (local.get $dest) (i32.load8_u (local.get $src))))
+)

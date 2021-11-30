@@ -58,6 +58,8 @@
 (%define %cdr (%cons) (i32.load offset=8 %cons))
 (%define %cdr-l (%cons) (i32.load offset=8 (local.get %cons)))
 (%define %cdr-g (%cons) (i32.load offset=8 (global.get %cons)))
+(%define %pop-l (%var %cons) (local.set %var (%car-l %cons)) (local.set %cons (%cdr-l %cons)))
+(%define %chk-type (%lbl %var %type) (br_if %lbl (i32.ne (%get-type %var) (%type))))
 
 (%define %set-car!-l (%cons %val) (i32.store offset=4 (local.get %cons) (local.get %val)))
 (%define %set-cdr!-l (%cons %val) (i32.store offset=8 (local.get %cons) (local.get %val)))

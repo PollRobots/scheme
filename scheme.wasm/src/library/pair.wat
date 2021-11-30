@@ -119,15 +119,8 @@
   )
 )
 
-(func $list? (param $env i32) (param $args i32) (result i32)
+(func $is-list-impl (param $arg i32) (result i32)
   (local $type i32)
-  (local $arg i32)
-
-  (if (i32.ne (call $list-len (local.get $args)) (i32.const 1))
-    (then (return (call $argument-error (local.get $args))))
-  )
-
-  (local.set $arg (%car-l $args))
 
   (block $b_end
     (loop $b_start
@@ -136,16 +129,27 @@
       (br_if $b_end (i32.eq (local.get $type) (%nil-type)))
 
       (if (i32.ne (local.get $type) (%cons-type))
-        (then (return (global.get $g-false)))
-      )
+        (then 
+          (return (i32.const 0))))
 
       (local.set $arg (%cdr-l $arg))
-      (br $b_start)
-    )
-  )
+      (br $b_start)))
 
-  (return (global.get $g-true))
-)
+  (return (i32.const 1)))
+
+(func $list? (param $env i32) (param $args i32) (result i32)
+  (local $type i32)
+  (local $arg i32)
+
+  (if (i32.ne (call $list-len (local.get $args)) (i32.const 1))
+    (then 
+      (return (call $argument-error (local.get $args)))))
+
+  (return
+    (select
+      (global.get $g-true)
+      (global.get $g-false)
+      (call $is-list-impl (%car-l $args)))))
 
 (func $make-list (param $env i32) (param $args i32) (result i32)
   (local $num-args i32)
