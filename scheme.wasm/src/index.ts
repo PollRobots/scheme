@@ -273,6 +273,9 @@ class SchemeRuntime {
       if (err instanceof RuntimeExitError) {
         console.log(`Scheme exited with : ${err.exitCode}`);
         process.exit(err.exitCode);
+      } else {
+        console.error(err);
+        process.exit(1);
       }
     }
   }

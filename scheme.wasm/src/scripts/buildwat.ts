@@ -161,21 +161,49 @@ function makeSuffix(config: BuildWatConfig): string[] {
   return suffix;
 }
 
+async function getLastInputEdit(files: string[]) {
+  let latest = new Date(0);
+  for (const file of files) {
+    const stat = await fs.stat(file);
+    const mtime = new Date(stat.mtimeMs);
+    if (mtime > latest) {
+      latest = mtime;
+    }
+  }
+  return latest;
+}
+
 async function main() {
   const program = new Command();
   program
+    .name("buildwat")
+    .description("Concatenates and assembles a set of .WAT files.")
     .version("0.0.0.1")
     .requiredOption("-o, --output <wasm file>", "The output to generate")
     .option("-t, --tempfile <tempfile>", "Save the intermediate WAT file")
     .option('-m, --macros', "Use macro expansion")
+    .option('-f, --force', "Build even if output is older than inputs")
     .argument("<config>", "build configuration file");
 
   program.parse();
-  const opts = program.opts<{ output: string; tempfile?: string, macros?: boolean }>();
+  const opts = program.opts<{ output: string; tempfile?: string, macros?: boolean, force?: boolean }>();
 
   const config = JSON.parse(await fs.readFile(program.args[0], "utf-8"));
   if (!isBuildWatConfig(config)) {
     throw new Error(`Config file '${program.args[0]}' is invalid.`);
+  }
+
+  if (!opts.force) {
+    try {
+      const lastInputEdit = await getLastInputEdit(config.files);
+      const lastOutputEdit = await getLastInputEdit([opts.output]);
+      if (lastOutputEdit > lastInputEdit) {
+        console.log(`${program.name()}: build skipped.`)
+        return;
+      }
+    } catch (err) {
+
+    }
   }
 
   const wabtModule = await wabt();

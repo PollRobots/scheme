@@ -145,21 +145,28 @@ while the working set is non-empty:
       ;; case error-type
       (if (i32.eq (local.get $type) (%error-type))
         (then
-        ;; gc-maybe-gray-enqueue(car(curr))
-        (call $gc-maybe-gray-enqueue (%car-l $curr))
-        ;; gc-maybe-gray-enqueue(cdr(curr))
-        (call $gc-maybe-gray-enqueue (%cdr-l $curr))
-        (br $b_switch)
+          ;; gc-maybe-gray-enqueue(car(curr))
+          (call $gc-maybe-gray-enqueue (%car-l $curr))
+          ;; gc-maybe-gray-enqueue(cdr(curr))
+          (call $gc-maybe-gray-enqueue (%cdr-l $curr))
+          (br $b_switch)
         )
       )
       ;; case values-type
       (if (i32.eq (local.get $type) (%values-type))
         (then
-        ;; gc-maybe-gray-enqueue(car(curr))
-        (call $gc-maybe-gray-enqueue (%car-l $curr))
-        ;; gc-maybe-gray-enqueue(cdr(curr))
-        (call $gc-maybe-gray-enqueue (%cdr-l $curr))
-        (br $b_switch)
+          ;; gc-maybe-gray-enqueue(car(curr))
+          (call $gc-maybe-gray-enqueue (%car-l $curr))
+          ;; gc-maybe-gray-enqueue(cdr(curr))
+          (call $gc-maybe-gray-enqueue (%cdr-l $curr))
+          (br $b_switch)
+        )
+      )
+      ;; case vector-type
+      (if (i32.eq (local.get $type) (%vector-type))
+        (then
+          (call $gc-gray-vector (local.get $curr))
+          (br $b_switch)
         )
       )
       ;; }
@@ -175,6 +182,23 @@ while the working set is non-empty:
   )
   (unreachable)
 )
+
+(func $gc-gray-vector (param $vec i32)
+  (local $ptr i32)
+  (local $count i32)
+
+  (local.set $ptr (%car-l $vec))
+  (local.set $count (%cdr-l $vec))
+
+  (loop $forever
+    (if $b_end (i32.eqz (local.get $count))
+      (then (return)))
+    
+    (call $gc-maybe-gray-enqueue (i32.load (local.get $ptr)))
+    
+    (%plus-eq $ptr 4)
+    (%dec $count)
+    (br $forever)))
 
 (func $gc-finalize (param $heap i32)
   (local $size i32)
@@ -240,6 +264,11 @@ while the working set is non-empty:
               (then (call $environment-destroy (local.get $ptr) (i32.const 0)))
             ;; }
             )
+            ;; } else if (type == %vector-type) {
+            (if (i32.eq (local.get $type) (%vector-type))
+              (then (call $malloc-free (%car-l $ptr)))
+            )
+            ;; }
             ;; heap-free(ptr)
             (call $heap-free (local.get $heap) (local.get $ptr))
             (%ginc $g-gc-collected-count)

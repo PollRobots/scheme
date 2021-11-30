@@ -120,6 +120,13 @@
         (br $b_switch)
       )
     )
+    ;; case vector:
+    (if (i32.eq (local.get $type (%vector-type)))
+      (then
+        (call $print-vector (local.get $ptr))
+        (br $b_switch)
+      )
+    )
     ;; default:
     (call $print-other (global.get $g-unknown) (local.get $type) (local.get $ptr))
       ;; print-error();
@@ -209,6 +216,29 @@
   (call $print (%cdr-l $ptr))
   (call $print-symbol (global.get $g-gt))
 )
+
+(func $print-vector (param $vector i32)
+  (local $ptr i32)
+  (local $len i32)
+
+  (local.set $ptr (%car-l $vector))
+  (local.set $len (%cdr-l $vector))
+
+  (call $print-symbol (global.get $g-vec-open))
+
+  (block $b_end
+    (loop $b_start
+      (br_if $b_end (i32.eqz (local.get $len)))
+
+      (call $print (i32.load (local.get $ptr)))
+      (if (i32.gt_u (local.get $len) (i32.const 1))
+        (then (call $print-symbol (global.get $g-space))))
+
+      (%plus-eq $ptr 4)
+      (%dec $len)
+      (br $b_start)))
+
+  (call $print-symbol (global.get $g-close)))
 
 (func $print-env (param $env i32)
   (call $print (global.get $g-env))

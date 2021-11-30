@@ -23,6 +23,7 @@
 (global $g-eof        (mut i32) (i32.const 0))
 (global $g-quote      (mut i32) (i32.const 0))
 (global $g-args       (mut i32) (i32.const 0))
+(global $g-vec-open   (mut i32) (i32.const 0))
 
 (func $runtime-init
   (global.set $g-reader (call $reader-init))
@@ -50,6 +51,7 @@
   (global.set $g-eof (%sym-32 0x666f65 3))
   (global.set $g-quote (%sym-32 0x22 1))
   (global.set $g-args (%sym-32 0x73677261 4))
+  (global.set $g-vec-open (%sym-32 0x2823 2))
 
   (call $char-init)
 )
@@ -106,6 +108,7 @@
   (local $raw-token i32)
   (local $head i32)
   (local $curr i32)
+  (local $list-vector i32)
 
   (%define %check-str (%str) 
     (if (i32.eqz (local.get %str))
@@ -124,8 +127,20 @@
 
   (%check-str $token-str)
 
-  ;; if (token-str == '(') {
-  (if (call $short-str-eq (local.get $token-str) (i32.const 0x28) (i32.const 1))
+  (block $b_lv
+    (block $b_list
+      (br_if $b_list (call $short-str-eq (local.get $token-str) (i32.const 0x28) (i32.const 1)))
+      (local.set $list-vector (select
+        (i32.const 2)
+        (i32.const 0)
+        (call $short-str-eq (local.get $token-str) (i32.const 0x2823) (i32.const 2))))
+      (br $b_lv))
+    (local.set $list-vector (i32.const 1))
+  )
+
+
+  ;; if (token-str == '(' || token-str == '#(') {
+  (if (local.get $list-vector)
     (then
       ;; malloc-free(token-str)
       (call $malloc-free (local.get $token-str))
@@ -138,8 +153,11 @@
         (then
           ;; malloc-free(car-str)
           (call $malloc-free (local.get $car-str))
-          ;; return g-nil
-          (return (global.get $g-nil))
+
+          (if (i32.eq (local.get $list-vector) (i32.const 1))
+            (then (return (global.get $g-nil)))
+            (else (return (call $make-vector-internal (global.get $g-nil))))
+          )
         )
         ;; }
       )
@@ -162,8 +180,11 @@
           (then
             ;; malloc-free(cdr-str)
             (call $malloc-free (local.get $cdr-str))
-            ;; return head
-            (return (local.get $head))
+
+            (if (i32.eq (local.get $list-vector) (i32.const 1))
+              (then (return (local.get $head)))
+              (else (return (call $make-vector-internal (local.get $head))))
+            )
           )
         )
         ;; }
@@ -187,6 +208,7 @@
               (then
                 ;; malloc-free(cdr-str)
                 (call $malloc-free (local.get $cdr-str))
+                ;; TODO error if vector
                 ;; return head
                 (return (local.get $head))
               )
@@ -257,6 +279,33 @@
   ;; return atom(raw-token);
   (return (call $atom (local.get $raw-token)))
 )
+
+(func $make-vector-internal (param $list i32) (result i32)
+  (local $len i32)
+  (local $ptr i32)
+  (local $vec i32)
+
+  (local.set $len (call $list-len (local.get $list)))
+  (local.set $ptr (call $malloc (i32.shl (local.get $len) (i32.const 2))))
+
+  (local.set $vec 
+    (call $heap-alloc 
+      (global.get $g-heap)
+      (%vector-type)
+      (local.get $ptr)
+      (local.get $len)))
+
+  (loop $forever
+    (if (i32.eq (%get-type $list) (%nil-type))
+      (then (return (local.get $vec))))
+
+    (i32.store (local.get $ptr) (%car-l $list))
+
+    (local.set $list (%cdr-l $list)) 
+    (%plus-eq $ptr 4)
+    (br $forever))
+
+  (unreachable))
 
 (func $atom (param $token i32)  (result i32)
   (local $token-str i32)

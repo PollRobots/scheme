@@ -105,8 +105,23 @@
 (%define %builtin-string-append ()            (i32.const 102))
 (%define %builtin-string-copy! ()             (i32.const 103))
 (%define %builtin-string-fill! ()             (i32.const 104))
+(%define %builtin-vector? ()                  (i32.const 105))
+(%define %builtin-make-vector ()              (i32.const 106))
+(%define %builtin-vector ()                   (i32.const 107))
+(%define %builtin-vector-length ()            (i32.const 108))
+(%define %builtin-vector-ref ()               (i32.const 109))
+(%define %builtin-vector-set! ()              (i32.const 110))
+(%define %builtin-vector-copy ()              (i32.const 111))
+(%define %builtin-vector-copy! ()             (i32.const 112))
+(%define %builtin-vector->string ()           (i32.const 113))
+(%define %builtin-string->vector ()           (i32.const 114))
+(%define %builtin-vector->list ()             (i32.const 115))
+(%define %builtin-list->vector ()             (i32.const 116))
+(%define %builtin-vector-append ()            (i32.const 117))
+(%define %builtin-vector-fill! ()             (i32.const 118))
 
-(table $table-builtin 105 anyfunc)
+
+(table $table-builtin 119 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -224,6 +239,20 @@
   (%add-builtin (%sym-128 0x612D676e69727473 0x646e657070 13) (%builtin-string-append)) ;; 'string-append'
   (%add-builtin (%sym-128 0x632D676e69727473 0x2179706f 12) (%builtin-string-copy!)) ;; 'string-copy!'
   (%add-builtin (%sym-128 0x662D676e69727473 0x216c6c69 12) (%builtin-string-fill!)) ;; 'string-fill!'
+  (%add-builtin (%sym-64 0x3f726f74636576 7) (%builtin-vector?)) ;; 'vector?'
+  (%add-builtin (%sym-128 0x6365762D656b616d 0x726f74 11) (%builtin-make-vector)) ;; 'make-vector'
+  (%add-builtin (%sym-64 0x726f74636576 6) (%builtin-vector)) ;; 'vector'
+  (%add-builtin (%sym-128 0x6c2D726f74636576 0x6874676e65 13) (%builtin-vector-length)) ;; 'vector-length'
+  (%add-builtin (%sym-128 0x722D726f74636576 0x6665 10) (%builtin-vector-ref)) ;; 'vector-ref'
+  (%add-builtin (%sym-128 0x732D726f74636576 0x217465 11) (%builtin-vector-set!)) ;; 'vector-set!'
+  (%add-builtin (%sym-128 0x632D726f74636576 0x79706f 11) (%builtin-vector-copy)) ;; 'vector-copy'
+  (%add-builtin (%sym-128 0x632D726f74636576 0x2179706f 12) (%builtin-vector-copy!)) ;; 'vector-copy!'
+  (%add-builtin (%sym-128 0x3E2D726f74636576 0x676e69727473 14) (%builtin-vector->string)) ;; 'vector->string'
+  (%add-builtin (%sym-128 0x3E2D676e69727473 0x726f74636576 14) (%builtin-string->vector)) ;; 'string->vector'
+  (%add-builtin (%sym-128 0x3E2D726f74636576 0x7473696c 12) (%builtin-vector->list)) ;; 'vector->list'
+  (%add-builtin (%sym-128 0x65763E2D7473696c 0x726f7463 12) (%builtin-list->vector)) ;; 'list->vector'
+  (%add-builtin (%sym-128 0x612D726f74636576 0x646e657070 13) (%builtin-vector-append)) ;; 'vector-append'
+  (%add-builtin (%sym-128 0x662D726f74636576 0x216c6c69 12) (%builtin-vector-fill!)) ;; 'vector-fill!'
 
   (call $environment-add
     (local.get $env)
@@ -374,3 +403,17 @@
 (elem $table-builtin (%builtin-string-append) $string-append)
 (elem $table-builtin (%builtin-string-copy!) $string-copy!)
 (elem $table-builtin (%builtin-string-fill!) $string-fill!)
+(elem $table-builtin (%builtin-vector?) $vector?)
+(elem $table-builtin (%builtin-make-vector) $make-vector)
+(elem $table-builtin (%builtin-vector) $vector)
+(elem $table-builtin (%builtin-vector-length) $vector-length)
+(elem $table-builtin (%builtin-vector-ref) $vector-ref)
+(elem $table-builtin (%builtin-vector-set!) $vector-set!)
+(elem $table-builtin (%builtin-vector-copy) $vector-copy)
+(elem $table-builtin (%builtin-vector-copy!) $vector-copy!)
+(elem $table-builtin (%builtin-vector->string) $vector->string)
+(elem $table-builtin (%builtin-string->vector) $string->vector)
+(elem $table-builtin (%builtin-vector->list) $vector->list)
+(elem $table-builtin (%builtin-list->vector) $list->vector)
+(elem $table-builtin (%builtin-vector-append) $vector-append)
+(elem $table-builtin (%builtin-vector-fill!) $vector-fill!)

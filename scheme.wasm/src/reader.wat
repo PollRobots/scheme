@@ -171,7 +171,7 @@
         ;; assert(acc-off == 0)
         (if (local.get $acc-off) (then unreachable))
 
-        (if (i32.eq (local.get $char) (i32.const 0x22))
+        (if (i32.eq (local.get $char) (i32.const 0x22)) ;; quote
           (then
             (local.set $is-string (i32.const 1))
             (local.set $escaping (i32.const 0))
@@ -384,30 +384,47 @@
         ;; * a delimiter ends the token, and needs to be pushed back
         ;; anything else is accumulated
 
-        ;; if (is-delimiter(char)) {
-        (if (call $is-delimiter (local.get $char))
-          (then
-            ;; reader.in_off= in-off = in-off - 1
-            (i32.store
-              offset=4
-              (local.get $reader)
-              (local.tee $in-off (i32.sub (local.get $in-off) (i32.const 1)))
+        (block $b_done
+          ;; if this is open-paren, check if accum buffer is ['#'], then this is a vector start
+          (if (i32.eq (local.get $char) (i32.const 0x28)) ;; open-paren 0x28
+            (then
+              (if (i32.eq (local.get $acc-off) (i32.const 1))
+                (then
+                  (if (i32.eq (i32.load (local.get $accum)) (i32.const 0x23)) ;; # 0x23
+                    (then
+                      (return (call $str-from-32 (i32.const 2) (i32.const 0x2823)))
+                    )
+                  )
+                )
+              )
+           )
+          )
+
+          ;; if (is-delimiter(char)) {
+          (if (call $is-delimiter (local.get $char))
+            (then
+              ;; reader.in_off= in-off = in-off - 1
+              (i32.store
+                offset=4
+                (local.get $reader)
+                (local.tee $in-off (i32.sub (local.get $in-off) (i32.const 1)))
+              )
+              (br $b_done)
             )
           )
-        ;; } else if (!is-whitespace(char)) {
-          (else
-            (if (i32.eqz (call $is-whitespace (local.get $char)))
-              (then
-                ;; accum[acc-off] = char
-                (i32.store
-                  (i32.add (local.get $accum) (i32.shl (local.get $acc-off) (i32.const 2)))
-                  (local.get $char)
-                )
-                ;; acc-off++
-                (%inc $acc-off)
-                ;; continue
-                (br $forever)
+
+          ;; } else if (!is-whitespace(char)) {
+          (if (i32.eqz (call $is-whitespace (local.get $char)))
+            (then
+              ;; accum[acc-off] = char
+              (i32.store
+                (i32.add (local.get $accum) (i32.shl (local.get $acc-off) (i32.const 2)))
+                (local.get $char)
               )
+              ;; acc-off++
+              (%inc $acc-off)
+              ;; continue
+              (br $forever)
             )
           )
         ;; }

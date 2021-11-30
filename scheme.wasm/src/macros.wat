@@ -32,7 +32,8 @@
 ;;   lambda = 12
 ;;   error = 13
 ;;   values = 14
-;; kMaxType = 14
+;;   vector = 15
+;; kMaxType = 15
 (%define %empty-type () (i32.const 0))
 (%define %nil-type () (i32.const 1))
 (%define %boolean-type () (i32.const 2))
@@ -48,7 +49,8 @@
 (%define %lambda-type () (i32.const 12))
 (%define %error-type () (i32.const 13))
 (%define %values-type () (i32.const 14))
-(%define %max-heap-type () (i32.const 14))
+(%define %vector-type () (i32.const 15))
+(%define %max-heap-type () (i32.const 15))
 
 (%define %get-type (%arg) (i32.and (i32.load (local.get %arg)) (i32.const 0xF)))
 

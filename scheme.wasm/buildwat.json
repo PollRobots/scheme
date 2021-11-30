@@ -29,7 +29,8 @@
     "src/library/pair.wat",
     "src/library/process.wat",
     "src/library/string.wat",
-    "src/library/symbol.wat"
+    "src/library/symbol.wat",
+    "src/library/vector.wat"
   ],
   "start": "$start",
   "importFuncs": [
