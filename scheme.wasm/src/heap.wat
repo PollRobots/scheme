@@ -230,13 +230,12 @@
           (call $malloc-free (local.get $data1))
           ;; malloc-free(data1)
           ;; return interned
-          (return (local.get $interned))
-        )
-      ;; }
-      )
-    )
-  ;; }
-  )
+          ;; (if (global.get $g-interned-str)
+          ;;   (then
+          ;;     (call $print (global.get $g-interned-str))
+          ;;     (call $print (local.get $interned))
+          ;;     (call $print (global.get $g-newline))))
+          (return (local.get $interned))))))
 
   ;; empty-ptr = heap[4]
   (local.set $empty-ptr (i32.load offset=4 (local.get $heap)))
@@ -254,11 +253,7 @@
           ;; heap[8] = next-heap-ptr = heap-create(heap[0])
           (i32.store
             (i32.add (local.get $heap) (i32.const 8))
-            (local.tee $next-heap-ptr (call $heap-create (i32.load (local.get $heap))))
-          )
-        )
-      ;; }
-      )
+            (local.tee $next-heap-ptr (call $heap-create (i32.load (local.get $heap)))))))
 
 
       ;; return heap-alloc(next-heap-ptr, type, data1, data2);
@@ -266,62 +261,47 @@
         (local.get $next-heap-ptr) 
         (local.get $type) 
         (local.get $data1) 
-        (local.get $data2)
-      ))
-    )
-  ;; }
-  )
+        (local.get $data2)))))
 
   ;; if (type == 0) {
   (if (i32.eqz (local.get $type))
     ;; cannot allocate an empty cell
     ;; trap
-    (then unreachable)
-  ;; }
-  )
-  ;; if (type > kMaxType(12) ) {
+    (then unreachable))
+
+  ;; if (type > kMaxType) ) {
   (if (i32.gt_u (local.get $type) (%max-heap-type))
     ;; trap
-    (then unreachable)
-  ;; }
-  )
+    (then unreachable))
 
   ;; heap[4] = empty-ptr[4]
-  (i32.store
-    (i32.add (local.get $heap) (i32.const 4))
-    (i32.load offset=4 (local.get $empty-ptr))
-  )
+  (i32.store offset=4
+    (local.get $heap)
+    (i32.load offset=4 (local.get $empty-ptr)))
   ;; empty-ptr[0] = type
   (i32.store
     (local.get $empty-ptr)
-    (local.get $type)
-  )
+    (local.get $type))
   ;; empty-ptr[4] = data1
-  (i32.store
-    (i32.add (local.get $empty-ptr) (i32.const 4))
-    (local.get $data1)
-  )
+  (i32.store offset=4
+    (local.get $empty-ptr)
+    (local.get $data1))
   ;; empty-ptr[8] = data2
-  (i32.store
-    (i32.add (local.get $empty-ptr) (i32.const 8))
-    (local.get $data2)
-  )
+  (i32.store offset=8
+    (local.get $empty-ptr)
+    (local.get $data2))
 
   ;; if (type == symbol-type) {
   (if (i32.eq (local.get $type) (%symbol-type))
     ;; intern-symbol(data1, empty-ptr)
-    (call $intern-symbol (local.get $data1) (local.get $empty-ptr))
-  ;; }
-  )
+    (then (call $intern-symbol (local.get $data1) (local.get $empty-ptr))))
 
   (if (global.get $g-gc-collecting?)
     ;; items allocated while gc is collecting are considered gray
-    (call $gc-maybe-gray-enqueue (local.get $empty-ptr))
-  )
+    (then (call $gc-maybe-gray-enqueue (local.get $empty-ptr))))
 
   ;; return empty-ptr
-  (return (local.get $empty-ptr))
-)
+  (return (local.get $empty-ptr)))
 
 (func $get-interned-symbol (param $str i32) (result i32)
   (return

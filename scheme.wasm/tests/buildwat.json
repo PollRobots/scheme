@@ -6,12 +6,12 @@
   "files": [
     "src/macros.wat",
     "src/builtins.wat",
+    "src/conditionals.wat",
     "src/define.wat",
     "src/environment.wat",
     "src/gc.wat",
     "src/hashtable.wat",
     "src/heap.wat",
-    "src/if.wat",
     "src/lambda.wat",
     "src/let.wat",
     "src/string.wat",

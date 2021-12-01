@@ -26,6 +26,10 @@
 (global $g-vec-open   (mut i32) (i32.const 0))
 (global $g-u8vec      (mut i32) (i32.const 0))
 (global $g-u8-open    (mut i32) (i32.const 0))
+(global $g-else       (mut i32) (i32.const 0))
+(global $g-arrow      (mut i32) (i32.const 0))
+(global $g-apply      (mut i32) (i32.const 0))
+(global $g-interned-str   (mut i32) (i32.const 0))
 
 (func $runtime-init
   (global.set $g-reader (call $reader-init))
@@ -45,17 +49,21 @@
   (global.set $g-lt (%sym-32 0x3c 1))
   (global.set $g-gt (%sym-32 0x3e 1))
   (global.set $g-unknown (%sym-64 0x6e776f6e6b6e75 7))
-  (global.set $g-space (%sym-32 0x20 1))
-  (global.set $g-error (%sym-64 0x726f727265 5))
-  (global.set $g-open (%sym-32 0x28 1))
-  (global.set $g-close (%sym-32 0x29 1))
-  (global.set $g-dot (%sym-32 0x202e20 3))
-  (global.set $g-eof (%sym-32 0x666f65 3))
-  (global.set $g-quote (%sym-32 0x22 1))
-  (global.set $g-args (%sym-32 0x73677261 4))
-  (global.set $g-vec-open (%sym-32 0x2823 2))
-  (global.set $g-u8vec (%sym-64 0x6365763875 5))
-  (global.set $g-u8-open (%sym-32 0x28387523 4))
+  (global.set $g-space (%sym-32 0x20 1))          ;; ' '
+  (global.set $g-error (%sym-64 0x726f727265 5))  ;; error
+  (global.set $g-open (%sym-32 0x28 1))           ;; (
+  (global.set $g-close (%sym-32 0x29 1))          ;; )
+  (global.set $g-dot (%sym-32 0x202e20 3))        ;; ' . '
+  (global.set $g-eof (%sym-32 0x666f65 3))        ;; eof
+  (global.set $g-quote (%sym-32 0x22 1))          ;; "
+  (global.set $g-args (%sym-32 0x73677261 4))     ;; args
+  (global.set $g-vec-open (%sym-32 0x2823 2))     ;; #(
+  (global.set $g-u8vec (%sym-64 0x6365763875 5))  ;; u8vec
+  (global.set $g-u8-open (%sym-32 0x28387523 4))  ;; #u8(
+  (global.set $g-else (%sym-32 0x65736c65 4))     ;; else
+  (global.set $g-arrow (%sym-32 0x3E3D 2))        ;; =>
+  (global.set $g-apply (%sym-64 0x796c707061 5))  ;; apply
+  (global.set $g-interned-str (%sym-128 0x64656e7265746e69 0x203A 10)) ;; 'interned: '
 
   (call $char-init)
 )
@@ -514,22 +522,15 @@
 )
 
 (func $is-truthy (param $token i32) (result i32)
-  ;; if (token[0] & 0xF == 2) {
-  (if (i32.eq (i32.and (i32.load (local.get $token)) (i32.const 0xF)) (i32.const 2))
+  (if (i32.eq (%get-type $token) (%boolean-type))
     (then
-      ;; if (token[4] == 0) {
-      (if (i32.eqz (i32.load offset=4 (local.get $token)))
+      ;; if (car(token) == 0) {
+      (if (i32.eqz (%car-l $token))
         ;; return 0
-        (then (return (i32.const 0)))
-      )
-      ;; }
-    )
-    ;; }
-  )
+        (then (return (i32.const 0))))))
 
   ;; return 1
-  (return (i32.const 1))
-)
+  (return (i32.const 1)))
 
 (func $get-radix-digit (param $str i32) (param $offset i32) (param $radix i32) (result i32)
   (local $c i32)
@@ -955,7 +956,7 @@
 (func $eval-list (param $env i32) (param $args i32) (result i32)
   (local $type i32)
   ;; type =*args & 0xF 
-  (local.set $type (i32.and (i32.load (local.get $args)) (i32.const 0xF)))
+  (local.set $type (%get-type $args))
   ;; if (type == %nil-type) {
   (if (i32.eq (local.get $type) (%nil-type))
     (then
@@ -976,8 +977,8 @@
     (call $heap-alloc
       (global.get $g-heap)
       (%cons-type)
-      (call $eval (local.get $env) (i32.load offset=4 (local.get $args)))
-      (call $eval-list (local.get $env) (i32.load offset=8 (local.get $args)))
+      (call $eval (local.get $env) (%car-l $args))
+      (call $eval-list (local.get $env) (%cdr-l $args))
     )
   )
 )
@@ -1014,7 +1015,7 @@
     ;; default:
     ;;   any other type:
     (return
-      (%alloc-error-cons (%sym-64 0x796c707061 5) (%alloc-cons (local.get $op) (local.get $args)))
+      (%alloc-error-cons (global.get $g-apply) (%alloc-cons (local.get $op) (local.get $args)))
     )
   )
 
@@ -1023,6 +1024,38 @@
   (i32.load offset=4 (local.get $op))
   call_indirect $table-builtin (type $builtin-type)
 )
+
+(func $apply-internal (param $env i32) (param $op i32) (param $args i32) (result i32)
+  (local $op-type i32)
+  (local $curr i32)
+  (local $head i32)
+
+  ;; op-type = *op & 0xF
+  (local.set $op-type (%get-type $op))
+
+  ;; switch (op-type) {
+  (block $b_check
+    ;; case %special-type:
+    (br_if $b_check (i32.eq (local.get $op-type) (%special-type)))
+    ;; case $builtin-type:
+    (br_if $b_check (i32.eq (local.get $op-type) (%builtin-type)))
+
+    ;; case %lambda-type:
+    (if (i32.eq (local.get $op-type) (%lambda-type))
+      (then
+        (return 
+          (call $apply-lambda (local.get $env) (local.get $op) (local.get $args)))))
+    ;; default:
+    ;;   any other type:
+    (return
+      (%alloc-error-cons 
+        (global.get $g-apply) 
+        (%alloc-cons (local.get $op) (local.get $args)))))
+
+  (local.get $env)
+  (local.get $args)
+  (i32.load offset=4 (local.get $op))
+  call_indirect $table-builtin (type $builtin-type))
 
 (func $apply-lambda (param $env i32) (param $lambda i32) (param $args i32) (result i32)
   (local $closure i32)

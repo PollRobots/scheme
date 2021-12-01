@@ -536,17 +536,14 @@
         (else
           (local.set $cmp-args 
             (%alloc-cons
-                  (%alloc-quote (%car-l $list))
-                  (%alloc-cons
-                    (%alloc-quote (local.get $obj))
-                    (global.get $g-nil)
-                  )
+              (%car-l $list)
+              (%alloc-cons (local.get $obj) (global.get $g-nil))
             )
           )
           (br_if $b_end
             (i32.ne 
               (global.get $g-false)
-              (call $apply
+              (call $apply-internal
                 (local.get $env)
                 (local.get $cmp)
                 (local.get $cmp-args)
@@ -693,17 +690,14 @@
         (else
           (local.set $cmp-args 
             (%alloc-cons
-                  (%alloc-quote (%car-l $item))
-                  (%alloc-cons
-                    (%alloc-quote (local.get $obj))
-                    (global.get $g-nil)
-                  )
+              (%car-l $item)
+              (%alloc-cons (local.get $obj) (global.get $g-nil))
             )
           )
           (br_if $b_end
             (i32.ne 
               (global.get $g-false)
-              (call $apply
+              (call $apply-internal
                 (local.get $env)
                 (local.get $cmp)
                 (local.get $cmp-args)

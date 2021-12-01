@@ -119,15 +119,29 @@
 (%define %builtin-list->vector ()             (i32.const 116))
 (%define %builtin-vector-append ()            (i32.const 117))
 (%define %builtin-vector-fill! ()             (i32.const 118))
+(%define %special-cond ()                     (i32.const 119))
+(%define %special-case ()                     (i32.const 120))
+(%define %special-and ()                      (i32.const 121))
+(%define %special-or ()                       (i32.const 122))
+(%define %special-when ()                     (i32.const 123))
+(%define %special-unless ()                   (i32.const 124))
+(%define %special-begin ()                    (i32.const 125))
 
 
-(table $table-builtin 119 anyfunc)
+(table $table-builtin 126 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
 
 (func $register-builtins (param $heap i32) (param $env i32)
   (local $quote i32)
+
+  (%define %add-special (%sym %num)
+    (call $environment-add 
+      (local.get $env)
+      %sym 
+      (call $heap-alloc (local.get $heap) (%special-type) %num %sym))
+  )
 
   (%define %add-builtin (%sym %num)
     (call $environment-add 
@@ -254,46 +268,23 @@
   (%add-builtin (%sym-128 0x612D726f74636576 0x646e657070 13) (%builtin-vector-append)) ;; 'vector-append'
   (%add-builtin (%sym-128 0x662D726f74636576 0x216c6c69 12) (%builtin-vector-fill!)) ;; 'vector-fill!'
 
-  (call $environment-add
-    (local.get $env)
-    (%sym-32 0x6669 2) ;; 'if'
-    (call $heap-alloc (local.get $heap) (%special-type) (%special-if) (i32.const 0))
-  )
-  (call $environment-add
-    (local.get $env)
-    (%sym-32 0x74656c 3) ;; 'let'
-    (call $heap-alloc (local.get $heap) (%special-type) (%special-let) (i32.const 0))
-  )
-
   (global.set $lambda-sym (%sym-64 0x6164626d616c 6)) ;; 'lambda'
-  (call $environment-add
-    (local.get $env)
-    (global.get $lambda-sym)
-    (call $heap-alloc (local.get $heap) (%special-type) (%special-lambda) (i32.const 0))
-  )
-
-  (local.set $quote (call $heap-alloc (local.get $heap) (%special-type) (%special-quote) (i32.const 0)))
   (global.set $quote-sym (%sym-64 0x65746f7571 5)) ;; 'quote'
-  (call $environment-add
-    (local.get $env)
-    (global.get $quote-sym)
-    (local.get $quote)
-  )
-  (call $environment-add
-    (local.get $env)
-    (%sym-32 0x27 1) ;; ' (0x27)
-    (local.get $quote)
-  )
-  (call $environment-add
-    (local.get $env)
-    (%sym-64 0x656e69666564 6) ;; 'define'
-    (call $heap-alloc (local.get $heap) (%special-type) (%special-define) (i32.const 0))
-  )
-  (call $environment-add
-    (local.get $env)
-    (%sym-32 0x21746573 4) ;; 'set!'
-    (call $heap-alloc (local.get $heap) (%special-type) (%special-set!) (i32.const 0))
-  )
+
+  (%add-special (%sym-32 0x6669 2) (%special-if))             ;; 'if'
+  (%add-special (%sym-32 0x74656c 3) (%special-let))           ;; 'let'
+  (%add-special (global.get $lambda-sym) (%special-lambda))   ;; 'lambda'
+  (%add-special (%sym-64 0x656e69666564 6) (%special-define)) ;; 'define'
+  (%add-special (global.get $quote-sym) (%special-quote))     ;; 'quote'
+  (%add-special (%sym-32 0x27 1) (%special-quote))            ;; ' (0x27)
+  (%add-special (%sym-32 0x21746573 4) (%special-set!))       ;; 'set!'
+  (%add-special (%sym-32 0x646e6f63 4) (%special-cond))       ;; 'cond'
+  (%add-special (%sym-32 0x65736163 4) (%special-case))       ;; 'case'
+  (%add-special (%sym-32 0x646e61 3) (%special-and))          ;; 'and'
+  (%add-special (%sym-32 0x726f 2) (%special-or))             ;; 'or'
+  (%add-special (%sym-32 0x6e656877 4) (%special-when))       ;; 'when'
+  (%add-special (%sym-64 0x7373656c6e75 6) (%special-unless)) ;; 'unless'
+  (%add-special (%sym-64 0x6e69676562 5) (%special-begin))    ;; 'begin'
 )
 
 (elem $table-builtin (%special-if) $if)
@@ -302,8 +293,14 @@
 (elem $table-builtin (%special-quote) $quote)
 (elem $table-builtin (%special-define) $define)
 (elem $table-builtin (%special-set!) $set!)
+(elem $table-builtin (%special-cond) $cond)
+(elem $table-builtin (%special-case) $case)
+(elem $table-builtin (%special-and) $and)
+(elem $table-builtin (%special-or) $or)
+(elem $table-builtin (%special-when) $when)
+(elem $table-builtin (%special-unless) $unless)
+(elem $table-builtin (%special-begin) $begin)
 
-;; numerics
 (elem $table-builtin (%builtin-add) $num-add)
 (elem $table-builtin (%builtin-sub) $num-sub)
 (elem $table-builtin (%builtin-mult) $num-mul)
