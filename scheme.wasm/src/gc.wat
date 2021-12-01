@@ -504,7 +504,7 @@ while the working set is non-empty:
     (i32.load offset=8 
       (i32.add 
         (local.get $head-array)
-        (i32.shl (local.get $idx) (i32.const 2))
+        (%word-size-l $idx)
       )
     )
   )
@@ -597,8 +597,8 @@ while the working set is non-empty:
   ;; tail-array[8 + idx << 2] = val
   (i32.store offset=8 
     (i32.add 
-      (local.get $tail-array) 
-      (i32.shl (local.get $idx) (i32.const 2))
+      (local.get $tail-array)
+      (%word-size-l $idx)
     )
     (local.get $val)
   )

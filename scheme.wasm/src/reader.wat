@@ -232,7 +232,7 @@
                 (if (i32.eq (local.get $char) (i32.const 0x3b)) ;; ';'
                   (then
                     (i32.store 
-                      (i32.add (local.get $accum) (i32.shl (local.get $acc-off) (i32.const 2)))
+                      (i32.add (local.get $accum) (%word-size-l $acc-off))
                       (local.get $hex-value)
                     )
                     (%inc $acc-off)
@@ -265,7 +265,7 @@
 
                   ;; not a hex digit
                   (i32.store 
-                    (i32.add (local.get $accum) (i32.shl (local.get $acc-off) (i32.const 2)))
+                    (i32.add (local.get $accum) (%word-size-l $acc-off))
                     (i32.const 0xFFFD)
                   )
                   (%inc $acc-off)
@@ -343,7 +343,7 @@
             )
 
             (i32.store 
-              (i32.add (local.get $accum) (i32.shl (local.get $acc-off) (i32.const 2)))
+              (i32.add (local.get $accum) (%word-size-l $acc-off))
               (local.get $char)
             )
             (%inc $acc-off)
@@ -370,7 +370,7 @@
               )
             )
             (i32.store 
-              (i32.add (local.get $accum) (i32.shl (local.get $acc-off) (i32.const 2)))
+              (i32.add (local.get $accum) (%word-size-l $acc-off))
               (local.get $char)
             )
             (%inc $acc-off)
@@ -426,7 +426,7 @@
             (then
               ;; accum[acc-off] = char
               (i32.store
-                (i32.add (local.get $accum) (i32.shl (local.get $acc-off) (i32.const 2)))
+                (i32.add (local.get $accum) (%word-size-l $acc-off))
                 (local.get $char)
               )
               ;; acc-off++
@@ -467,7 +467,7 @@
   (local.set $old-size (i32.load offset=12 (local.get $reader)))
 
   (local.set $new-size (i32.shl (local.get $old-size) (i32.const 1)))
-  (local.set $dest-ptr (local.tee $new-accum (call $malloc (i32.shl (local.get $new-size) (i32.const 2)))))
+  (local.set $dest-ptr (local.tee $new-accum (call $malloc (%word-size-l $new-size))))
 
   (block $b_end
     (loop $b_start

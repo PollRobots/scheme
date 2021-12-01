@@ -303,7 +303,7 @@
   (local $vec i32)
 
   (local.set $len (call $list-len (local.get $list)))
-  (local.set $ptr (call $malloc (i32.shl (local.get $len) (i32.const 2))))
+  (local.set $ptr (call $malloc (%word-size-l $len)))
 
   (local.set $vec 
     (call $heap-alloc 

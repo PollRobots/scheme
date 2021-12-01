@@ -320,7 +320,17 @@ class List extends ParsedWat {
 
     const body = this.elements.slice(bodyIndex);
 
-    return { name: name, args: argList, body: body };
+
+    return { name: name, args: argList, body: this.trim(body) };
+  }
+
+  trim(arr: ParsedWat[]) : ParsedWat[]{
+    const first = arr.findIndex(v => !isAtom(v) || !isWhitespaceToken(v.token));
+    let last = arr.length - 1;
+    while (last > first && isAtom(arr[last]) && isWhitespaceToken((arr[last] as Atom).token)) {
+      last--;
+    }
+    return arr.slice(first, last + 1);
   }
 
   expandMacro(macroDefinition: MacroDefinition): ParsedWat[] {

@@ -68,6 +68,9 @@
 (%define %set-car!-l (%cons %val) (i32.store offset=4 (local.get %cons) (local.get %val)))
 (%define %set-cdr!-l (%cons %val) (i32.store offset=8 (local.get %cons) (local.get %val)))
 
+(%define %word-size-l (%val) (i32.shl (local.get %val) (i32.const 2)))
+(%define %word-size (%val) (i32.shl %val (i32.const 2)))
+
 (%define %assert (%cond) (if (i32.eqz %cond) (then unreachable)))
 
 (%define %assert-cons (%arg) (%assert (i32.eq (%get-type %arg) (%cons-type))))
@@ -79,6 +82,7 @@
 (%define %assert-symbol (%arg) (%assert (i32.eq (%get-type %arg) (%symbol-type))))
 
 (%define %assert-str (%arg) (%assert (i32.eq (%get-type %arg) (%str-type))))
+
 
 (%define %sym-32 (%name %len) (call $heap-alloc (global.get $g-heap) (%symbol-type) (call $str-from-32 (i32.const %len) (i32.const %name)) (i32.const 0)))
 (%define %sym-64 (%name %len) (call $heap-alloc (global.get $g-heap) (%symbol-type) (call $str-from-64 (i32.const %len) (i64.const %name)) (i32.const 0)))
