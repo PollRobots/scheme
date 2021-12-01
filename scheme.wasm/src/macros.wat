@@ -6,6 +6,8 @@
 
 (%define %dec (%var) (local.set %var (i32.sub (local.get %var) (i32.const 1))))
 
+(%define %gdec (%var) (global.set %var (i32.sub (global.get %var) (i32.const 1))))
+
 (%define %dec64 (%var) (local.set %var (i64.sub (local.get %var) (i64.const 1))))
 
 (%define %plus-eq (%var %amt) (local.set %var (i32.add (local.get %var) (i32.const %amt))))

@@ -30,6 +30,7 @@
 (global $g-arrow      (mut i32) (i32.const 0))
 (global $g-apply      (mut i32) (i32.const 0))
 (global $g-interned-str   (mut i32) (i32.const 0))
+(global $g-eval       (mut i32) (i32.const 0))
 
 (func $runtime-init
   (global.set $g-reader (call $reader-init))
@@ -64,6 +65,7 @@
   (global.set $g-arrow (%sym-32 0x3E3D 2))        ;; =>
   (global.set $g-apply (%sym-64 0x796c707061 5))  ;; apply
   (global.set $g-interned-str (%sym-128 0x64656e7265746e69 0x203A 10)) ;; 'interned: '
+  (global.set $g-eval (%sym-64 0x203A6c617665 6))  ;; 'eval: '
 
   (call $char-init)
 )
@@ -912,6 +914,7 @@
   (local $type i32)
   (local $op i32)
   (local $cdr i32)
+  (local $result i32)
 
 
   ;; type = *args & 0xf
@@ -923,13 +926,18 @@
     (then
       ;; return environment-lookup(env, args)
       (return
-        (call $environment-get (local.get $env) (local.get $args))
-      )
-    )
-  )
+        (call $environment-get (local.get $env) (local.get $args)))))
+
   ;; case cons:
   (if (i32.eq (local.get $type) (%cons-type))
     (then
+      (if (global.get $g-dump-eval)
+        (then
+          (call $print-symbol (global.get $g-eval))
+          (call $print-symbol-rep (global.get $g-space) (global.get $g-dump-eval-indent))
+          (call $print (local.get $args))
+          (call $print-symbol (global.get $g-newline))
+          (%ginc $g-dump-eval-indent)))
       ;; car = args[4]
       ;; op = eval(car)
       ;;  pointfree ->
@@ -938,20 +946,28 @@
       ;; return apply(env, op, cdr)
       ;;  pointfree ->
       ;;    return apply(env, eval(env, args[4]), args[8])
-      (return
+      (local.set $result
         (call $apply
           (local.get $env)
           (call $eval (local.get $env) (%car-l $args))
-          (%cdr-l $args)
-        )
-      )
-    )
-  )
+          (%cdr-l $args)))
+
+      (if (global.get $g-dump-eval)
+        (then
+          (%gdec $g-dump-eval-indent)
+          (call $print-symbol-rep 
+            (global.get $g-space) 
+            (i32.add (global.get $g-dump-eval-indent) (i32.const 6)))
+          (call $print-symbol (global.get $g-arrow))
+          (call $print-symbol (global.get $g-space))
+          (call $print (local.get $result))
+          (call $print-symbol (global.get $g-newline))))
+
+      (return (local.get $result))))
+
   ;; default:
   ;; return args
-  (return (local.get $args))
-  ;; }
-)
+  (return (local.get $args)))
 
 (func $eval-list (param $env i32) (param $args i32) (result i32)
   (local $type i32)
@@ -1156,3 +1172,18 @@
     (%alloc-error-cons (global.get $g-args) (local.get $args))
   )
 )
+
+(global $g-dump-eval (mut i32) (i32.const 0))
+(global $g-dump-eval-indent (mut i32) (i32.const 0))
+
+(func $dump-eval-set! (param $env i32) (param $args i32) (result i32)
+  (if (i32.eq (%get-type $args) (%cons-type))
+    (then
+      (global.set $g-dump-eval (call $is-truthy (%car-l $args)))
+      (global.set $g-dump-eval-indent (i32.const 0))))
+
+  (return
+    (select
+      (global.get $g-true)
+      (global.get $g-false)
+      (global.get $g-dump-eval))))

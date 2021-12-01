@@ -17,13 +17,12 @@
         (%pop-l $consequent $temp)
         (br_if $b_2_args (i32.eq (local.get $num-args) (i32.const 2)))
 
-        (local.set $alternate (%car-l $temp)
-        (br_if $b_check (i32.eq (local.get $num-args) (i32.const 3)))))
+        (local.set $alternate (%car-l $temp))
+        (br_if $b_check (i32.eq (local.get $num-args) (i32.const 3))))
       
       (return (call $argument-error (local.get $args))))
 
     (local.set $alternate (global.get $g-nil)))
-
 
   (return
     (call $eval

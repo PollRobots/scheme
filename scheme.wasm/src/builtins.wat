@@ -127,9 +127,11 @@
 (%define %special-unless ()                   (i32.const 124))
 (%define %special-begin ()                    (i32.const 125))
 (%define %special-let* ()                     (i32.const 126))
+(%define %special-letrec ()                   (i32.const 127))
+(%define %builtin-dump-eval-set! ()           (i32.const 128))
 
 
-(table $table-builtin 127 anyfunc)
+(table $table-builtin 129 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -268,6 +270,7 @@
   (%add-builtin (%sym-128 0x65763E2D7473696c 0x726f7463 12) (%builtin-list->vector)) ;; 'list->vector'
   (%add-builtin (%sym-128 0x612D726f74636576 0x646e657070 13) (%builtin-vector-append)) ;; 'vector-append'
   (%add-builtin (%sym-128 0x662D726f74636576 0x216c6c69 12) (%builtin-vector-fill!)) ;; 'vector-fill!'
+  (%add-builtin (%sym-128 0x6176652D706d7564 0x217465732D6c 14) (%builtin-dump-eval-set!)) ;; 'dump-eval-set!'
 
   (global.set $lambda-sym (%sym-64 0x6164626d616c 6)) ;; 'lambda'
   (global.set $quote-sym (%sym-64 0x65746f7571 5)) ;; 'quote'
@@ -275,6 +278,7 @@
   (%add-special (%sym-32 0x6669 2) (%special-if))             ;; 'if'
   (%add-special (%sym-32 0x74656c 3) (%special-let))          ;; 'let'
   (%add-special (%sym-32 0x2A74656c 4) (%special-let*))       ;; 'let*'
+  (%add-special (%sym-64 0x63657274656c 6) (%special-letrec))   ;; 'letrec'
   (%add-special (global.get $lambda-sym) (%special-lambda))   ;; 'lambda'
   (%add-special (%sym-64 0x656e69666564 6) (%special-define)) ;; 'define'
   (%add-special (global.get $quote-sym) (%special-quote))     ;; 'quote'
@@ -292,6 +296,7 @@
 (elem $table-builtin (%special-if) $if)
 (elem $table-builtin (%special-let) $let)
 (elem $table-builtin (%special-let*) $let*)
+(elem $table-builtin (%special-letrec) $letrec)
 (elem $table-builtin (%special-lambda) $lambda)
 (elem $table-builtin (%special-quote) $quote)
 (elem $table-builtin (%special-define) $define)
@@ -417,3 +422,4 @@
 (elem $table-builtin (%builtin-list->vector) $list->vector)
 (elem $table-builtin (%builtin-vector-append) $vector-append)
 (elem $table-builtin (%builtin-vector-fill!) $vector-fill!)
+(elem $table-builtin (%builtin-dump-eval-set!) $dump-eval-set!)

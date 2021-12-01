@@ -395,6 +395,15 @@
   (call $io-write (i32.load offset=4 (local.get $sym)))
 )
 
+(func $print-symbol-rep (param $sym i32) (param $count i32)
+  (block $b_end
+    (loop $b_start
+      (br_if $b_end (i32.le_s (local.get $count) (i32.const 0)))
+      (call $io-write (i32.load offset=4 (local.get $sym)))
+      (%dec $count)
+      (br $b_start)))
+)
+
 (func $print-str (param $str i32)
   ;; TODO handle strings with non-print characters
   (call $print-symbol (global.get $g-quote))
