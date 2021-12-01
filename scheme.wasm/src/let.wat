@@ -1,3 +1,6 @@
+;; (let <bindings> <expression_1> ...)
+;;    bindings ::=
+;;      ((<variable_1> <init_1>) ...)
 (func $let (param $env i32) (param $args i32) (result i32)
   (local $bindings i32)
   (local $temp i32)
@@ -6,77 +9,102 @@
   (local $binding i32)
   (local $var i32)
   (local $init i32)
-  (local $result i32)
 
-  ;; bindings = car(args)
-  (local.set $bindings (%car-l $args))
-  ;; assert(bindings is cons)
-  (%assert-cons $bindings)
-  ;; temp = cdr(args)
-  (local.set $temp (%cdr-l $args))
-  ;; assert(temp is cons)
-  (%assert-cons $temp)
-  ;; body = temp
-  (local.set $body (local.get $temp))
+  (block $b_check
+    (block $b_fail
+      (local.set $temp (local.get $args))
+      (br_if $b_fail (i32.lt_u (call $list-len (local.get $temp)) (i32.const 2)))
+
+      (%pop-l $bindings $temp)
+      (br_if $b_fail (i32.eqz (call $is-list-impl (local.get $bindings))))
+
+      (local.set $body (local.get $temp))
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
 
   ;; child-env = environment-init(g-heap, env)
   (local.set $child-env (call $environment-init (global.get $g-heap) (local.get $env)))
 
   ;; while (typeof bindings is cons) {
   (block $w_end
-    (loop $w_start
-      (br_if $w_end (i32.ne (%get-type $bindings) (%cons-type)))
+    (block $w_error
+      (loop $w_start
+        (br_if $w_end (i32.eq (%get-type $bindings) (%nil-type)))
 
-      ;; binding = car(bindings)
-      (local.set $binding (%car-l $bindings))
-      ;; assert(binding is cons)
-      (%assert-cons $binding)
-      ;; var = car(binding)
-      (local.set $var (%car-l $binding))
-      ;; assert(var is symbol)
-      (%assert-symbol $var)
-      ;; temp = cdr(binding)
-      (local.set $temp (%cdr-l $binding))
-      ;; assert(temp is cons)
-      (%assert-cons $temp)
-      ;; init = car(temp)
-      (local.set $init (%car-l $temp))
-      ;; temp = cdr(cons)
-      (local.set $temp (%cdr-l $temp))
-      ;; assert(temp is nil)
-      (%assert-nil $temp)
-      ;; environment-add(child-env, var, eval(env, init))
-      (call $environment-add
-        (local.get $child-env) 
-        (local.get $var)
-        (call $eval (local.get $env) (local.get $init))
-      )
-      ;; bindings = cdr(bindings)
-      (local.set $bindings (%cdr-l $bindings))
+        (%pop-l $binding $bindings)
+        (br_if $w_error (i32.eqz (call $is-list-impl (local.get $bindings))))
 
-      (br $w_start)
-    )
-    ;; }
-  )
+        (%pop-l $var $binding)
+        (br_if $w_error (i32.ne (%get-type $var) (%symbol-type)))
 
-  ;; result = g-nil
-  (local.set $result (global.get $g-nil))
+        (%pop-l $init $binding)
+        (br_if $w_error (i32.ne (%get-type $binding) (%nil-type)))
 
-  ;; while (typeof body is cons) {
-  (block $ww_end
-    (loop $ww_start
-      (br_if $ww_end (i32.ne (%get-type $body) (%cons-type)))
+        ;; environment-add(child-env, var, eval(env, init))
+        (call $environment-add
+          (local.get $child-env) 
+          (local.get $var)
+          (call $eval (local.get $env) (local.get $init)))
 
-      ;; result = eval(child-env, car(body))
-      (local.set $result (call $eval (local.get $child-env) (%car-l $body)))
-      ;; body = cdr(body)
-      (local.set $body (%cdr-l $body))
-      
-      (br $ww_start)
-    )
-    ;; }
-  )
+        (br $w_start)))
+    (return (call $argument-error (local.get $args))))
 
-  ;; return result
-  (return (local.get $result))
-)
+  (return (call $cond-eval-exprs (local.get $child-env) (local.get $body))))
+
+
+;; (let* <bindings> <expression_1> ...)
+;;    bindings ::=
+;;      ((<variable_1> <init_1>) ...)
+(func $let* (param $env i32) (param $args i32) (result i32)
+  (local $bindings i32)
+  (local $temp i32)
+  (local $body i32)
+  (local $child-env i32)
+  (local $binding i32)
+  (local $var i32)
+  (local $init i32)
+
+  (block $b_check
+    (block $b_fail
+      (local.set $temp (local.get $args))
+      (br_if $b_fail (i32.lt_u (call $list-len (local.get $temp)) (i32.const 2)))
+
+      (%pop-l $bindings $temp)
+      (br_if $b_fail (i32.eqz (call $is-list-impl (local.get $bindings))))
+
+      (local.set $body (local.get $temp))
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
+
+  ;; child-env = environment-init(g-heap, env)
+  (local.set $child-env (local.get $env))
+
+  ;; while (typeof bindings is cons) {
+  (block $w_end
+    (block $w_error
+      (loop $w_start
+        (br_if $w_end (i32.eq (%get-type $bindings) (%nil-type)))
+
+        (%pop-l $binding $bindings)
+        (br_if $w_error (i32.eqz (call $is-list-impl (local.get $bindings))))
+
+        (%pop-l $var $binding)
+        (br_if $w_error (i32.ne (%get-type $var) (%symbol-type)))
+
+        (%pop-l $init $binding)
+        (br_if $w_error (i32.ne (%get-type $binding) (%nil-type)))
+
+        ;; TODO special case an environment that only has one entry
+        (local.set $child-env (call $environment-init (global.get $g-heap) (local.get $child-env)))
+        ;; environment-add(child-env, var, eval(env, init))
+        (call $environment-add
+          (local.get $child-env) 
+          (local.get $var)
+          (call $eval (local.get $child-env) (local.get $init)))
+
+        (br $w_start)))
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $cond-eval-exprs (local.get $child-env) (local.get $body))))
