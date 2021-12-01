@@ -200,8 +200,10 @@
 )
 
 (func $list (param $env i32) (param $args i32) (result i32)
-  (return (local.get $args))
-)
+  (return (local.get $args)))
+
+(func $values (param $env i32) (param $args i32) (result i32)
+  (return (%alloc-values (%car-l $args) (%cdr-l $args))))
 
 (func $length (param $env i32) (param $args i32) (result i32)
   (local $arg i32)
