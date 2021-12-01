@@ -127,6 +127,13 @@
         (br $b_switch)
       )
     )
+    ;; case bytevector:
+    (if (i32.eq (local.get $type (%bytevector-type)))
+      (then
+        (call $print-bytevector (local.get $ptr))
+        (br $b_switch)
+      )
+    )
     ;; default:
     (call $print-other (global.get $g-unknown) (local.get $type) (local.get $ptr))
       ;; print-error();
@@ -235,6 +242,29 @@
         (then (call $print-symbol (global.get $g-space))))
 
       (%plus-eq $ptr 4)
+      (%dec $len)
+      (br $b_start)))
+
+  (call $print-symbol (global.get $g-close)))
+
+(func $print-bytevector (param $u8 i32)
+  (local $ptr i32)
+  (local $len i32)
+
+  (local.set $ptr (%car-l $u8))
+  (local.set $len (%cdr-l $u8))
+
+  (call $print-symbol (global.get $g-u8-open))
+
+  (block $b_end
+    (loop $b_start
+      (br_if $b_end (i32.eqz (local.get $len)))
+
+      (call $print-integer (i64.load8_u (local.get $ptr)) (i32.const 10))
+      (if (i32.gt_u (local.get $len) (i32.const 1))
+        (then (call $print-symbol (global.get $g-space))))
+
+      (%plus-eq $ptr 1)
       (%dec $len)
       (br $b_start)))
 

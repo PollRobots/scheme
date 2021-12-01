@@ -24,6 +24,8 @@
 (global $g-quote      (mut i32) (i32.const 0))
 (global $g-args       (mut i32) (i32.const 0))
 (global $g-vec-open   (mut i32) (i32.const 0))
+(global $g-u8vec      (mut i32) (i32.const 0))
+(global $g-u8-open    (mut i32) (i32.const 0))
 
 (func $runtime-init
   (global.set $g-reader (call $reader-init))
@@ -52,6 +54,8 @@
   (global.set $g-quote (%sym-32 0x22 1))
   (global.set $g-args (%sym-32 0x73677261 4))
   (global.set $g-vec-open (%sym-32 0x2823 2))
+  (global.set $g-u8vec (%sym-64 0x6365763875 5))
+  (global.set $g-u8-open (%sym-32 0x28387523 4))
 
   (call $char-init)
 )
@@ -129,17 +133,24 @@
 
   (block $b_lv
     (block $b_list
-      (br_if $b_list (call $short-str-eq (local.get $token-str) (i32.const 0x28) (i32.const 1)))
-      (local.set $list-vector (select
-        (i32.const 2)
-        (i32.const 0)
-        (call $short-str-eq (local.get $token-str) (i32.const 0x2823) (i32.const 2))))
+      (block $b_vector
+        (block $b_byte_vector
+          (br_if $b_list 
+            (call $short-str-eq (local.get $token-str) (i32.const 0x28) (i32.const 1)))
+          (br_if $b_vector 
+            (call $short-str-eq (local.get $token-str) (i32.const 0x2823) (i32.const 2)))
+          (br_if $b_byte_vector
+            (call $short-str-eq (local.get $token-str) (i32.const 0x28387523) (i32.const 4)))
+
+          (local.set $list-vector (i32.const 0))
+          (br $b_lv))
+        (local.set $list-vector (i32.const 3))
+        (br $b_lv))
+      (local.set $list-vector (i32.const 2))
       (br $b_lv))
-    (local.set $list-vector (i32.const 1))
-  )
+    (local.set $list-vector (i32.const 1)))
 
-
-  ;; if (token-str == '(' || token-str == '#(') {
+  ;; if (token-str == '(' || token-str == '#(' || token-str == '#u8(') {
   (if (local.get $list-vector)
     (then
       ;; malloc-free(token-str)
@@ -156,7 +167,10 @@
 
           (if (i32.eq (local.get $list-vector) (i32.const 1))
             (then (return (global.get $g-nil)))
-            (else (return (call $make-vector-internal (global.get $g-nil))))
+          )
+          (if (i32.eq (local.get $list-vector) (i32.const 2))
+            (then (return (call $make-vector-internal (global.get $g-nil))))
+            (else (return (call $make-byte-vector-internal (global.get $g-nil))))
           )
         )
         ;; }
@@ -183,8 +197,11 @@
 
             (if (i32.eq (local.get $list-vector) (i32.const 1))
               (then (return (local.get $head)))
-              (else (return (call $make-vector-internal (local.get $head))))
             )
+            (if (i32.eq (local.get $list-vector) (i32.const 2))
+              (then (return (call $make-vector-internal (local.get $head))))
+            )
+            (return (call $make-byte-vector-internal (local.get $head)))
           )
         )
         ;; }
@@ -208,7 +225,7 @@
               (then
                 ;; malloc-free(cdr-str)
                 (call $malloc-free (local.get $cdr-str))
-                ;; TODO error if vector
+                ;; TODO error if vector or bytevector
                 ;; return head
                 (return (local.get $head))
               )
@@ -306,6 +323,42 @@
     (br $forever))
 
   (unreachable))
+
+(func $make-byte-vector-internal (param $list i32) (result i32)
+  (local $bytes i32)
+  (local $len i32)
+  (local $ptr i32)
+  (local $byte-vec i32)
+  (local $curr i32)
+  (local $temp64 i64)
+
+  (local.set $len (call $list-len (local.get $list)))
+  (local.set $ptr (call $malloc (local.get $len)))
+
+  (local.set $byte-vec 
+    (call $heap-alloc 
+      (global.get $g-heap)
+      (%bytevector-type)
+      (local.get $ptr)
+      (local.get $len)))
+
+  (local.set $bytes (local.get $list))
+  (block $b_error
+    (loop $forever
+      (if (i32.eq (%get-type $bytes) (%nil-type))
+        (then (return (local.get $byte-vec))))
+
+      (%pop-l $curr $bytes)
+      (%chk-type $b_error $curr %i64-type)
+      (local.set $temp64 (i64.load offset=4 (local.get $curr)))
+      (br_if $b_error (i64.gt_u (local.get $temp64) (i64.const 0xFF)))
+
+      (i32.store8 (local.get $ptr) (i32.wrap_i64 (local.get $temp64)))
+
+      (%inc $ptr)
+      (br $forever)))
+
+  (return (%alloc-error-cons (global.get $g-u8vec) (local.get $list))))
 
 (func $atom (param $token i32)  (result i32)
   (local $token-str i32)

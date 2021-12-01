@@ -33,7 +33,8 @@
 ;;   error = 13
 ;;   values = 14
 ;;   vector = 15
-;; kMaxType = 15
+;;   bytevector = 16
+;; kMaxType = 16
 (%define %empty-type () (i32.const 0))
 (%define %nil-type () (i32.const 1))
 (%define %boolean-type () (i32.const 2))
@@ -50,9 +51,10 @@
 (%define %error-type () (i32.const 13))
 (%define %values-type () (i32.const 14))
 (%define %vector-type () (i32.const 15))
-(%define %max-heap-type () (i32.const 15))
+(%define %bytevector-type () (i32.const 16))
+(%define %max-heap-type () (i32.const 16))
 
-(%define %get-type (%arg) (i32.and (i32.load (local.get %arg)) (i32.const 0xF)))
+(%define %get-type (%arg) (i32.and (i32.load (local.get %arg)) (i32.const 0x1F)))
 
 (%define %car (%cons) (i32.load offset=4 %cons))
 (%define %car-l (%cons) (i32.load offset=4 (local.get %cons)))

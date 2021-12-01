@@ -385,19 +385,27 @@
         ;; anything else is accumulated
 
         (block $b_done
-          ;; if this is open-paren, check if accum buffer is ['#'], then this is a vector start
+          ;; if this is open-paren, check 
+          ;;    if accum buffer is ['#'], then this is a vector start
+          ;;    if accum buffer is ['#', 'u', '8'], then this is a bytevector start
           (if (i32.eq (local.get $char) (i32.const 0x28)) ;; open-paren 0x28
             (then
-              (if (i32.eq (local.get $acc-off) (i32.const 1))
-                (then
-                  (if (i32.eq (i32.load (local.get $accum)) (i32.const 0x23)) ;; # 0x23
-                    (then
-                      (return (call $str-from-32 (i32.const 2) (i32.const 0x2823)))
-                    )
-                  )
-                )
-              )
-           )
+              ;; checking for #()
+              (block $b_v
+                (br_if $b_v (i32.ne (local.get $acc-off) (i32.const 1)))
+                (br_if $b_v (i32.ne (i32.load (local.get $accum)) (i32.const 0x23))) ;; # 0x23
+
+                (return (call $str-from-32 (i32.const 2) (i32.const 0x2823))))
+
+              ;; checking #u8(
+              (block $b_bv
+                (br_if $b_bv (i32.ne (local.get $acc-off) (i32.const 3)))
+                (br_if $b_bv (i32.ne (i32.load offset=0 (local.get $accum)) (i32.const 0x23))) ;; # 0x23
+                (br_if $b_bv (i32.ne (i32.load offset=4 (local.get $accum)) (i32.const 0x75))) ;; u 0x75
+                (br_if $b_bv (i32.ne (i32.load offset=8 (local.get $accum)) (i32.const 0x38))) ;; 8 0x38
+
+                (return (call $str-from-32 (i32.const 4) (i32.const 0x28387523))))
+            )
           )
 
           ;; if (is-delimiter(char)) {

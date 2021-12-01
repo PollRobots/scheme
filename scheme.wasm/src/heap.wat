@@ -24,7 +24,8 @@
 ;;   error = 13
 ;;   values = 14
 ;;   vector = 15
-;; kMaxType = 15
+;;   bytevector = 16
+;; kMaxType = 16
 
 ;;  Empty cell
 ;;    next-empty: i32 ptr
@@ -61,6 +62,10 @@
 ;;  Vector
 ;;    car: i32 ptr
 ;;    cdr: i32 count
+
+;;  Bytevector
+;;    car: i32 ptr
+;;    cdr: i32 len
 
 ;; Heap
 ;;   Size:      i32
