@@ -795,58 +795,71 @@
 
 (func $num-exact-integer-sqrt (param $env i32) (param $args i32) (result i32)
   (local $arg i32)
-  (local $num i64)
-  (local $isqrt i64)
-  (local $rem i64)
+  (local $x i64)
+  (local $op i64)
+  (local $res i64)
+  (local $one i64)
+  (local $temp i64)
 
   (block $b_check
     (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
-      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (local.set $arg (%car-l $args))
+      (%chk-type $b_fail $arg %i64-type)
+      (local.set $x (i64.load offset=4 (local.get $arg)))
+      (br_if $b_fail (i64.lt_s (local.get $x) (i64.const 0)))
       (br $b_check)
     )
     (return (call $argument-error (local.get $args)))
   )
 
-  (local.set $arg (%car-l $args))
-  (if (i32.ne (%get-type $arg) (%i64-type))
-    (then
-      (return (call $argument-error (local.get $args)))
-    )
-  )
+	;; op = x;
+  (local.set $op (local.get $x))
+	;; res = 0;
+  (local.set $res (i64.const 0))
 
-  (local.set $num (i64.load offset=4 (local.get $arg)))
+	;; /* "one" starts at the highest power of four <= than the argument. */
 
-  (local.set $isqrt
-    (i64.trunc_f64_s
-      (f64.floor
-        (f64.sqrt
-          (f64.convert_i64_s (local.get $num))
-        )
-      )
-    )
-  )
+	;; one = 1 << 62;	/* second-to-top bit set */
+  (local.set $one (i64.const 0x4000_0000_0000_0000))
 
-  (local.set $rem 
-    (i64.sub 
-      (local.get $num) 
-      (i64.mul 
-        (local.get $isqrt)
-        (local.get $isqrt)
-      )
-    )
-  )
+  ;; temp = clz(op)
+  ;; temp = (temp - 1) & 0xfe
+  ;; one >>= temp
+  (local.set $temp (i64.clz (local.get $op)))
+  (local.set $temp (i64.and 
+      (i64.sub (local.get $temp) (i64.const 1)) 
+      (i64.const 0xFE)))
+  (local.set $one (i64.shr_u (local.get $one) (local.get $temp)))
 
+
+	;; while (one != 0) {
+  (block $b_end (loop $b_start (br_if $b_end (i64.eqz (local.get $one)))
+      (local.set $temp (i64.add (local.get $res) (local.get $one)))
+      ;; if (op >= res + one) {
+      (if (i64.ge_u (local.get $op) (local.get $temp))
+        (then
+          ;; op = op - (res + one);
+          (local.set $op (i64.sub (local.get $op) (local.get $temp)))
+          ;; res = res +  2 * one;
+          (local.set $res (i64.add
+              (local.get $res)
+              (i64.shl (local.get $one) (i64.const 1))))))
+      ;; }
+      ;; res /= 2;
+      (local.set $res (i64.shr_u (local.get $res) (i64.const 1)))
+      ;; one /= 4;
+      (local.set $one (i64.shr_u (local.get $one) (i64.const 2)))
+      (br $b_start)))
+	;; }
+
+	;; return(res);
   (return 
     (%alloc-values
-      (%alloc-i64 (local.get $isqrt))
+      (%alloc-i64 (local.get $res))
       (%alloc-cons
-        (%alloc-i64 (local.get $rem))
-        (global.get $g-nil)
-      )
-    )
-  )
-)
+        (%alloc-i64 (local.get $op))
+        (global.get $g-nil)))))
 
 (func $num-string->number (param $env i32) (param $args i32) (result i32)
   (local $args-len i32)
