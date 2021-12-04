@@ -29,27 +29,18 @@
   ;; hashtable-free-keys(hashtable)
   ;;  as point-free
   ;; hashtable-free-keys(env[4])
-  (call $hashtable-free-keys 
-    (i32.load offset=4 (local.get $env))
-  )
+  ;; (call $hashtable-free-keys  (%car-l $env))
 
   ;; if (destroy-outer) {
   (if (local.get $destroy-outer)
     (then
       ;; outer = env[8]
-      (local.set $outer (i32.load offset=8 (local.get $env)))
+      (local.set $outer (%cdr-l $env))
       ;; if (outer) {
       (if (local.get $outer)
         (then
           ;; environment-destroy(outer, destroy-outer)
-          (call $environment-destroy (local.get $outer) (local.get $destroy-outer))
-        )
-        ;; }
-      )
-    )
-    ;; }
-  )
-)
+          (call $environment-destroy (local.get $outer) (local.get $destroy-outer)))))))
 
 (func $environment-add (param $env i32) (param $key i32) (param $value i32)
   (local $key-str i32)
@@ -58,7 +49,7 @@
 
   ;; check that key is a symbol
   ;; if (*key & 0xF != 6) {
-  (if (i32.ne (i32.and (i32.load (local.get $key)) (i32.const 0xF)) (%symbol-type))
+  (if (i32.ne (%get-type $key) (%symbol-type))
     ;; trap
     ;; TODO: return error
     (then unreachable)
@@ -84,7 +75,7 @@
   (local.set $new-hash 
     (call $hashtable-add
       (local.get $hashtable)
-      (call $str-dup (local.get $key-str))
+      (local.get $key-str)
       (local.get $value)
     )
   )

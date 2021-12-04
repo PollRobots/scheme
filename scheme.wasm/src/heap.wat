@@ -25,7 +25,8 @@
 ;;   values = 14
 ;;   vector = 15
 ;;   bytevector = 16
-;; kMaxType = 16
+;;   cont(inuation) = 17 
+;; kMaxType = 17
 
 ;;  Empty cell
 ;;    next-empty: i32 ptr
@@ -66,6 +67,9 @@
 ;;  Bytevector
 ;;    car: i32 ptr
 ;;    cdr: i32 len
+
+;;  Continuation
+;;    car: i32 ptr
 
 ;; Heap
 ;;   Size:      i32

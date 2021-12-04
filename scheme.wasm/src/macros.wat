@@ -36,7 +36,8 @@
 ;;   values = 14
 ;;   vector = 15
 ;;   bytevector = 16
-;; kMaxType = 16
+;;   cont(inuation) = 17
+;; kMaxType = 17
 (%define %empty-type () (i32.const 0))
 (%define %nil-type () (i32.const 1))
 (%define %boolean-type () (i32.const 2))
@@ -54,7 +55,8 @@
 (%define %values-type () (i32.const 14))
 (%define %vector-type () (i32.const 15))
 (%define %bytevector-type () (i32.const 16))
-(%define %max-heap-type () (i32.const 16))
+(%define %cont-type () (i32.const 17))
+(%define %max-heap-type () (i32.const 17))
 
 (%define %get-type (%arg) (i32.and (i32.load (local.get %arg)) (i32.const 0x1F)))
 
@@ -65,6 +67,8 @@
 (%define %cdr-l (%cons) (i32.load offset=8 (local.get %cons)))
 (%define %cdr-g (%cons) (i32.load offset=8 (global.get %cons)))
 (%define %pop-l (%var %cons) (local.set %var (%car-l %cons)) (local.set %cons (%cdr-l %cons)))
+(%define %push-l (%var %cons) (local.set %cons (%alloc-cons (local.get %var) (local.get %cons))))
+(%define %push (%var %cons) (local.set %cons (%alloc-cons %var (local.get %cons))))
 (%define %chk-type (%lbl %var %type) (br_if %lbl (i32.ne (%get-type %var) (%type))))
 
 (%define %set-car!-l (%cons %val) (i32.store offset=4 (local.get %cons) (local.get %val)))
@@ -101,3 +105,4 @@
 (%define %alloc-error (%sym %args) (call $heap-alloc (global.get $g-heap) (%error-type) %sym (%alloc-cons %args (global.get $g-nil))))
 (%define %alloc-values (%car %cdr) (call $heap-alloc (global.get $g-heap) (%values-type) %car %cdr))
 (%define %alloc-quote (%val) (%alloc-cons (global.get $quote-sym) (%alloc-cons %val (global.get $g-nil))))
+(%define %alloc-cont (%cont) (call $heap-alloc (global.get $g-heap) (%cont-type) %cont (i32.const 0)))

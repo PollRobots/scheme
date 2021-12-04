@@ -31,6 +31,7 @@
 (global $g-apply      (mut i32) (i32.const 0))
 (global $g-interned-str   (mut i32) (i32.const 0))
 (global $g-eval       (mut i32) (i32.const 0))
+(global $g-gc-run     (mut i32) (i32.const 0))
 
 (func $runtime-init
   (global.set $g-reader (call $reader-init))
@@ -66,11 +67,14 @@
   (global.set $g-apply (%sym-64 0x796c707061 5))  ;; apply
   (global.set $g-interned-str (%sym-128 0x64656e7265746e69 0x203A 10)) ;; 'interned: '
   (global.set $g-eval (%sym-64 0x203A6c617665 6))  ;; 'eval: '
+  (global.set $g-gc-run (%sym-32 0x0A6367 3)) ;; 'gc\n'
 
   (call $char-init)
+  (call $cont-init)
 )
 
 (func $runtime-cleanup
+  (call $cont-cleanup)
   (call $char-cleanup)
 
   (global.set $g-nil (i32.const 0))
@@ -911,11 +915,85 @@
 )
 
 (func $eval (param $env i32) (param $args i32) (result i32)
-  (local $type i32)
-  (local $op i32)
-  (local $cdr i32)
   (local $result i32)
+  (local $fn i32)
 
+  (local $cont-stack i32)
+  (local $prev-cont i32)
+  (local $temp-cont i32)
+  (local $next-cont i32)
+
+  (local.set $cont-stack (call $cont-alloc
+    (i32.const 0)
+    (local.get $env)
+    (local.get $args)
+    (i32.const 0)))
+  (local.set $fn (i32.const 0))
+
+  (loop $forever
+    (if (i32.eqz (local.get $fn))
+      (then
+        ;; this is a call to eval. So pass to eval inner
+        (local.set $result (call $eval-inner (local.get $env) (local.get $args))))
+      (else 
+        ;; some other function is the continuation
+        (local.get $env)
+        (local.get $args)
+        (local.get $fn)
+        call_indirect $table-builtin (type $builtin-type)
+        (local.set $result)))
+
+    ;; done with this item, so pop it off the cont-stack
+    (local.set $prev-cont (local.get $cont-stack))
+    (local.set $cont-stack (i32.load offset=12 (local.get $prev-cont)))
+    ;; free the old continuation
+    (call $cont-free (local.get $prev-cont))
+
+    (if (i32.eq (%get-type $result) (%cont-type))
+      (then 
+        ;; result is a continuation (or list of), place them on the top of the 
+        ;; continuation stack
+        (local.set $temp-cont (%car-l $result))
+        (block $t_end
+          (loop $t_start
+            (local.set $next-cont (i32.load offset=12 (local.get $temp-cont)))
+            (br_if $t_end (i32.eqz (local.get $next-cont)))
+            (local.set $temp-cont (local.get $next-cont))
+            (br $t_start)))
+        (i32.store offset=12 (local.get $temp-cont) (local.get $cont-stack))
+        (local.set $cont-stack (%car-l $result))
+        (call $heap-free (global.get $g-heap) (local.get $result))
+        (local.set $result (i32.const 0)))
+      (else
+        ;; not a continuation
+        (if (i32.eqz (local.get $cont-stack))
+          (then
+            ;; nothing on the cont stack, simply return this result
+            (return (local.get $result))
+          ))))
+
+    
+    (local.set $fn (i32.load offset=0 (local.get $cont-stack)))
+    (local.set $env (i32.load offset=4 (local.get $cont-stack)))
+    (if (local.get $result)
+      (then
+        ;; there is a useful result value pass it to the continuation
+        (local.set $args (%alloc-cons
+            (local.get $result)
+            (i32.load offset=8 (local.get $cont-stack)))))
+      (else
+        (local.set $args (i32.load offset=8 (local.get $cont-stack)))))
+
+    (br $forever))
+
+  (unreachable))
+
+(global $g-eval-count (mut i32) (i32.const 0))
+(%define %gc-threshold () (i32.const 256))
+
+(func $eval-inner (param $env i32) (param $args i32) (result i32)
+  (local $type i32)
+  (local $result i32)
 
   ;; type = *args & 0xf
   (local.set $type (%get-type $args))
@@ -931,6 +1009,12 @@
   ;; case cons:
   (if (i32.eq (local.get $type) (%cons-type))
     (then
+      (%ginc $g-eval-count)
+      (if (i32.ge_u (global.get $g-eval-count) (%gc-threshold))
+        (then
+          (call $print-symbol (global.get $g-gc-run))
+          (global.set $g-eval-count (i32.const 0))))
+
       (if (global.get $g-dump-eval)
         (then
           (call $print-symbol (global.get $g-eval))
@@ -938,32 +1022,20 @@
           (call $print (local.get $args))
           (call $print-symbol (global.get $g-newline))
           (%ginc $g-dump-eval-indent)))
-      ;; car = args[4]
-      ;; op = eval(car)
-      ;;  pointfree ->
-      ;;    op = eval(env, args[4])
-      ;; cdr = args[8]
-      ;; return apply(env, op, cdr)
-      ;;  pointfree ->
-      ;;    return apply(env, eval(env, args[4]), args[8])
-      (local.set $result
-        (call $apply
+
+      ;; return apply(env, eval(env, car(args)), cdr(args))
+      ;; this is represented in continuation passing as...
+      ;;  eval(env, car(args)) => cont-apply(env, args)
+      (return (%alloc-cont
+        (call $cont-alloc
+          (i32.const 0) ;; eval
           (local.get $env)
-          (call $eval (local.get $env) (%car-l $args))
-          (%cdr-l $args)))
-
-      (if (global.get $g-dump-eval)
-        (then
-          (%gdec $g-dump-eval-indent)
-          (call $print-symbol-rep 
-            (global.get $g-space) 
-            (i32.add (global.get $g-dump-eval-indent) (i32.const 6)))
-          (call $print-symbol (global.get $g-arrow))
-          (call $print-symbol (global.get $g-space))
-          (call $print (local.get $result))
-          (call $print-symbol (global.get $g-newline))))
-
-      (return (local.get $result))))
+          (%car-l $args)
+          (call $cont-alloc
+            (%cont-apply)
+            (local.get $env)
+            (%cdr-l $args)
+            (i32.const 0)))))))
 
   ;; default:
   ;; return args
@@ -999,6 +1071,27 @@
   )
 )
 
+(func $cont-apply (param $env i32) (param $args i32) (result i32)
+  (local $op i32)
+  (local $result i32)
+
+  (%pop-l $op $args)
+  (local.set $result (call $apply (local.get $env) (local.get $op) (local.get $args)))
+
+  (if (global.get $g-dump-eval)
+    (then
+      (%gdec $g-dump-eval-indent)
+      (call $print-symbol-rep 
+        (global.get $g-space) 
+        (i32.add (global.get $g-dump-eval-indent) (i32.const 6)))
+      (call $print-symbol (global.get $g-arrow))
+      (call $print-symbol (global.get $g-space))
+      (call $print (local.get $result))
+      (call $print-symbol (global.get $g-newline))))
+
+  (return (local.get $result)))
+
+
 (func $apply (param $env i32) (param $op i32) (param $args i32) (result i32)
   (local $op-type i32)
   (local $curr i32)
@@ -1007,39 +1100,95 @@
   ;; op-type = *op & 0xF
   (local.set $op-type (%get-type $op))
 
-  ;; switch (op-type) {
-  (block $b_check
-    ;; case %special-type:
-    ;;   special forms are called without having their arguments executed first
-    ;;   break
-    (br_if $b_check (i32.eq (local.get $op-type) (%special-type)))
+  (if (i32.eq (local.get $op-type) (%special-type))
+    (then
+      (local.get $env)
+      (local.get $args)
+      (i32.load offset=4 (local.get $op))
+      call_indirect $table-builtin (type $builtin-type)
+      (return)))
 
-    ;; all other calls to apply execute arguments
-    ;; args = eval-list(env, args)
-    (local.set $args (call $eval-list (local.get $env) (local.get $args)))
-    ;; case $builtin-type:
-    (br_if $b_check (i32.eq (local.get $op-type) (%builtin-type)))
+  (if (i32.eq (%get-type $args) (%nil-type))
+    (then
+      (return 
+        (%alloc-cont
+          (call $cont-alloc
+            (%cont-apply-form)
+            (local.get $env)
+            (%alloc-cons (local.get $op) (global.get $g-nil))
+            (i32.const 0))))))
 
-    ;; case %lambda-type:
-    (if (i32.eq (local.get $op-type) (%lambda-type))
-      (then
-        (return 
-          (call $apply-lambda (local.get $env) (local.get $op) (local.get $args))
-        )
-      )
-    )
-    ;; default:
-    ;;   any other type:
-    (return
-      (%alloc-error-cons (global.get $g-apply) (%alloc-cons (local.get $op) (local.get $args)))
-    )
-  )
+  (return
+    (%alloc-cont
+      (call $cont-alloc
+        (i32.const 0)
+        (local.get $env)
+        (%car-l $args)
+        (call $cont-alloc
+          (%cont-expr-list)
+          (local.get $env)
+          (%alloc-cons (global.get $g-nil) (%cdr-l $args))
+          (call $cont-alloc
+            (%cont-apply-form)
+            (local.get $env)
+            (%alloc-cons (local.get $op) (global.get $g-nil))
+            (i32.const 0)))))))
 
-  (local.get $env)
-  (local.get $args)
-  (i32.load offset=4 (local.get $op))
-  call_indirect $table-builtin (type $builtin-type)
-)
+(func $cont-apply-form (param $env i32) (param $args i32) (result i32)
+  (local $temp i32)
+  (local $op i32)
+  (local $op-type i32)
+
+  (%pop-l $temp $args)
+  (%pop-l $op $args)
+  (local.set $op-type (%get-type $op))
+
+  (local.set $args (call $reverse 
+      (local.get $env) 
+      (%alloc-cons (local.get $temp) (global.get $g-nil))))
+
+  (if (i32.eq (local.get $op-type) (%builtin-type))
+    (then
+      (local.get $env)
+      (local.get $args)
+      (i32.load offset=4 (local.get $op))
+      call_indirect $table-builtin (type $builtin-type)
+      (return)))
+
+  (if (i32.eq (local.get $op-type (%lambda-type)))
+    (then
+      (return (call $apply-lambda 
+        (local.get $env) 
+        (local.get $op) 
+        (local.get $args)))))
+
+  ;;   any other type:
+  (return (%alloc-error-cons 
+      (global.get $g-apply) 
+      (%alloc-cons (local.get $op) (local.get $args)))))
+
+;; (cont-expr-list val stack args ...)
+(func $cont-expr-list (param $env i32) (param $args i32) (result i32)
+  (local $val i32)
+  (local $stack i32)
+
+  (%pop-l $val $args)
+  (%pop-l $stack $args)
+  (%push-l $val $stack)
+
+  (if (i32.eq (%get-type $args) (%nil-type))
+    (return (local.get $stack)))
+
+  (return (%alloc-cont
+      (call $cont-alloc
+        (i32.const 0) ;; eval
+        (local.get $env)
+        (%car-l $args)
+        (call $cont-alloc
+          (%cont-expr-list)
+          (local.get $env)
+          (%alloc-cons (local.get $stack) (%cdr-l $args))
+          (i32.const 0))))))
 
 (func $apply-internal (param $env i32) (param $op i32) (param $args i32) (result i32)
   (local $op-type i32)
@@ -1078,6 +1227,7 @@
   (local $lambda-args i32)
   (local $formals i32)
   (local $body i32)
+  (local $body-len i32)
   (local $child-env i32)
   (local $result i32)
 
@@ -1097,37 +1247,56 @@
   ;; zip-lambda-args(child-env, formals, args)
   (call $zip-lambda-args (local.get $child-env) (local.get $formals) (local.get $args))
 
-  ;; result = g-nil
-  (local.set $result (global.get $g-nil))
-  ;; while (typeof body == cons) {
-  (block $b_end
-    (loop $b_start
-      (br_if $b_end (i32.ne (%get-type $body) (%cons-type)))
+  (return (call $eval-body (local.get $child-env) (local.get $body))))
 
-      ;; result = eval(child-env, car(body))
-      (local.set $result (call $eval (local.get $child-env) (%car-l $body)))
-      ;; body = cdr(body)
-      (local.set $body (%cdr-l $body))
+(func $eval-body (param $env i32) (param $args i32) (result i32)
+  (local $body-len i32)
+  (local.set $body-len (call $list-len (local.get $args)))
 
-      (br $b_start)
-    )
-  ;; }
-  )
+  (if (i32.eqz (local.get $body-len))
+    (then (return (global.get $g-nil))))
+  (if (i32.eq (local.get $body-len) (i32.const 1))
+    (then 
+      ;; single body element, simply return its evaluation
+      (return (%alloc-cont (call $cont-alloc 
+            (i32.const 0) 
+            (local.get $env) 
+            (%car-l $args) 
+            (i32.const 0))))))
 
-  ;; return result
-  (return (local.get $result))
-)
+  (return (%alloc-cont
+      (call $cont-alloc
+        (i32.const 0) ;; eval
+        (local.get $env)
+        (%car-l $args)
+        (call $cont-alloc
+          (%cont-body-list)
+          (local.get $env)
+          (%cdr-l $args)
+          (i32.const 0))))))
 
-(func $cons (param $car i32) (param $cdr i32) (result i32)
-  (return 
-    (call $heap-alloc
-      (global.get $g-heap)
-      (%cons-type)
-      (local.get $car)
-      (local.get $cdr)
-    )
-  )
-)
+;; (cont-body-list val args ...)
+(func $cont-body-list (param $env i32) (param $args i32) (result i32)
+  (local $val i32)
+  (local $stack i32)
+
+  (%pop-l $val $args)
+
+  (if (i32.eq (%get-type $args) (%nil-type))
+    ;; Nothing left to evaluate, 
+    ;; return the last thing that was evaluated.
+    (then (return (local.get $val))))
+
+  (return (%alloc-cont
+      (call $cont-alloc
+        (i32.const 0) ;; eval
+        (local.get $env)
+        (%car-l $args)
+        (call $cont-alloc
+          (%cont-body-list)
+          (local.get $env)
+          (%cdr-l $args)
+          (i32.const 0))))))
 
 (func $zip-lambda-args (param $env i32) (param $formals i32) (param $args i32)
   (loop $forever

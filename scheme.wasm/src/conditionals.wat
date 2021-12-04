@@ -24,15 +24,35 @@
 
     (local.set $alternate (global.get $g-nil)))
 
-  (return
-    (call $eval
-      (local.get $env)
-      (select
-        (local.get $consequent)
-        (local.get $alternate)
-        (call $is-truthy
-          (call $eval (local.get $env) (local.get $test)))))))
+  (return (%alloc-cont (call $cont-alloc
+        (i32.const 0) ;; eval
+        (local.get $env)
+        (local.get $test)
+        (call $cont-alloc 
+          (%cont-if)
+          (local.get $env)
+          (%cdr-l $args)
+          (i32.const 0))))))
 
+;; (cont-if test consequent [alternate])
+(func $cont-if (param $env i32) (param $args i32) (result i32)
+  (local $test i32)
+  (local $expr i32)
+
+  (%pop-l $test $args)
+  (%pop-l $expr $args)
+
+  (if (i32.eqz (call $is-truthy (local.get $test)))
+    (then
+      (if (i32.eq (%get-type $args) (%cons-type))
+        (then (%pop-l $expr $args))
+        (else (return (global.get $g-nil))))))
+
+  (return (%alloc-cont (call $cont-alloc
+        (i32.const 0) ;; eval
+        (local.get $env)
+        (local.get $expr)
+        (i32.const 0)))))
 
 ;; (cond <clause_1> <clause_2> ...)
 ;;    clause::=
@@ -42,71 +62,82 @@
 ;;      (else <expression_1> ...)
 (func $cond (param $env i32) (param $args i32) (result i32)
   (local $clauses i32)
-  (local $curr i32)
+  (local $clause i32)
   (local $test i32)
-  (local $test-result i32)
-  (local $exprs i32)
-  (local $fn i32)
-  (local $tail i32)
 
-  (local.set $clauses (local.get $args))
   (block $b_error
-    (loop $forever
-      (if (i32.eq (%get-type $clauses) (%nil-type))
-        (then (return (global.get $g-nil))))
+    (if (i32.eq (%get-type $args) (%nil-type)) 
+      (return (global.get $g-nil)))
 
-      (%pop-l $curr $clauses)
-      (br_if $b_error (i32.eqz (call $is-list-impl (local.get $curr))))
-      (local.set $test (%car-l $curr))
-      (local.set $exprs (%cdr-l $curr))
+    (local.set $clauses (local.get $args))
+    (%pop-l $clause $clauses)
 
-      (if (i32.eq (local.get $test) (global.get $g-else))
-        ;; this is an else clause
-        (then
-          ;; check that this is a final clause
-          (%chk-type $b_error $clauses %nil-type)
-          (return (call $cond-eval-exprs (local.get $env) (local.get $exprs)))))
+    ;; verify that the clause is a list at least 2 long
+    (br_if $b_error (i32.eqz (call $is-list-impl (local.get $clause))))
+    (br_if $b_error (i32.lt_u (call $list-len (local.get $clause)) (i32.const 2)))
 
-      (local.set $test-result (call $eval (local.get $env) (local.get $test))) 
-      (if (call $is-truthy (local.get $test-result))
-        (then
-          (if (i32.eq (%car-l $exprs) (global.get $g-arrow))
-            (then
-              ;; exprs at this point should be (=> <expression>)
-              (br_if $b_error (i32.ne (call $list-len (local.get $exprs)) (i32.const 2)))
-              (local.set $exprs (%cdr-l $exprs))
-              ;; evaluate the argument
-              (local.set $fn (call $eval (local.get $env) (%car-l $exprs)))
-              ;; apply that to the result of the test
-              (return 
-                (call $apply-internal
-                  (local.get $env) 
-                  (local.get $fn)
-                  (%alloc-cons (local.get $test-result) (global.get $g-nil)))))
-            (else
-              (return 
-                (call $cond-eval-exprs 
-                  (local.get $env) 
-                  (local.get $exprs)))))))
+    (%pop-l $test $clause)
+    ;; check if this is an else clause
+    (if (i32.eq (local.get $test) (global.get $g-else))
+      (then
+        ;; check that this is a final clause
+        (%chk-type $b_error $clauses %nil-type)
+        (return (call $eval-body (local.get $env) (local.get $clause)))))
 
-      (br $forever)))
-  
+    (%push-l $clause $clauses)
+    (return (%alloc-cont (call $cont-alloc
+          (i32.const 0)
+          (local.get $env)
+          (local.get $test)
+          (call $cont-alloc
+            (%cont-cond)
+            (local.get $env)
+            (local.get $clauses)
+            (i32.const 0))))))
+
   (return (call $argument-error (local.get $args))))
 
-(func $cond-eval-exprs (param $env i32) (param $exprs i32) (result i32)
-  (local $curr i32)
-  (local $last i32)
+;; (cont-cond test-res clause clauses ...)
+(func $cont-cond (param $env i32) (param $args i32) (result i32)
+  (local $temp i32)
+  (local $clauses i32)
+  (local $test-res i32)
+  (local $clause i32)
+  (local $expr i32)
 
-  (block $b_end
-    (loop $b_start
-      (br_if $b_end (i32.eq (%get-type $exprs) (%nil-type)))
-      (%pop-l $curr $exprs)
-      (local.set $last (call $eval (local.get $env) (local.get $curr)))
+  (local.set $temp (local.get $args))
+  (%pop-l $test-res $temp)
+  (%pop-l $clause $temp)
+  (local.set $clauses (local.get $temp))
 
-      (br $b_start)))
+  ;; if test isn't truthy then call cond with the remaining clauses
+  (if (i32.eqz (call $is-truthy(local.get $test-res)))
+    (then (return (call $cond (local.get $env) (local.get $clauses)))))
 
-  (return (local.get $last)))
+  ;; check if this is an arrow clause
+  (if (i32.eq (%car-l $clause) (global.get $g-arrow))
+    (then 
+      ;; clause, which should be (=> expr)
+      ;; rewrite as (expr (quote test-res))
+      (%pop-l $temp $clause)
+      (%pop-l $expr $clause)
+      (if (i32.ne (%get-type $clause) (%nil-type))
+        (then (return (call $argument-error (local.get $args)))))
 
+      (local.set $clause (%alloc-cons 
+          (local.get $expr)
+          (%alloc-cons 
+            (%alloc-quote (local.get $test-res))
+            (global.get $g-nil))))
+      ;; evaluate re-written clause
+      (return (%alloc-cont (call $cont-alloc
+            (i32.const 0)
+            (local.get $env)
+            (local.get $clause)
+            (i32.const 0))))))
+
+  (return (call $eval-body (local.get $env) (local.get $clause))))
+      
 ;; (case <key> <clause_1> <clause_2> ...)
 ;;    clause ::=
 ;;      ((<datum_1> ...) <expression_1> ...)
@@ -125,23 +156,46 @@
   (if (i32.eqz (call $list-len (local.get $args)))
     (then (return (call $argument-error (local.get $args)))))
 
-  (local.set $key (call $eval (local.get $env) (%car-l $args)))
+  (return (%alloc-cont (call $cont-alloc
+        (i32.const 0) ;; eval
+        (local.get $env)
+        (%car-l $args)
+        (call $cont-alloc
+          (%cont-case)
+          (local.get $env)
+          (%cdr-l $args)
+          (i32.const 0))))))
 
-  (local.set $clauses (%cdr-l $args))
+;; (cont-case <key> <clause_1> <clause_2> ...)
+(func $cont-case (param $env i32) (param $args i32) (result i32)
+  (local $temp i32)
+  (local $key i32)
+  (local $clause i32)
+  (local $clauses i32)
+  (local $head i32)
+  (local $tail i32)
+  (local $fn i32)
+  (local $datum i32)
+
+  (local.set $temp (local.get $args))
+  (%pop-l $key $temp)
+
+  (local.set $clauses (local.get $temp))
 
   (block $b_error
-    (loop $forever
+    (loop $b_start
       (if (i32.eq (%get-type $clauses) (%nil-type))
-        (then (return (global.get $g-nil))))
+        (then (return(local.get $clauses))))
 
-      (%pop-l $curr $clauses) 
+      (%pop-l $clause $clauses)
+
       ;; check that clause is a list
-      (br_if $b_error (i32.eqz (call $is-list-impl (local.get $curr))))
+      (br_if $b_error (i32.eqz (call $is-list-impl (local.get $clause))))
       ;; at least 2 long
-      (br_if $b_error (i32.lt_u (call $list-len (local.get $curr)) (i32.const 2)))
+      (br_if $b_error (i32.lt_u (call $list-len (local.get $clause)) (i32.const 2)))
 
-      (local.set $head (%car-l $curr))
-      (local.set $tail (%cdr-l $curr))
+      (local.set $head (%car-l $clause))
+      (local.set $tail (%cdr-l $clause))
 
       (if (i32.eq (local.get $head) (global.get $g-else))
         (then
@@ -151,19 +205,24 @@
           (if (i32.eq (%car-l $tail) (global.get $g-arrow))
             (then
               ;; this is an arrow else, 
-              ;; check that the tail is (=> expression)
+              ;; check that the tail is (=> expr)
               (br_if $b_error (i32.ne (call $list-len (local.get $tail)) (i32.const 2)))
 
-              (local.set $fn (call $eval (local.get $env) (%car (%cdr-l $tail))))
-              (return 
-                (call $apply-internal 
-                  (local.get $env) 
-                  (local.get $fn) 
-                  (%alloc-cons (local.get $key) (global.get $g-nil)))))
+              ;; construct (expr (quote key))
+              (local.set $fn (global.get $g-nil))
+              (%push (%alloc-quote (local.get $key)) $fn)
+              (%push (%car (%cdr-l $tail)) $fn)
+
+              (return (%alloc-cont (call $cont-alloc
+                    (i32.const 0) ;; eval
+                    (local.get $env)
+                    (local.get $fn)
+                    (i32.const 0)))))
+
             (else
               ;; this is an ordinary else
-              (return (call $cond-eval-exprs (local.get $env) (local.get $tail)))))))
-      
+              (return (call $eval-body (local.get $env) (local.get $tail)))))))
+        
       ;; this is a regular clause, check that head is a list...
       (br_if $b_error (i32.eqz (call $is-list-impl (local.get $head))))
 
@@ -179,62 +238,93 @@
               (if (i32.eq (%car-l $tail) (global.get $g-arrow))
                 (then
                   ;; this is an arrow clause
-                  ;; check that the tial is (=> expression)
+                  ;; check that the tail is (=> expression)
                   (br_if $b_error (i32.ne (call $list-len (local.get $tail)) (i32.const 2)))
 
-                  (local.set $fn (call $eval (local.get $env) (%car (%cdr-l $tail))))
-                  (return 
-                    (call $apply-internal 
-                      (local.get $env) 
-                      (local.get $fn) 
-                      (%alloc-cons (local.get $key) (global.get $g-nil)))))
+                  ;; construct (expr (quote key))
+                  (local.set $fn (global.get $g-nil))
+                  (%push (%alloc-quote (local.get $key)) $fn)
+                  (%push (%car (%cdr-l $tail)) $fn)
+
+                  (return (%alloc-cont (call $cont-alloc
+                        (i32.const 0) ;; eval
+                        (local.get $env) 
+                        (local.get $fn) 
+                        (i32.const 0)))))
                 (else
                   ;; this is a regular clause
-                  (return (call $cond-eval-exprs (local.get $env) (local.get $tail)))))))
+                  (return (call $eval-body (local.get $env) (local.get $tail)))))))
 
           (br $check_key_start)))
 
-      (br $forever)))
+    ;; no match, so call again
+    (br $b_start)))
 
-  
   (return (call $argument-error (local.get $args))))
 
 ;; (and <test> ...)
 (func $and (param $env i32) (param $args i32) (result i32)
-  (local $result i32)
+  (local $head i32)
 
-  (local.set $result (global.get $g-true))
+  (if (i32.eq (%get-type $args) (%nil-type))
+    (then (return (global.get $g-true))))
 
-  (block $b_end
-    (loop $b_start
-      (br_if $b_end (i32.eq (%get-type $args) (%nil-type)))
+  (%pop-l $head $args)
 
-      (local.set $result (call $eval (local.get $env) (%car-l $args)))
-      (br_if $b_end (i32.eqz (call $is-truthy (local.get $result))))
+  (return (%alloc-cont (call $cont-alloc
+        (i32.const 0) ;; eval
+        (local.get $env)
+        (local.get $head)
+        (call $cont-alloc
+          (%cont-and)
+          (local.get $env)
+          (local.get $args)
+          (i32.const 0))))))
 
-      (local.set $args (%cdr-l $args))
-      (br $b_start)))
+;; (cont-and <test-res> <test> ...)
+(func $cont-and (param $env i32) (param $args i32) (result i32)
+  (local $test-res i32)
 
-  (return (local.get $result)))
+  (%pop-l $test-res $args)
+  (if (i32.eqz (call $is-truthy (local.get $test-res)))
+    (then (return (local.get $test-res))))
 
-;; (or <test> ...)
+  (if (i32.eq (%get-type $args) (%nil-type))
+    (then (return (local.get $test-res))))
+
+  (return (call $and (local.get $env) (local.get $args))))
+  
 (func $or (param $env i32) (param $args i32) (result i32)
-  (local $result i32)
+  (local $head i32)
 
-  (local.set $result (global.get $g-false))
+  (if (i32.eq (%get-type $args) (%nil-type))
+    (then (return (global.get $g-false))))
 
-  (block $b_end
-    (loop $b_start
-      (br_if $b_end (i32.eq (%get-type $args) (%nil-type)))
+  (%pop-l $head $args)
 
-      (local.set $result (call $eval (local.get $env) (%car-l $args)))
-      (br_if $b_end (call $is-truthy (local.get $result)))
+  (return (%alloc-cont (call $cont-alloc
+        (i32.const 0) ;; eval
+        (local.get $env)
+        (local.get $head)
+        (call $cont-alloc
+          (%cont-or)
+          (local.get $env)
+          (local.get $args)
+          (i32.const 0))))))
 
-      (local.set $args (%cdr-l $args))
-      (br $b_start)))
+;; (cont-or <test-res> <test> ...)
+(func $cont-or (param $env i32) (param $args i32) (result i32)
+  (local $test-res i32)
 
-  (return (local.get $result)))
+  (%pop-l $test-res $args)
+  (if (call $is-truthy (local.get $test-res))
+    (then (return (local.get $test-res))))
 
+  (if (i32.eq (%get-type $args) (%nil-type))
+    (then (return (local.get $test-res))))
+
+  (return (call $or (local.get $env) (local.get $args))))
+  
 ;; (when <test> <expression_1> ...)
 (func $when (param $env i32) (param $args i32) (result i32)
   (local $test i32)
@@ -242,12 +332,26 @@
   (if (i32.lt_u (call $list-len (local.get $args)) (i32.const 2))
     (then (return (call $argument-error (local.get $args)))))
 
-  (local.set $test (%car-l $args))  
-  (if 
-    (call $is-truthy (call $eval (local.get $env) (%car-l $args)))
-    (then
-      (return (call $cond-eval-exprs (local.get $env) (%cdr-l $args)))))
+  (%pop-l $test $args)
+
+  (return (%alloc-cont (call $cont-alloc
+        (i32.const 0)
+        (local.get $env)
+        (local.get $test)
+        (call $cont-alloc
+          (%cont-when)
+          (local.get $env)
+          (local.get $args)
+          (i32.const 0))))))
+
+;; (cont-when test-res <expr> ...)
+(func $cont-when (param $env i32) (param $args i32) (result i32)
+  (local $test-res i32)
   
+  (%pop-l $test-res $args)
+  (if (call $is-truthy (local.get $test-res))
+    (then (return (call $eval-body (local.get $env) (local.get $args)))))
+
   (return (global.get $g-nil)))
 
 ;; (unless <test> <expression_1> ...)
@@ -257,17 +361,31 @@
   (if (i32.lt_u (call $list-len (local.get $args)) (i32.const 2))
     (then (return (call $argument-error (local.get $args)))))
 
-  (local.set $test (%car-l $args))  
-  (if 
-    (i32.eqz (call $is-truthy (call $eval (local.get $env) (%car-l $args))))
-    (then
-      (return (call $cond-eval-exprs (local.get $env) (%cdr-l $args)))))
+  (%pop-l $test $args)
+
+  (return (%alloc-cont (call $cont-alloc
+        (i32.const 0)
+        (local.get $env)
+        (local.get $test)
+        (call $cont-alloc
+          (%cont-unless)
+          (local.get $env)
+          (local.get $args)
+          (i32.const 0))))))
+
+;; (cont-unless test-res <expr> ...)
+(func $cont-unless (param $env i32) (param $args i32) (result i32)
+  (local $test-res i32)
   
-  (return (global.get $g-nil)))
+  (%pop-l $test-res $args)
+  (if (call $is-truthy (local.get $test-res))
+    (then (return (global.get $g-nil))))
+
+  (return (call $eval-body (local.get $env) (local.get $args))))
 
 ;; (begin <expression_1> ...)
 (func $begin (param $env i32) (param $args i32) (result i32)
   (if (i32.eqz (call $list-len (local.get $args)))
     (then (return (call $argument-error (local.get $args)))))
 
-  (return (call $cond-eval-exprs (local.get $env) (local.get $args))))
+  (return (call $eval-body (local.get $env) (local.get $args))))

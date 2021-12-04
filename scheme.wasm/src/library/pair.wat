@@ -304,34 +304,33 @@
 
 (func $reverse (param $env i32) (param $args i32) (result i32)
   (local $head i32)
-  (local $head-type i32)
-  (local $rev i32)
+  
+  (block $b_check
+    (block $b_fail
+      (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
+      (local.set $head (%car-l $args))
+      (br_if $b_fail (i32.eqz (call $is-list-impl (local.get $head))))
+      (br $b_check))
 
-  (if (i32.ne (call $list-len (local.get $args)) (i32.const 1))
-    (then (return (call $argument-error (local.get $args))))
-  )
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $reverse-impl (local.get $head))))
+
+(func $reverse-impl (param $list i32) (result i32)
+  (local $rev i32)
+  (local $head i32)
 
   (local.set $rev (global.get $g-nil))
-  (local.set $head (%car-l $args))
 
   (block $b_end
     (loop $b_start
-      (local.set $head-type (%get-type $head))
-      (br_if $b_end (i32.eq (local.get $head-type) (%nil-type)))
-      (if (i32.ne (local.get $head-type) (%cons-type))
-        (then (return (call $argument-error (local.get $args))))
-      )
+      (br_if $b_end (i32.eq (%get-type $list) (%nil-type)))
 
-      (local.set $rev (%alloc-cons (%car-l $head) (local.get $rev)))
-      (local.set $head (%cdr-l $head))
+      (%pop-l $head $list)
+      (%push-l $head $rev)
+      (br $b_start)))
 
-      (br $b_start)
-    )
-  )
-
-  (return (local.get $rev))
-)
-
+  (return (local.get $rev)))
 
 (func $list-tail-impl (param $args i32) (param $obj i32) (param $k i32) (result i32)
   (local $obj-type i32)
