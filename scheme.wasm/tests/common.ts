@@ -107,6 +107,11 @@ export async function loadWasm(
         throw new Error(`Unicode data file ${path} loading not implemented`);
       },
     };
+    imports["dbg"] = {
+      data: (a: number, b: number, c: number) => {
+        console.log(`${a}: ${b} #x${c.toString(16).padStart(5, '0')} `);
+      }
+    };
 
     const module = await WebAssembly.instantiate(wasm, imports);
     return module.instance;
@@ -263,42 +268,48 @@ export function checkMemory(
   if (allocations.length) {
     for (const { ptr, size } of allocations) {
       const hdr = words.slice((ptr - 8) / 4, ptr / 4);
-      expect(hdr[0]).to.equal(
-        ptr - 8,
-        `next ptr should be self ref ${ptr}:(${size}) ${hdr[0]}:(${hdr[1]})`
-      );
-      expect(hdr[1]).to.equal(
-        (size + 7) & ~7,
-        `size should be rounded to next multiple of 8 ${ptr}:(${size}) ${hdr[0]}:(${hdr[1]})`
-      );
+      if (hdr[0] != ptr-8 || hdr[1] != ((size + 7) & ~7)) {
+        dumpAlloc(hdr, size, ptr);
+        expect(hdr[0]).to.equal(
+          ptr - 8,
+          `next ptr should be self ref ${ptr}:(${size}) ${hdr[0]}:(${hdr[1]})`
+        );
+        expect(hdr[1]).to.equal(
+          (size + 7) & ~7,
+          `size should be rounded to next multiple of 8 ${ptr}:(${size}) ${hdr[0]}:(${hdr[1]})`
+        );
+      }
 
       if (checkForLeaks) {
-        const slice = view.slice(ptr, ptr + size);
         console.log(
           `Leaked alloc at ${ptr}..${ptr + size} = {ptr: ${ptr}, size: ${size}}`
         );
-        console.log(`ptr: ${hdr[0]}, size: ${hdr[1]}`);
-        for (let ii = 0; ii < size; ii += 16) {
-          const line = Array.from(slice.slice(ii, Math.min(ii + 16, size)));
-          const hexes = line.map((el) => el.toString(16).padStart(2, "0"));
-          while (hexes.length < 16) {
-            hexes.push("--");
-          }
-          const chars = line.map((el) =>
-            el >= 0x20 && el < 0x80 ? String.fromCodePoint(el) : "."
-          );
-          console.log(
-            `${(ii + ptr).toString(16).padStart(5, "0")}  ${hexes.join(
-              " "
-            )}  ${chars.join("")}`
-          );
-        }
+        dumpAlloc(hdr, size, ptr);
       }
     }
   }
 
   if (checkForLeaks) {
     expect(allocations.length).to.equal(0, "There should be no allocations");
+  }
+
+  function dumpAlloc(hdr: Uint32Array, size: number, ptr: number) {
+    const slice = view.slice(ptr, ptr + size);
+    console.log(`ptr: #x${hdr[0].toString(16).padStart(5, "0")}, size: ${hdr[1]}`);
+    for (let ii = 0; ii < size; ii += 16) {
+      const line = Array.from(slice.slice(ii, Math.min(ii + 16, size)));
+      const hexes = line.map((el) => el.toString(16).padStart(2, "0"));
+      while (hexes.length < 16) {
+        hexes.push("--");
+      }
+      const chars = line.map((el) => el >= 0x20 && el < 0x80 ? String.fromCodePoint(el) : "."
+      );
+      console.log(
+        `${(ii + ptr).toString(16).padStart(5, "0")}  ${hexes.join(
+          " "
+        )}  ${chars.join("")}`
+      );
+    }
   }
 }
 

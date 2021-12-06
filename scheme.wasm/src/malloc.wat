@@ -356,10 +356,11 @@
   ;; end = ptr + size
   (local.set $end (i32.add (local.get $ptr) (local.get $size)))
   ;; rounded = (ptr + 7) & 0xFFFFFFF8
-  (local.set $rounded (i32.and (i32.add (local.get $ptr) (i32.const 7)) (i32.const 0xFFFFFFF8)))
+  (local.set $rounded (i32.and 
+      (i32.add (local.get $ptr) (i32.const 7)) 
+      (i32.const 0xFFFF_FFF8)))
 
-  (block $p_end
-    (loop $p_start
+  (block $p_end (loop $p_start
       ;; break if (ptr >= rounded || ptr >= end)
       (br_if $p_end (i32.ge_u (local.get $ptr) (local.get $rounded)))
       (br_if $p_end (i32.ge_u (local.get $ptr) (local.get $end)))
@@ -369,25 +370,21 @@
 
       ;; ptr++
       (%inc $ptr)
-      (br $p_start)
-    )
-  )
+      (br $p_start)))
 
-  (block $b_end
-    (loop $b_start
+  (block $b_end (loop $b_start
       ;; break if ptr + 8 >= end
-      (br_if $b_end (i32.ge_u (i32.add (local.get $ptr) (i32.const 8)) (local.get $end)))
+      (br_if $b_end (i32.ge_u 
+          (i32.add (local.get $ptr) (i32.const 8)) 
+          (local.get $end)))
 
       (i64.store (local.get $ptr) (i64.const 0))
 
       ;; ptr += 8
       (%plus-eq $ptr 8)
-      (br $b_start)
-    )
-  )
+      (br $b_start)))
 
-  (block $s_end
-    (loop $s_start
+  (block $s_end (loop $s_start
       ;; break if (ptr >= end)
       (br_if $s_end (i32.ge_u (local.get $ptr) (local.get $end)))
 
@@ -396,10 +393,7 @@
 
       ;; ptr++
       (%inc $ptr)
-      (br $s_start)
-    )
-  )
-)
+      (br $s_start))))
 
 (func $calloc (param $nmemb i32) (param $size i32) (result i32)
   (local $ptr i32)
@@ -408,7 +402,7 @@
   (local.set $size (i32.mul (local.get $size) (local.get $nmemb)))
 
   ;; ptr = malloc(size)
-  (local.get $ptr (call $malloc (local.get $size)))
+  (local.set $ptr (call $malloc (local.get $size)))
 
   (call $malloc-zero (local.get $ptr) (local.get $size))
 
@@ -416,13 +410,23 @@
 )
 
 (func $memcpy (param $dest i32) (param $src i32) (param $len i32)
-  (block $b_end
-    (loop $b_start
+  (block $b_end (loop $b_start
+      (br_if $b_end (i32.lt_u (local.get $len) (i32.const 32)))
+
+      (i64.store (local.get $dest) (i64.load (local.get $src)))
+      (i64.store offset=8 (local.get $dest) (i64.load offset=8 (local.get $src)))
+      (i64.store offset=16 (local.get $dest) (i64.load offset=16 (local.get $src)))
+      (i64.store offset=24 (local.get $dest) (i64.load offset=24 (local.get $src)))
+
+      (%plus-eq $dest 32)
+      (%plus-eq $src 32)
+      (%minus-eq $len 32)
+      (br $b_start)))
+
+  (block $b_end (loop $b_start
       (br_if $b_end (i32.lt_u (local.get $len) (i32.const 4)))
 
-      (i32.store
-        (local.get $dest)
-        (i32.load (local.get $src)))
+      (i32.store (local.get $dest) (i32.load (local.get $src)))
 
       (%plus-eq $dest 4)
       (%plus-eq $src 4)

@@ -195,7 +195,7 @@ async function main() {
 
   if (!opts.force) {
     try {
-      const lastInputEdit = await getLastInputEdit(config.files);
+      const lastInputEdit = await getLastInputEdit([...config.files, program.args[0]]);
       const lastOutputEdit = await getLastInputEdit([opts.output]);
       if (lastOutputEdit > lastInputEdit) {
         console.log(`${program.name()}: build skipped.`)
