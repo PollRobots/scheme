@@ -380,9 +380,29 @@
       "index": "$mp-sub"
     },
     {
+      "name": "mpDiv",
+      "type": "func",
+      "index": "$mp-div"
+    },
+    {
+      "name": "mpShl",
+      "type": "func",
+      "index": "$mp-shl"
+    },
+    {
+      "name": "mpShrIp",
+      "type": "func",
+      "index": "$mp-shr-ip"
+    },
+    {
       "name": "mpStringToMp",
       "type": "func",
       "index": "$mp-string->mp"
+    },
+    {
+      "name": "mpIsZero",
+      "type": "func",
+      "index": "$mp-zero?"
     },
     {
       "name": "mpCleanup",

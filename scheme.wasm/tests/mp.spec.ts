@@ -14,7 +14,11 @@ interface MpTestExports extends CommonTestExports {
   mp10Pow: (pow: number) => number;
   mpAdd: (a: number, b: number) => number;
   mpSub: (a: number, b: number) => number;
+  mpDiv: (dividend: number, divisor: number) => bigint;
+  mpShl: (a: number, shift: number) => number;
+  mpShrIp: (a: number, shift: number) => void;
   mpStringToMp: (str: number, strLen: number, base: number) => number;
+  mpIsZero: (pow: number) => number;
   mpCleanup: () => void;
 }
 
@@ -26,11 +30,18 @@ function createExportsFromInstance(
     mp10Pow: instance.exports.mp10Pow as (pow: number) => number,
     mpAdd: instance.exports.mpAdd as (a: number, b: number) => number,
     mpSub: instance.exports.mpSub as (a: number, b: number) => number,
+    mpDiv: instance.exports.mpDiv as (
+      dividend: number,
+      divisor: number
+    ) => bigint,
+    mpShl: instance.exports.mpShl as (a: number, shift: number) => number,
+    mpShrIp: instance.exports.mpShrIp as (a: number, shift: number) => void,
     mpStringToMp: instance.exports.mpStringToMp as (
       str: number,
       strLen: number,
       base: number
     ) => number,
+    mpIsZero: instance.exports.mpIsZero as (pow: number) => number,
     mpCleanup: instance.exports.mpCleanup as () => void,
   };
 }
@@ -236,6 +247,254 @@ describe("mp wasm", () => {
 
       exports.mallocFree(a_str_ptr);
       exports.mallocFree(val);
+    }
+  });
+
+  it("can check if a number is zero", () => {
+    const zero = bigIntToPtr(0n);
+    const one = bigIntToPtr(1n);
+    const minus_one = bigIntToPtr(-1n);
+    const rand = bigIntToPtr(randomBigInt(128));
+
+    expect(exports.mpIsZero(zero)).to.equal(
+      1,
+      `(mp-zero? ${zero}) should be 1`
+    );
+    expect(exports.mpIsZero(one)).to.equal(0, `(mp-zero? ${one}) should be 0`);
+    expect(exports.mpIsZero(minus_one)).to.equal(
+      0,
+      `(mp-zero? ${minus_one}) should be 0`
+    );
+    expect(exports.mpIsZero(rand)).to.equal(
+      0,
+      `(mp-zero? ${rand}) should be 0`
+    );
+
+    exports.mallocFree(zero);
+    exports.mallocFree(one);
+    exports.mallocFree(minus_one);
+    exports.mallocFree(rand);
+  });
+
+  it("won't divide by zero", () => {
+    const zero = bigIntToPtr(0n);
+    const rand = bigIntToPtr(randomBigInt(128));
+
+    expect(exports.mpDiv(rand, zero)).to.equal(0n);
+
+    exports.mallocFree(zero);
+    exports.mallocFree(rand);
+  });
+
+  it("can divide smaller numbers by bigger numbers", () => {
+    const large = randomBigInt(128);
+    const small = randomBigInt(64);
+    const large_ptr = bigIntToPtr(large);
+    const small_ptr = bigIntToPtr(small);
+
+    const divRes = exports.mpDiv(small_ptr, large_ptr);
+    expect(divRes).to.not.equal(0n);
+
+    const temp = new BigUint64Array([divRes]);
+    const words = new Uint32Array(temp.buffer);
+
+    const quot = ptrToBigInt(words[1]);
+    const rem = ptrToBigInt(words[0]);
+
+    expect(quot).to.equal(0n, "quotient should be zero");
+    expect(rem).to.equal(small, "remainder should be dividend");
+
+    exports.mallocFree(words[0]);
+    exports.mallocFree(small_ptr);
+    exports.mallocFree(large_ptr);
+  });
+
+  it("can divide 64-bit numbers", () => {
+    for (let i = 0; i != 20; i++) {
+      const large = randomBigInt(64, true);
+      const small = randomBigInt(48, true);
+      const large_ptr = bigIntToPtr(large);
+      const small_ptr = bigIntToPtr(small);
+
+      const divRes = exports.mpDiv(large_ptr, small_ptr);
+      expect(divRes).to.not.equal(0n);
+
+      const temp = new BigUint64Array([divRes]);
+      // const words = new Uint32Array(temp.buffer);
+      const quot_ptr = Number(BigInt.asUintN(32, temp[0] >> 32n));
+      const rem_ptr = Number(BigInt.asUintN(32, temp[0]));
+
+      const quot = ptrToBigInt(quot_ptr);
+      const rem = ptrToBigInt(rem_ptr);
+
+      expect(quot).to.equal(
+        large / small,
+        `${i}: (quotient ${large} ${small})`
+      );
+      expect(rem).to.equal(
+        large % small,
+        `${i}: (remainder ${large} ${small})`
+      );
+
+      if (quot != 0n) {
+        exports.mallocFree(quot_ptr);
+      }
+      exports.mallocFree(rem_ptr);
+      exports.mallocFree(small_ptr);
+      exports.mallocFree(large_ptr);
+    }
+  });
+
+  it("can divide large-bit numbers by 1", () => {
+    for (let i = 0; i != 20; i++) {
+      const large = randomBigInt(256, true);
+      const large_ptr = bigIntToPtr(large);
+      const small_ptr = bigIntToPtr(1n);
+
+      const divRes = exports.mpDiv(large_ptr, small_ptr);
+      expect(divRes).to.not.equal(0n);
+
+      const temp = new BigUint64Array([divRes]);
+      // const words = new Uint32Array(temp.buffer);
+      const quot_ptr = Number(BigInt.asUintN(32, temp[0] >> 32n));
+      const rem_ptr = Number(BigInt.asUintN(32, temp[0]));
+
+      const quot = ptrToBigInt(quot_ptr);
+      const rem = ptrToBigInt(rem_ptr);
+
+      expect(quot).to.equal(large, `${i}: (quotient ${large} 1)`);
+      expect(rem).to.equal(0n, `${i}: (remainder ${large} 1)`);
+
+      if (quot != 0n) {
+        exports.mallocFree(quot_ptr);
+      }
+      exports.mallocFree(rem_ptr);
+      exports.mallocFree(small_ptr);
+      exports.mallocFree(large_ptr);
+    }
+  });
+
+  it("can divide large-bit +ve numbers by 64-bit +ve numbers", () => {
+    for (let i = 0; i != 20; i++) {
+      const large = randomBigInt(256);
+      const small = randomBigInt(48);
+      const large_ptr = bigIntToPtr(large);
+      const small_ptr = bigIntToPtr(small);
+
+      const divRes = exports.mpDiv(large_ptr, small_ptr);
+      expect(divRes).to.not.equal(0n);
+
+      const temp = new BigUint64Array([divRes]);
+      // const words = new Uint32Array(temp.buffer);
+      const quot_ptr = Number(BigInt.asUintN(32, temp[0] >> 32n));
+      const rem_ptr = Number(BigInt.asUintN(32, temp[0]));
+
+      const quot = ptrToBigInt(quot_ptr);
+      const rem = ptrToBigInt(rem_ptr);
+
+      expect(quot).to.equal(
+        large / small,
+        `${i}: (quotient ${large} ${small})`
+      );
+      expect(rem).to.equal(
+        large % small,
+        `${i}: (remainder ${large} ${small})`
+      );
+
+      if (quot != 0n) {
+        exports.mallocFree(quot_ptr);
+      }
+      exports.mallocFree(rem_ptr);
+      exports.mallocFree(small_ptr);
+      exports.mallocFree(large_ptr);
+    }
+  });
+
+  it("can divide large-bit numbers by 64-bit numbers", () => {
+    for (let i = 0; i != 20; i++) {
+      const large = randomBigInt(256, true);
+      const small = randomBigInt(48, true);
+      const large_ptr = bigIntToPtr(large);
+      const small_ptr = bigIntToPtr(small);
+
+      const divRes = exports.mpDiv(large_ptr, small_ptr);
+      expect(divRes).to.not.equal(0n);
+
+      const temp = new BigUint64Array([divRes]);
+      // const words = new Uint32Array(temp.buffer);
+      const quot_ptr = Number(BigInt.asUintN(32, temp[0] >> 32n));
+      const rem_ptr = Number(BigInt.asUintN(32, temp[0]));
+
+      const quot = ptrToBigInt(quot_ptr);
+      const rem = ptrToBigInt(rem_ptr);
+
+      expect(quot).to.equal(
+        large /small,
+        `${i}: (quotient ${large} ${small})`
+      );
+      expect(rem).to.equal(
+        large % small,
+        `${i}: (remainder ${large} ${small})`
+      );
+
+      if (quot != 0n) {
+        exports.mallocFree(quot_ptr);
+      }
+      exports.mallocFree(rem_ptr);
+      exports.mallocFree(small_ptr);
+      exports.mallocFree(large_ptr);
+    }
+  });
+
+  it("can shift numbers left", () => {
+    for (let i = 0; i != 32; i++) {
+      const small = randomBigInt(48, true);
+      const small_ptr = bigIntToPtr(small);
+
+      const val_ptr = exports.mpShl(small_ptr, i);
+      const val = ptrToBigInt(val_ptr);
+      expect(val).to.equal(
+        small << BigInt(i),
+        `${small.toString(16)} << ${i} == ${(small << BigInt(i)).toString(16)}`
+      );
+
+      exports.mallocFree(small_ptr);
+      exports.mallocFree(val_ptr);
+    }
+  });
+
+  it("can shift numbers left by multiples of word-size", () => {
+    for (let i = 0; i <= 256; i += 32) {
+      const small = randomBigInt(48, true);
+      const small_ptr = bigIntToPtr(small);
+
+      const val_ptr = exports.mpShl(small_ptr, i);
+      const val = ptrToBigInt(val_ptr);
+      expect(val).to.equal(
+        small << BigInt(i),
+        `${small.toString(16)} << ${i} == ${(small << BigInt(i)).toString(16)}`
+      );
+
+      exports.mallocFree(small_ptr);
+      exports.mallocFree(val_ptr);
+    }
+  });
+
+  it("can shift numbers right in place", () => {
+    for (let i = 0; i != 32; i++) {
+      const small = randomBigInt(48);
+      const small_ptr = bigIntToPtr(small);
+
+      exports.mpShrIp(small_ptr, i);
+      const val = ptrToBigInt(small_ptr);
+      expect(val).to.equal(
+        small >> BigInt(i),
+        `${small.toString(16)} >> ${i} == ${(small >> BigInt(i)).toString(
+          16
+        )} got ${val.toString(16)}`
+      );
+
+      exports.mallocFree(small_ptr);
     }
   });
 });
