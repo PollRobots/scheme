@@ -4,9 +4,10 @@ Multi-precision integer math
 
 numbers are represented as 
 
+sign: u1        -- sign bit, 0 - positive, 1 (2^31) - negative
 size: u31       -- number of 32bit words in this number
-sign: u1        -- sign bit, 0 - positive, 1 - negative
-data: u32[size] -- the words of the number
+data: u32[size] -- the words of the number, words themselves are little 
+                   endian, but the array is big-endian, sorry.
 
 ;)
 
@@ -131,6 +132,168 @@ data: u32[size] -- the words of the number
   (if (local.get $neg)
     (then (call $mp-neg (local.get $buffer))))
   (return (local.get $buffer)))
+
+(func $mp-mp->string (param $ptr i32) (param $base i32) (result i32)
+  (local $str-len i32)
+  (local $digit-bits i32)
+  (local $digit-mask i32)
+  (local $ptr-log2 i32)
+  (local $str i32)
+  (local $str-ptr i32)
+  (local $digit i32)
+  (local $src-ptr i32)
+  (local $temp i32)
+
+  (local.set $ptr-log2 (call $mp-log2 (local.get $ptr)))
+
+  (if (i32.eqz (local.get $ptr-log2))
+    (then
+      (return (call $str-from-32 (i32.const 1) (i32.const 0x30)))))
+  
+  (block $b_switch
+    (if (i32.eq (local.get $base) (i32.const 10))
+      (then (return (call $mp-mp->string10 (local.get $ptr)))))
+
+
+    (if (i32.eq (local.get $base) (i32.const 16)) (then
+        (local.set $str-len (i32.shr_u 
+            (i32.add (local.get $ptr-log2) (i32.const 3)) 
+            (i32.const 2)))
+        (local.set $digit-bits (i32.const 4))
+        (local.set $digit-mask (i32.const 0xF))
+        (br $b_switch)))
+
+    (if (i32.eq (local.get $base) (i32.const 8)) (then
+        (local.set $str-len (i32.div_u 
+            (i32.add (local.get $ptr-log2) (i32.const 2)) 
+            (i32.const 3)))
+        (local.set $digit-bits (i32.const 3))
+        (local.set $digit-mask (i32.const 0x7))
+        (br $b_switch)))
+
+    (if (i32.eq (local.get $base) (i32.const 2)) (then
+        (local.set $str-len (local.get $ptr-log2))
+        (local.set $digit-bits (i32.const 1))
+        (local.set $digit-mask (i32.const 0x1))
+        (br $b_switch)))
+    
+    (return (i32.const 0)))
+
+  (local.set $temp (call $mp-copy (local.get $ptr)))
+
+  (if (%mp-sign-l $ptr)
+    (then
+      (local.set $str (call $malloc (i32.add (local.get $str-len) (i32.const 5))))
+      (i32.store (local.get $str) (i32.add (local.get $str-len) (i32.const 1)))
+      (i32.store8 offset=4 (local.get $str) (i32.const 0x2D)) ;; '-' 0x2D
+      (local.set $str-ptr (i32.add 
+          (i32.add 
+            (local.get $str)
+            (i32.const 4))
+          (local.get $str-len)))
+      (call $mp-neg (local.get $temp)))
+    (else
+      (local.set $str (call $malloc (i32.add (local.get $str-len) (i32.const 4))))
+      (i32.store (local.get $str) (local.get $str-len))
+      (local.set $str-ptr (i32.add 
+          (i32.add 
+            (local.get $str)
+            (i32.const 3))
+          (local.get $str-len)))))
+
+  (local.set $src-ptr (i32.add (local.get $temp) (%word-size (%mp-len-l $temp))))
+  (block $b_end (loop $b_start
+      (br_if $b_end (i32.eqz (local.get $str-len)))
+
+      (local.set $digit (i32.and 
+          (i32.load (local.get $src-ptr)) 
+          (local.get $digit-mask)))
+
+      (if (i32.lt_u (local.get $digit) (i32.const 10))
+        (then (%plus-eq $digit 0x30))
+        (else (%plus-eq $digit 0x37))) ;; hex digit
+      
+      (i32.store8 (local.get $str-ptr) (local.get $digit))
+      (call $mp-shr-ip (local.get $temp) (local.get $digit-bits))
+
+      (%dec $str-len)
+      (%dec $str-ptr)
+      (br $b_start)))
+
+  (call $malloc-free (local.get $temp))
+
+  (return (local.get $str)))
+
+(func $mp-mp->string10 (param $ptr i32) (result i32)
+  (local $log2 i32)
+  (local $sign i32)
+  (local $max-digits i32)
+  (local $char-buffer i32)
+  (local $char-ptr i32)
+  (local $ten i32)
+  (local $quot i32)
+  (local $rem i32)
+  (local $div-res i64)
+  (local $digit i32)
+  (local $actual-len i32)
+  (local $res i32)
+
+  (local.set $log2 (call $mp-log2 (local.get $ptr)))
+  (local.set $sign (%mp-sign-l $ptr))
+  ;; log_2(10) is 3.3219, so we're going to assume that every 3 bits is another digit
+  ;; and 1 for a possible minus sign
+  (local.set $max-digits (i32.add 
+      (i32.div_u
+        (i32.add (local.get $log2) (i32.const 2))
+        (i32.const 3))
+      (i32.const 1)))
+  (local.set $char-buffer (call $malloc (local.get $max-digits)))
+  (local.set $char-ptr (i32.sub 
+      (i32.add (local.get $char-buffer) (local.get $max-digits))
+      (i32.const 1)))
+
+  (local.set $quot (call $mp-copy (local.get $ptr)))
+  (local.set $ten (call $mp-from-u64 (i64.const 10)))
+  (local.set $actual-len (i32.const 0))
+  (if (local.get $sign) 
+    (then (call $mp-neg (local.get $quot))))
+
+  (block $b_end (loop $b_start
+      (br_if $b_end (i32.eqz (call $mp-log2 (local.get $quot))))
+
+      (local.set $div-res (call $mp-div (local.get $quot) (local.get $ten)))
+      ;; quotient is in the high word, remainder in the low word
+      (call $malloc-free (local.get $quot))
+      (local.set $quot (i32.wrap_i64 (i64.shr_u (local.get $div-res) (i64.const 32))))
+      (local.set $rem (i32.wrap_i64 (local.get $div-res)))
+      (local.set $digit (i32.wrap_i64 (call $mp-to-u64 (local.get $rem))))
+      (call $malloc-free (local.get $rem))
+
+      (i32.store8 (local.get $char-ptr) (i32.add (local.get $digit) (i32.const 0x30)))
+
+      (%dec $char-ptr)
+      (%inc $actual-len)
+      (br $b_start)))
+
+  (if (i32.ne (local.get $quot) (global.get $g-mp-zero))
+    (then (call $malloc-free (local.get $quot))))
+  (call $malloc-free (local.get $ten))
+
+  (if (local.get $sign)
+    (then
+      (i32.store8 (local.get $char-ptr) (i32.const 0x2D)) ;; '-' 0x2D
+      (%dec $char-ptr)
+      (%inc $actual-len)))
+
+  (local.set $res (call $malloc (i32.add (local.get $actual-len) (i32.const 4))))
+  (i32.store (local.get $res) (local.get $actual-len))
+  (call $memcpy 
+      (i32.add (local.get $res) (i32.const 4))
+      (i32.add (local.get $char-ptr) (i32.const 1))
+      (local.get $actual-len))
+  (call $malloc-free (local.get $char-buffer))
+
+  (return (local.get $res)))
 
 (func $mp-char-base-digit (param $char i32) (param $base i32) (result i32)
   (local $digit i32)
@@ -379,7 +542,7 @@ data: u32[size] -- the words of the number
   (local $length i32)
   (local $clz i32)
 
-  (local.set $length (i32.and (i32.load (local.get $ptr)) (i32.const 0x7FFF_FFFF)))
+  (local.set $length (%mp-len-l $ptr))
 
   (%plus-eq $ptr 4)
   (block $b_end (loop $b_start

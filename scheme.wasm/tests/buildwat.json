@@ -400,6 +400,11 @@
       "index": "$mp-string->mp"
     },
     {
+      "name": "mpMpToString",
+      "type": "func",
+      "index": "$mp-mp->string"
+    },
+    {
       "name": "mpIsZero",
       "type": "func",
       "index": "$mp-zero?"

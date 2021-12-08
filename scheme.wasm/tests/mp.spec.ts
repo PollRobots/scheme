@@ -7,6 +7,7 @@ import {
   commonExportsFromInstance,
   CommonTestExports,
   createString,
+  getString,
   loadWasm,
 } from "./common";
 
@@ -18,6 +19,7 @@ interface MpTestExports extends CommonTestExports {
   mpShl: (a: number, shift: number) => number;
   mpShrIp: (a: number, shift: number) => void;
   mpStringToMp: (str: number, strLen: number, base: number) => number;
+  mpMpToString: (ptr: number, base: number) => number;
   mpIsZero: (pow: number) => number;
   mpCleanup: () => void;
 }
@@ -39,6 +41,10 @@ function createExportsFromInstance(
     mpStringToMp: instance.exports.mpStringToMp as (
       str: number,
       strLen: number,
+      base: number
+    ) => number,
+    mpMpToString: instance.exports.mpMpToString as (
+      ptr: number,
       base: number
     ) => number,
     mpIsZero: instance.exports.mpIsZero as (pow: number) => number,
@@ -196,6 +202,19 @@ describe("mp wasm", () => {
     }
   });
 
+  it("converts numbers to base-10 strings", () => {
+    for (let i = 0; i < 20; i++) {
+      const a = randomBigInt(128, true);
+      const a_ptr = bigIntToPtr(a);
+
+      const val = exports.mpMpToString(a_ptr, 10);
+      expect(getString(exports, val)).to.equal(a.toString());
+
+      exports.mallocFree(a_ptr);
+      exports.mallocFree(val);
+    }
+  });
+
   it("converts base-16 strings to numbers", () => {
     for (let i = 0; i < 20; i++) {
       const a = randomBigInt(128, true);
@@ -210,6 +229,19 @@ describe("mp wasm", () => {
       );
 
       exports.mallocFree(a_str_ptr);
+      exports.mallocFree(val);
+    }
+  });
+
+  it("converts numbers to base-16 strings", () => {
+    for (let i = 0; i < 20; i++) {
+      const a = randomBigInt(128, true);
+      const a_ptr = bigIntToPtr(a);
+
+      const val = exports.mpMpToString(a_ptr, 16);
+      expect(getString(exports, val).toLowerCase()).to.equal(a.toString(16));
+
+      exports.mallocFree(a_ptr);
       exports.mallocFree(val);
     }
   });
@@ -232,6 +264,19 @@ describe("mp wasm", () => {
     }
   });
 
+  it("converts numbers to base-8 strings", () => {
+    for (let i = 0; i < 20; i++) {
+      const a = randomBigInt(128, true);
+      const a_ptr = bigIntToPtr(a);
+
+      const val = exports.mpMpToString(a_ptr, 8);
+      expect(getString(exports, val).toLowerCase()).to.equal(a.toString(8));
+
+      exports.mallocFree(a_ptr);
+      exports.mallocFree(val);
+    }
+  });
+
   it("converts base-2 strings to numbers", () => {
     for (let i = 0; i < 20; i++) {
       const a = randomBigInt(128, true);
@@ -249,6 +294,20 @@ describe("mp wasm", () => {
       exports.mallocFree(val);
     }
   });
+
+  it("converts numbers to base-2 strings", () => {
+    for (let i = 0; i < 20; i++) {
+      const a = randomBigInt(128, true);
+      const a_ptr = bigIntToPtr(a);
+
+      const val = exports.mpMpToString(a_ptr, 2);
+      expect(getString(exports, val).toLowerCase()).to.equal(a.toString(2));
+
+      exports.mallocFree(a_ptr);
+      exports.mallocFree(val);
+    }
+  });
+
 
   it("can check if a number is zero", () => {
     const zero = bigIntToPtr(0n);
@@ -429,7 +488,7 @@ describe("mp wasm", () => {
       const rem = ptrToBigInt(rem_ptr);
 
       expect(quot).to.equal(
-        large /small,
+        large / small,
         `${i}: (quotient ${large} ${small})`
       );
       expect(rem).to.equal(
