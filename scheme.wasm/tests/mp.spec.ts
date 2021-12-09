@@ -18,6 +18,11 @@ interface MpTestExports extends CommonTestExports {
   mpDiv: (dividend: number, divisor: number) => bigint;
   mpShl: (a: number, shift: number) => number;
   mpShrIp: (a: number, shift: number) => void;
+  mpEq: (a: number, b: number) => number;
+  mpGt: (a: number, b: number) => number;
+  mpGe: (a: number, b: number) => number;
+  mpLt: (a: number, b: number) => number;
+  mpLe: (a: number, b: number) => number;
   mpStringToMp: (str: number, strLen: number, base: number) => number;
   mpMpToString: (ptr: number, base: number) => number;
   mpIsZero: (pow: number) => number;
@@ -38,6 +43,11 @@ function createExportsFromInstance(
     ) => bigint,
     mpShl: instance.exports.mpShl as (a: number, shift: number) => number,
     mpShrIp: instance.exports.mpShrIp as (a: number, shift: number) => void,
+    mpEq: instance.exports.mpEq as (a: number, b: number) => number,
+    mpGt: instance.exports.mpGt as (a: number, b: number) => number,
+    mpGe: instance.exports.mpGe as (a: number, b: number) => number,
+    mpLt: instance.exports.mpLt as (a: number, b: number) => number,
+    mpLe: instance.exports.mpLe as (a: number, b: number) => number,
     mpStringToMp: instance.exports.mpStringToMp as (
       str: number,
       strLen: number,
@@ -110,7 +120,11 @@ describe("mp wasm", () => {
     const arr = new BigUint64Array(len);
     crypto.randomFillSync(arr);
 
-    const val = arr.reduce((acc, el) => (acc << 64n) | el);
+    let val = arr.reduce((acc, el) => (acc << 64n) | el);
+    const shift = BigInt((len << 6) - bits);
+    if (shift > 0n) {
+      val = val >> shift;
+    }
     return maybeSigned && Math.random() >= 0.5 ? -val : val;
   };
 
@@ -307,7 +321,6 @@ describe("mp wasm", () => {
       exports.mallocFree(val);
     }
   });
-
 
   it("can check if a number is zero", () => {
     const zero = bigIntToPtr(0n);
@@ -555,5 +568,52 @@ describe("mp wasm", () => {
 
       exports.mallocFree(small_ptr);
     }
+  });
+
+  const checkCompare = (
+    mpCmp: (left_ptr: number, right_ptr: number) => number,
+    refCmp: (left: bigint, right: bigint) => boolean,
+    description: string
+  ) => {
+    const numbers = [
+      randomBigInt(48),
+      randomBigInt(64),
+      randomBigInt(128),
+      -randomBigInt(48),
+      -randomBigInt(64),
+      -randomBigInt(128),
+    ];
+
+    for (const left of numbers) {
+      const left_ptr = bigIntToPtr(left);
+      try {
+        expect(mpCmp(left_ptr, left_ptr) == 1).to.equal(
+          refCmp(left, left),
+          `(${description} ${left} ${left})`
+        );
+
+        for (const right of numbers) {
+          const right_ptr = bigIntToPtr(right);
+          try {
+            expect(mpCmp(left_ptr, right_ptr) == 1).to.equal(
+              refCmp(left, right),
+              `(${description} ${left} ${right})`
+            );
+          } finally {
+            exports.mallocFree(right_ptr);
+          }
+        }
+      } finally {
+        exports.mallocFree(left_ptr);
+      }
+    }
+  };
+
+  it("can compare numbers", () => {
+    checkCompare(exports.mpEq, (a, b) => a == b, "=");
+    checkCompare(exports.mpGt, (a, b) => a > b, ">");
+    checkCompare(exports.mpGe, (a, b) => a >= b, ">=");
+    checkCompare(exports.mpLt, (a, b) => a < b, "<");
+    checkCompare(exports.mpLe, (a, b) => a <= b, "<=");
   });
 });

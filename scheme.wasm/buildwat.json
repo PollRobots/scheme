@@ -28,6 +28,7 @@
     "src/library/equiv.wat",
     "src/library/mp.wat",
     "src/library/numerics.wat",
+    "src/library/numerics-core.wat",
     "src/library/pair.wat",
     "src/library/process.wat",
     "src/library/string.wat",

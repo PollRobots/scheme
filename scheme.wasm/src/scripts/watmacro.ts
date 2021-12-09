@@ -320,14 +320,19 @@ class List extends ParsedWat {
 
     const body = this.elements.slice(bodyIndex);
 
-
     return { name: name, args: argList, body: this.trim(body) };
   }
 
-  trim(arr: ParsedWat[]) : ParsedWat[]{
-    const first = arr.findIndex(v => !isAtom(v) || !isWhitespaceToken(v.token));
+  trim(arr: ParsedWat[]): ParsedWat[] {
+    const first = arr.findIndex(
+      (v) => !isAtom(v) || !isWhitespaceToken(v.token)
+    );
     let last = arr.length - 1;
-    while (last > first && isAtom(arr[last]) && isWhitespaceToken((arr[last] as Atom).token)) {
+    while (
+      last > first &&
+      isAtom(arr[last]) &&
+      isWhitespaceToken((arr[last] as Atom).token)
+    ) {
       last--;
     }
     return arr.slice(first, last + 1);
@@ -566,9 +571,22 @@ export function parse(input: string): ParsedWat[] {
   }
 
   if (listStack.length) {
-    const top = listStack.pop() || [];
-    const first = top.find(isAtom);
-    throw new Error(`Unbalanced paren at line ${first?.token.line}`);
+    while (listStack.length) {
+      const list = new List(curr);
+      curr = listStack.pop() || [];
+      currType = typeStack.pop() || "";
+      curr.push(list);
+    }
+    // const top = listStack.pop() || [];
+    // const first = top.find(isAtom);
+    //throw new Error(`Unbalanced paren at line ${first?.token.line}`);
+    parsed.push(
+      new Atom({
+        type: "comment",
+        content: `;; %%% ERROR Unbalanced paren %%%`,
+        line: 0,
+      })
+    );
   }
 
   return parsed;

@@ -28,6 +28,7 @@
     "src/library/equiv.wat",
     "src/library/mp.wat",
     "src/library/numerics.wat",
+    "src/library/numerics-core.wat",
     "src/library/pair.wat",
     "src/library/process.wat",
     "src/library/string.wat",
@@ -393,6 +394,31 @@
       "name": "mpShrIp",
       "type": "func",
       "index": "$mp-shr-ip"
+    },
+    {
+      "name": "mpEq",
+      "type": "func",
+      "index": "$mp-eq?"
+    },
+    {
+      "name": "mpGt",
+      "type": "func",
+      "index": "$mp-gt?"
+    },
+    {
+      "name": "mpGe",
+      "type": "func",
+      "index": "$mp-ge?"
+    },
+    {
+      "name": "mpLt",
+      "type": "func",
+      "index": "$mp-lt?"
+    },
+    {
+      "name": "mpLe",
+      "type": "func",
+      "index": "$mp-le?"
     },
     {
       "name": "mpStringToMp",

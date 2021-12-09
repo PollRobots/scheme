@@ -1451,3 +1451,140 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
     (%word-size-l $min-ptr-len))
 
   (return (local.get $dest)))
+
+(func $mp-eq? (param $a i32) (param $b i32) (result i32)
+  (return (i32.eqz (call $mp-cmp (local.get $a) (local.get $b)))))
+
+(func $mp-gt? (param $a i32) (param $b i32) (result i32)
+  (return (i32.gt_s 
+      (call $mp-cmp (local.get $a) (local.get $b))
+      (i32.const 0))))
+
+(func $mp-ge? (param $a i32) (param $b i32) (result i32)
+  (return (i32.ge_s 
+      (call $mp-cmp (local.get $a) (local.get $b))
+      (i32.const 0))))
+
+(func $mp-lt? (param $a i32) (param $b i32) (result i32)
+  (return (i32.lt_s 
+      (call $mp-cmp (local.get $a) (local.get $b))
+      (i32.const 0))))
+
+(func $mp-le? (param $a i32) (param $b i32) (result i32)
+  (return (i32.le_s 
+      (call $mp-cmp (local.get $a) (local.get $b))
+      (i32.const 0))))
+
+(func $mp-cmp (param $left i32) (param $right i32) (result i32)
+  (local $sign-left i32)
+  (local $sign-right i32)
+  (local $len-left i32)
+  (local $len-right i32)
+  (local $ptr-left i32)
+  (local $ptr-right i32)
+  (local $temp i32)
+  (local $word-left i32)
+  (local $word-right i32)
+
+  (if (i32.eq (local.get $left) (local.get $right))
+    (then (return (i32.const 0))))
+
+  (local.set $sign-left (%mp-sign-l $left))
+  (local.set $sign-right (%mp-sign-l $right))
+  (if (i32.ne (local.get $sign-left) (local.get $sign-right))
+    (then ;; signs are not equal
+      ;; return -1 if left is -ve, +1 otherwise
+      (return (select
+        (i32.const -1)
+        (i32.const 1)
+        (local.get $sign-left)))))
+
+  (if (local.get $sign-left)
+    (then ;; both are negative, negate and invert the comparison
+      (call $mp-neg (local.get $left))
+      (call $mp-neg (local.get $right))
+      (local.set $temp (call $mp-cmp (local.get $right) (local.get $left)))
+      (call $mp-neg (local.get $left))
+      (call $mp-neg (local.get $right))
+      (return (local.get $temp))))
+
+
+  (local.set $len-left (%mp-len-l $left))
+  (local.set $len-right (%mp-len-l $right))
+
+  ;; loop until ptr-left points to some data, or until len-left is 0
+  (local.set $ptr-left (i32.add (local.get $left) (i32.const 4)))
+  (block $b_end (loop $b_start
+      (br_if $b_end (i32.eqz (local.get $len-left)))
+      (br_if $b_end (i32.load (local.get $ptr-left)))
+      (%plus-eq $ptr-left 4)
+      (%dec $len-left)
+      (br $b_start)))
+
+  ;; loop until ptr-right points to some data, or until len-right is 0
+  (local.set $ptr-right (i32.add (local.get $right) (i32.const 4)))
+  (block $b_end (loop $b_start
+      (br_if $b_end (i32.eqz (local.get $len-right)))
+      (br_if $b_end (i32.load (local.get $ptr-right)))
+      (%plus-eq $ptr-right 4)
+      (%dec $len-right)
+      (br $b_start)))
+
+  ;; if left and right lengths differ
+  (if (i32.ne (local.get $len-left) (local.get $len-right))
+    ;; if left len is less, then -1, otherwise +1
+    (then (return (select
+      (i32.const -1)
+      (i32.const 1)
+      (i32.lt_u (local.get $len-left) (local.get $len-right))))))
+
+  (if (i32.eqz (local.get $len-left))
+    ;; both are zero
+    (then (return (i32.const 0))))
+
+  ;; only case where we have work to do, same number of words, remaining
+
+  (block $b_end (loop $b_start
+      (br_if $b_end (i32.eqz (local.get $len-left)))
+
+      (local.set $word-left (i32.load (local.get $ptr-left)))
+      (local.set $word-right (i32.load (local.get $ptr-right)))
+
+      (if (i32.ne (local.get $word-left) (local.get $word-right))
+        ;; temp is not zero
+        ;; return -1 if left is less than right (temp is < 0), 1 otherwise
+        (then (return (select
+              (i32.const -1)  
+              (i32.const 1)
+              (i32.lt_u (local.get $word-left) (local.get $word-right))))))
+
+      (%plus-eq $ptr-left 4)
+      (%plus-eq $ptr-right 4)
+      (%dec $len-left)
+      (br $b_start)))
+
+  (return (i32.const 0)))
+
+(func $mp-plus-eq (param $left i32) (param $right i32) (result i32)
+  (local $res i32)
+
+  (local.set $res (call $mp-add (local.get $left) (local.get $right)))
+  (call $malloc-free (local.get $left))
+
+  (return (local.get $res)))
+
+(func $mp-minus-eq (param $left i32) (param $right i32) (result i32)
+  (local $res i32)
+
+  (local.set $res (call $mp-sub (local.get $left) (local.get $right)))
+  (call $malloc-free (local.get $left))
+
+  (return (local.get $res)))
+
+(func $mp-shl-eq (param $left i32) (param $shift i32) (result i32)
+  (local $res i32)
+
+  (local.set $res (call $mp-shl (local.get $left) (local.get $shift)))
+  (call $malloc-free (local.get $left))
+
+  (return (local.get $res)))

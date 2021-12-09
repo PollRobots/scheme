@@ -12,65 +12,53 @@
         ;; print-nil()
         (call $print-nil)
         ;; break
-        (br $b_switch)
-      )
-    )
+        (br $b_switch)))
+
     ;; case boolean (2):
     (if (i32.eq (local.get $type) (%boolean-type))
       (then
         ;; print-boolean(ptr[4])
         (call $print-boolean (i32.load offset=4 (local.get $ptr)))
         ;; break
-        (br $b_switch)
-      )
-    )
+        (br $b_switch)))
+
     ;; case cons (3):
     (if (i32.eq (local.get $type) (%cons-type))
       (then
         ;; print-cons(ptr[4], ptr[8])
-        (call $print-cons
-          (i32.load offset=4 (local.get $ptr))
-          (i32.load offset=8 (local.get $ptr))
-          (i32.const 1)
-        )
+        (call $print-cons (%car-l $ptr) (%cdr-l $ptr) (i32.const 1))
         ;; break
-        (br $b_switch)
-      )
-    )
+        (br $b_switch)))
+        
     ;; case i64 (4):
     (if (i32.eq (local.get $type) (%i64-type))
       (then
         ;; print-integer((i64)ptr[4])
         (call $print-integer (i64.load offset=4 (local.get $ptr)) (i32.const 10))
         ;; break
-        (br $b_switch)
-      )
-    )
+        (br $b_switch)))
+
     ;; case symbol (6):
     (if (i32.eq (local.get $type) (%symbol-type))
       (then
         ;; print-symbol(ptr[4])
         (call $print-symbol (local.get $ptr))
         ;; break
-        (br $b_switch)
-      )
-    )
+        (br $b_switch)))
+        
     ;; case str (7):
     (if (i32.eq (local.get $type) (%str-type))
       (then
         (call $print-str (local.get $ptr))
         ;; break
-        (br $b_switch)
-      )
-    )
+        (br $b_switch)))
+
     ;; case char (8)
     (if (i32.eq (local.get $type) (%char-type))
       (then
         (call $print-char (local.get $ptr))
         ;; break
-        (br $b_switch)
-      )
-    )
+        (br $b_switch)))
 
     ;; case env (9):
     (if (i32.eq (local.get $type) (%env-type))
@@ -78,62 +66,56 @@
         ;; print-env(ptr)
         (call $print-other (global.get $g-env) (local.get $type) (local.get $ptr))
         ;; break
-        (br $b_switch)
-      )
-    )
+        (br $b_switch)))
+
     ;; case special:
     (if (i32.eq (local.get $type) (%special-type))
       (then
         (call $print-other (global.get $g-special) (local.get $type) (local.get $ptr))
-        (br $b_switch)
-      )
-    )
+        (br $b_switch)))
+
     ;; case builtin:
     (if (i32.eq (local.get $type) (%builtin-type))
       (then
         (call $print-builtin (local.get $type) (local.get $ptr))
-        (br $b_switch)
-      )
-    )
+        (br $b_switch)))
+
     ;; case lambda:
     (if (i32.eq (local.get $type) (%lambda-type))
       (then
         (call $print-other (global.get $lambda-sym) (local.get $type) (local.get $ptr))
-        (br $b_switch)
-      )
-    )
+        (br $b_switch)))
+
     ;; case error:
     (if (i32.eq (local.get $type (%error-type)))
       (then
         (call $print-error (local.get $ptr))
-        (br $b_switch)
-      )
-    )
+        (br $b_switch)))
+
     ;; case values:
     (if (i32.eq (local.get $type (%values-type)))
       (then
-        (call $print-cons
-          (i32.load offset=4 (local.get $ptr))
-          (i32.load offset=8 (local.get $ptr))
-          (i32.const 0)
-        )
-        (br $b_switch)
-      )
-    )
+        (call $print-cons (%car-l $ptr) (%cdr-l $ptr) (i32.const 0))
+        (br $b_switch)))
+
     ;; case vector:
     (if (i32.eq (local.get $type (%vector-type)))
       (then
         (call $print-vector (local.get $ptr))
-        (br $b_switch)
-      )
-    )
+        (br $b_switch)))
+
     ;; case bytevector:
     (if (i32.eq (local.get $type (%bytevector-type)))
       (then
         (call $print-bytevector (local.get $ptr))
-        (br $b_switch)
-      )
-    )
+        (br $b_switch)))
+
+    ;; case BigInt
+    (if (i32.eq (local.get $type) (%big-int-type))
+      (then
+        (call $print-big-int (local.get $ptr) (i32.const 10))
+        (br $b_switch)))
+
     ;; default:
     (call $print-other (global.get $g-unknown) (local.get $type) (local.get $ptr))
       ;; print-error();
@@ -389,6 +371,13 @@
 
   (return (local.get $str))
 )
+
+(func $print-big-int (param $num i32) (param $radix i32)
+  (local $str-ptr i32) 
+
+  (local.set $str-ptr (call $mp-mp->string (%car-l $num) (local.get $radix)))
+  (call $io-write (local.get $str-ptr))
+  (call $malloc-free (local.get $str-ptr)))
  
 (func $print-symbol (param $sym i32)
   ;; TODO handle symbols with non-standard characters

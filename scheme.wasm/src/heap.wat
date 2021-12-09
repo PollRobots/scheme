@@ -26,7 +26,8 @@
 ;;   vector = 15
 ;;   bytevector = 16
 ;;   cont(inuation) = 17 
-;; kMaxType = 17
+;;   big-int = 18
+;; kMaxType = 18
 
 ;;  Empty cell
 ;;    next-empty: i32 ptr
@@ -70,6 +71,9 @@
 
 ;;  Continuation
 ;;    car: i32 ptr
+
+;;  BigInt
+;;    car; i32 ptr
 
 ;; Heap
 ;;   Size:      i32
@@ -168,54 +172,52 @@
       (br_if $b_end (i32.eqz (local.get $size)))
 
       ;; type = entry-ptr[0] & 0xF
-      (local.set $type (i32.and (i32.load (local.get $entry-ptr)) (i32.const 0xF)))
+      (local.set $type (%get-type $entry-ptr))
 
-      ;; if this is a string or a symbol
-      ;; if (type == 6 || type == 7) {
-      (block $b_str_or_sym_else
-        (block $b_str_or_sym
-          (if (i32.eq (local.get $type) (i32.const 6))
-            (then (br $b_str_or_sym))
-            (else
-              (if (i32.eq (local.get $type) (i32.const 7))
-                (then (br $b_str_or_sym))
-                (else (br $b_str_or_sym_else))
-              )
-            )
-          )
-        )
-        ;; free the underlying string
-        ;; malloc-free(entry-ptr[4])
-        (call $malloc-free (i32.load offset=4 (local.get $entry-ptr)))
-        ;; }
-      )
+      ;; switch (type)
+      (block $b_switch
 
-      ;; if this is an environment
-      ;; if (type == 9) {
-      (if (i32.eq (local.get $type) (i32.const 9))
-        (then
-          ;; destroy the environment (but not any outer environment)
-          ;; environment-destroy(entry-ptr, false)
-          (call $environment-destroy (local.get $entry-ptr) (i32.const 0))
-          ;; free the environment hashtable
+        ;; if this is a string or a symbol or a big-ing
+        ;; case %symbol-type:
+        ;; case %string-type:
+        ;; case %big-int-type:
+        (block $b_str_or_sym_else
+          (block $b_str_or_sym
+            (if (i32.eq (local.get $type) (%symbol-type))
+              (then (br $b_str_or_sym)))
+            (if (i32.eq (local.get $type) (%str-type))
+              (then (br $b_str_or_sym))
+            (if (i32.eq (local.get $type) (%big-int-type))
+              (then (br $b_str_or_sym))
+            (br $b_str_or_sym_else))))
+          ;; free the underlying string
           ;; malloc-free(entry-ptr[4])
-          (call $malloc-free (i32.load offset=4 (local.get $entry-ptr)))
-        )
-      )
-      ;; }
+          (call $malloc-free (%car-l $entry-ptr))
+          ;; }
+          (br $b_switch))
+
+        ;; if this is an environment
+        ;; if (type == 9) {
+        (if (i32.eq (local.get $type) (%env-type))
+          (then
+            ;; destroy the environment (but not any outer environment)
+            ;; environment-destroy(entry-ptr, false)
+            (call $environment-destroy (local.get $entry-ptr) (i32.const 0))
+            ;; free the environment hashtable
+            ;; malloc-free(entry-ptr[4])
+            (call $malloc-free (i32.load offset=4 (local.get $entry-ptr)))
+            (br $b_switch))))
+        ;; }
+
 
       ;; entry-ptr += 12
       (%plus-eq $entry-ptr 12)
       ;; size--;
       (%dec $size)
-      (br $b_start)
-    ;; }
-    )
-  )
+      (br $b_start)))
   
   ;; malloc-free(heap)
-  (call $malloc-free (local.get $heap))
-)
+  (call $malloc-free (local.get $heap)))
 
 (func $heap-alloc (param $heap i32) (param $type i32) (param $data1 i32) (param $data2 i32) (result i32)
   (local $empty-ptr i32)

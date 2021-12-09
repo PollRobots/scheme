@@ -32,6 +32,7 @@
 (global $g-interned-str   (mut i32) (i32.const 0))
 (global $g-eval       (mut i32) (i32.const 0))
 (global $g-gc-run     (mut i32) (i32.const 0))
+(global $g-div0       (mut i32) (i32.const 0))
 
 (func $runtime-init
   (global.set $g-reader (call $reader-init))
@@ -68,6 +69,7 @@
   (global.set $g-interned-str (%sym-128 0x64656e7265746e69 0x203A 10)) ;; 'interned: '
   (global.set $g-eval (%sym-64 0x203A6c617665 6))  ;; 'eval: '
   (global.set $g-gc-run (%sym-32 0x0A6367 3)) ;; 'gc\n'
+  (global.set $g-div0 (%sym-32 0x30766964 4)) ;; 'div0'
 
   (call $char-init)
   (call $cont-init)
@@ -607,13 +609,16 @@
   (local $integer i64)
   (local $fraction-digits i32)
   (local $fraction i64)
+  (local $integer-start i32)
   (local $integer-digits i32)
+  (local $integer-overflow i32)
   (local $digit i32)
   (local $decimal i32)
   (local $have-exp i32)
   (local $exponent i64)
   (local $exponent-digits i32)
   (local $neg-exp i32)
+  (local $big-int i32)
 
 
   (if (i32.ne (%get-type $str) (%str-type))
@@ -631,11 +636,14 @@
   (local.set $integer (i64.const 0))
   (local.set $fraction (i64.const 0))
   (local.set $fraction-digits (i32.const 0))
+  (local.set $integer-start (i32.const 0))
   (local.set $integer-digits (i32.const 0))
+  (local.set $integer-overflow (i32.const 0))
   (local.set $exponent-digits (i32.const 0))
   (local.set $have-exp (i32.const 0))
   (local.set $exponent (i64.const 0))
   (local.set $neg-exp (i32.const 0))
+  (local.set $big-int (i32.const 0))
 
   (%define %sssw (%cmp %len) (call $short-str-start-with (local.get $str-ptr) (local.get $offset) (i32.const %cmp) (i32.const %len)))
 
@@ -778,6 +786,7 @@
     )
   )
 
+  (local.set $integer-start (local.get $offset))
   (block $b_integer_end
     (loop $b_integer
       ;; break if offset >= str-len
@@ -785,20 +794,26 @@
 
       (local.set $digit (call $get-radix-digit (local.get $str-ptr) (local.get $offset) (local.get $radix)))
       (br_if $b_integer_end (i32.lt_s (local.get $digit) (i32.const 0)))
-      (%inc $offset)
 
-      ;; integer = integer * radix + digit
-      (local.set $integer
-        (i64.add
-          (i64.mul (local.get $integer) (i64.extend_i32_u (local.get $radix)))
-          (i64.extend_i32_u (local.get $digit))
-        )
-      )
+      (if (i32.eqz (local.get $integer-overflow))
+        ;; integer = integer * radix + digit
+        (local.set $integer
+          (i64.add
+            (i64.mul (local.get $integer) (i64.extend_i32_u (local.get $radix)))
+            (i64.extend_i32_u (local.get $digit)))))
+
+      ;; check for overflow, if it is detected then a big int conversion 
+      ;; will be done below
+      (if 
+        (i64.eq 
+          (i64.and (local.get $integer) (i64.const 0x8000_0000_0000_0000))
+          (i64.const 0x8000_0000_0000_0000))
+        (then (local.set $integer-overflow (i32.const 1))))
+
+      (%inc $offset)
       (%inc $integer-digits)
 
-      (br $b_integer)
-    )
-  )
+      (br $b_integer)))
 
   (if (i32.eq (local.get $radix) (i32.const 10))
     (then
@@ -882,37 +897,32 @@
   )
 
   (if (i32.ne (local.get $offset) (local.get $str-len))
-    (then (return (global.get $g-false)))
-  )
+    (then (return (global.get $g-false))))
   
   (if (i32.eqz (i32.add (local.get $integer-digits) (local.get $fraction-digits)))
-    (then (return (global.get $g-false)))
-  )
+    (then (return (global.get $g-false))))
 
   (if (i32.eqz (i32.or (local.get $decimal) (local.get $have-exp)))
     (then
-      (if (local.get $negative)
+      (if (i32.eqz (local.get $integer-overflow))
         (then
-          (local.set $integer (i64.sub (i64.const 0) (local.get $integer)))
-        )
-      ) 
-      (return 
-        (call $heap-alloc
-          (global.get $g-heap) 
-          (%i64-type) 
-          (i32.wrap_i64 (local.get $integer))
-          (i32.wrap_i64 (i64.shr_u (local.get $integer) (i64.const 32)))
-        )
-      )
-    )
+          (if (local.get $negative)
+            (then
+              (local.set $integer (i64.sub (i64.const 0) (local.get $integer))))) 
+          (return (%alloc-i64 (local.get $integer))))
+        (else
+          (local.set $big-int (call $mp-string->mp
+              (i32.add (i32.add (local.get $str-ptr) (local.get $integer-start)) (i32.const 4))
+              (local.get $integer-digits)
+              (local.get $radix)))
+          (if (local.get $negative)
+            (then (call $mp-neg (local.get $big-int))))
+          (return (%alloc-big-int (local.get $big-int))))))
     (else
       ;; TODO actual floating point support lol
-      (return (%alloc-error (%sym-32 0x6c616572 4) (local.get $str)))
-    )
-  ) 
+      (return (%alloc-error (%sym-32 0x6c616572 4) (local.get $str))))) 
 
-  (return (global.get $g-false))
-)
+  (return (global.get $g-false)))
 
 (func $eval (param $env i32) (param $args i32) (result i32)
   (local $result i32)

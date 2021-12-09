@@ -37,7 +37,8 @@
 ;;   vector = 15
 ;;   bytevector = 16
 ;;   cont(inuation) = 17
-;; kMaxType = 17
+;;   big-int = 18
+;; kMaxType = 18
 (%define %empty-type () (i32.const 0))
 (%define %nil-type () (i32.const 1))
 (%define %boolean-type () (i32.const 2))
@@ -56,7 +57,8 @@
 (%define %vector-type () (i32.const 15))
 (%define %bytevector-type () (i32.const 16))
 (%define %cont-type () (i32.const 17))
-(%define %max-heap-type () (i32.const 17))
+(%define %big-int-type () (i32.const 18))
+(%define %max-heap-type () (i32.const 18))
 
 (%define %get-type (%arg) (i32.and (i32.load (local.get %arg)) (i32.const 0x1F)))
 
@@ -97,6 +99,7 @@
 
 (%define %alloc-char (%val) (call $heap-alloc (global.get $g-heap) (%char-type) %val (i32.const 0)))
 (%define %alloc-i32 (%val) (call $heap-alloc (global.get $g-heap) (%i64-type) %val (i32.const 0)))
+(%define %alloc-big-int (%val) (call $heap-alloc (global.get $g-heap) (%big-int-type) %val (i32.const 0)))
 (%define %alloc-i64 (%val) (call $heap-alloc (global.get $g-heap) (%i64-type) (i32.wrap_i64 %val) (i32.wrap_i64 (i64.shr_u %val (i64.const 32)))))
 (%define %alloc-cons (%car %cdr) (call $heap-alloc (global.get $g-heap) (%cons-type) %car %cdr))
 (%define %alloc-str (%str) (call $heap-alloc (global.get $g-heap) (%str-type) %str (i32.const 0)))
