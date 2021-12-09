@@ -1573,6 +1573,14 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
 
   (return (local.get $res)))
 
+(func $mp-times-eq (param $left i32) (param $right i32) (result i32)
+  (local $res i32)
+
+  (local.set $res (call $mp-mul (local.get $left) (local.get $right)))
+  (call $malloc-free (local.get $left))
+
+  (return (local.get $res)))
+
 (func $mp-minus-eq (param $left i32) (param $right i32) (result i32)
   (local $res i32)
 
