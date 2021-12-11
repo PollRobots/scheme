@@ -101,6 +101,7 @@
 (%define %alloc-i32 (%val) (call $heap-alloc (global.get $g-heap) (%i64-type) %val (i32.const 0)))
 (%define %alloc-big-int (%val) (call $heap-alloc (global.get $g-heap) (%big-int-type) %val (i32.const 0)))
 (%define %alloc-i64 (%val) (call $heap-alloc (global.get $g-heap) (%i64-type) (i32.wrap_i64 %val) (i32.wrap_i64 (i64.shr_u %val (i64.const 32)))))
+(%define %alloc-f64 (%val) (call $heap-alloc (global.get $g-heap) (%f64-type) (i32.wrap_i64 (i64.reinterpret_f64 %val)) (i32.wrap_i64 (i64.shr_u (i64.reinterpret_f64 %val) (i64.const 32)))))
 (%define %alloc-cons (%car %cdr) (call $heap-alloc (global.get $g-heap) (%cons-type) %car %cdr))
 (%define %alloc-str (%str) (call $heap-alloc (global.get $g-heap) (%str-type) %str (i32.const 0)))
 (%define %alloc-symbol (%str) (call $heap-alloc (global.get $g-heap) (%symbol-type) %str (i32.const 0)))

@@ -41,7 +41,10 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
       heap: number,
       outer: number
     ) => number,
-    stringToNumberImpl: instance.exports.stringToNumberImpl as (str: number, radix: number) => number,
+    stringToNumberImpl: instance.exports.stringToNumberImpl as (
+      str: number,
+      radix: number
+    ) => number,
     shortStrEq: instance.exports.shortStrEq as (
       str: number,
       shortStr: number,
@@ -75,14 +78,15 @@ describe("runtime wasm", () => {
     const instance = await wasm;
     exports = exportsFromInstance(instance);
     io.exports = exports;
-    exports.mallocInit();
-    exports.runtimeInit();
     io.addEventListener("write", writeHandler);
   });
 
+  beforeEach(() => {
+    exports.mallocInit();
+    exports.runtimeInit();
+  });
+
   after(() => {
-    exports.runtimeCleanup();
-    checkForLeaks(exports);
     io.removeEventListener("write", writeHandler);
   });
 
@@ -90,6 +94,8 @@ describe("runtime wasm", () => {
     if (written.length) {
       console.log(written.splice(0, written.length).join(""));
     }
+    exports.runtimeCleanup();
+    checkForLeaks(exports);
   });
 
   it("converts strings to numbers", () => {
@@ -108,6 +114,7 @@ describe("runtime wasm", () => {
       { str: "-42", ex: -42 },
       { str: "#d-42", ex: -42 },
       { str: "#x-42", ex: -0x42 },
+      { str: "#e8", ex: 8 },
     ];
 
     for (const { str, ex } of kTestNumbers) {
@@ -144,8 +151,6 @@ describe("runtime wasm", () => {
       ["1_200", "#f"],
       ["1,200", "#f"],
       ["--2", "#f"],
-      ["#i43", '<error inexact "#i43">'],
-      ["#e8", '<error exact "#e8">'],
       ["#b107", "#f"],
       ["#o108", "#f"],
       ["#x1G", "#f"],
@@ -273,6 +278,38 @@ describe("runtime wasm", () => {
     expect(words[0]).to.equal(4, "42 should make a number");
     expect(words[1]).to.equal(42);
     expect(words[2]).to.equal(0), "42 should be 0 in the upper word";
+  });
+
+  it("string->datum will convert real numbers", () => {
+    const testVectors: { str: string; real: number }[] = [
+      { str: "#i43", real: 43 },
+      { str: "1.0", real: 1 },
+      { str: "+inf.0", real: Infinity },
+      { str: "-inf.0", real: -Infinity },
+      { str: "+nan.0", real: NaN },
+      { str: "-nan.0", real: NaN },
+      { str: "1.234", real: 1.234 },
+      { str: "6.543e21", real: 6.543e21 },
+      { str: "1.234e-56", real: 1.234e-56 },
+    ];
+
+    for (const { str, real } of testVectors) {
+      const input = createString(exports, str);
+      const datum = exports.stringToDatum(input);
+
+      const words = new Uint32Array(
+        exports.memory.buffer.slice(datum, datum + 12)
+      );
+      expect(words[0]).to.equal(5, "expecting a floating point number");
+      const numbers = new Float64Array(
+        exports.memory.buffer.slice(datum + 4, datum + 12)
+      );
+      if (isNaN(real)) {
+        expect(numbers[0]).to.be.NaN;
+      } else {
+        expect(numbers[0]).to.equal(real, `Converted from ${str}`);
+      }
+    }
   });
 
   it("string->datum will convert '()' to a nil item", () => {

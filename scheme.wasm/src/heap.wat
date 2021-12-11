@@ -1,10 +1,14 @@
 ;; defines the gc heap and the types that can be stored on it
 
 ;; HeapEntry
-;;  type: i8      type enum
-;;  gc-flags: i8  gc flags 0 -- white, 0x01 -- gray, 0x10 -- black 
+;;  type: i8        type enum
+;;  gc-flags: i8    gc flags  flag | color | during         | after 
+;;                            -----+-------+----------------+---------------
+;;                            0b00 | white | unvisited      |  can be freed
+;;                            0b01 | gray  | to be checked  |  error
+;;                            0b10 | black | in-use         |  must be kept 
 ;;  reserved: i16
-;;  data: i64     type specific value
+;;  data: i64       type specific value
 
 
 ;; Type - enum

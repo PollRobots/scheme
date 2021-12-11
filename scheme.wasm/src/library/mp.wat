@@ -736,11 +736,11 @@ data: u32[size] -- the words of the number, words themselves are little
   (return (call $mp-copy-impl (local.get $ptr) (i32.const 1))))
 
 ;; This creates a copy of the input number that uses the minimum storage.
-;; Unlike mp-denormalize, this doesn't free the input ptr.
+;; Unlike mp-normalize, this doesn't free the input ptr.
 (func $mp-copy (param $ptr i32) (result i32)
   (return (call $mp-copy-impl (local.get $ptr) (i32.const 0))))
 
-;; internal implementation of both mp-copy and mp-denormalize
+;; internal implementation of both mp-copy and mp-normalize
 (func $mp-copy-impl (param $ptr i32) (param $free i32) (result i32)
   (local $log2 i32)
   (local $len i32)
@@ -1052,6 +1052,10 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local $ptr i32)
   (local $count i32)
 
+  (if (global.get $g-mp-zero) (then
+      (call $malloc-free (global.get $g-mp-zero))
+      (global.set $g-mp-zero (i32.const 0))))
+
   (local.set $ptr (global.get $g-mp-10-cache))
   (if (i32.eqz (local.get $ptr))
     (then (return)))
@@ -1069,12 +1073,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
 
   (call $malloc-free (global.get $g-mp-10-cache))
   (global.set $g-mp-10-cache (i32.const 0))
-  (global.set $g-mp-10-cache-len (i32.const 0))
-
-  (if (global.get $g-mp-zero)
-    (then
-      (call $malloc-free (global.get $g-mp-zero))
-      (global.set $g-mp-zero (i32.const 0)))))
+  (global.set $g-mp-10-cache-len (i32.const 0)))
 
 (func $mp-zero? (param $ptr i32) (result i32)
   (return (select
@@ -1229,6 +1228,27 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
     (i32.or
       (i32.load (local.get $dest-ptr))
       (i32.shl (i32.const 1) (local.get $bit-offset)))))
+
+(func $mp-bit-get (param $ptr i32) (param $bit i32) (result i32)
+  (local $word-offset i32)
+  (local $bit-offset i32)
+  (local $src-ptr i32)
+
+  (local.set $word-offset (i32.shr_u (local.get $bit) (i32.const 5)))
+  (local.set $bit-offset (i32.and (local.get $bit) (i32.const 0x1f)))
+
+  (local.set $src-ptr (i32.add 
+      (local.get $ptr)
+      (%word-size (i32.sub (%mp-len-l $ptr) (local.get $word-offset)))))
+
+  (if (i32.le_u (local.get $src-ptr) (local.get $ptr))
+    (then (return (i32.const 0))))
+
+  (return (i32.and 
+      (i32.shr_u 
+        (i32.load (local.get $src-ptr))
+        (local.get $bit-offset))
+      (i32.const 1))))
 
 (func $mp-shr-ip (param $ptr i32) (param $shift i32)
   (local $word-offset i32)
@@ -1395,6 +1415,16 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
       (i32.store offset=4 (local.get $ptr) (local.get $low))))
 
   (return (local.get $ptr)))
+
+(func $mp-from-i64 (param $value i64) (result i32)
+  (local $mp i32)
+  
+  (if (i64.ge_s (local.get $value) (i64.const 0))
+    (then (return (call $mp-from-u64 (local.get $value)))))
+
+  (call $mp-neg (local.tee $mp 
+      (call $mp-from-u64 (i64.sub (i64.const 0) (local.get $value)))))
+  (return (local.get $mp)))
 
 (func $mp-to-u64 (param $ptr i32) (result i64)
   (local $len i32)
@@ -1596,3 +1626,247 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (call $malloc-free (local.get $left))
 
   (return (local.get $res)))
+
+(func $mp-abs-inc (param $ptr i32) (result i32)
+  (local $dest-ptr i32)
+  (local $len i32)
+  (local $sign i32)
+  (local $carry i32)
+  (local $temp i64)
+  (local $copy i32)
+
+  (local.set $len (%mp-len-l $ptr))
+  (local.set $dest-ptr (i32.add (local.get $ptr) (%word-size-l $len))) 
+
+  (local.set $carry (i32.const 1))
+  (block $b_end (loop $b_start
+    (br_if $b_end (i32.eq (local.get $dest-ptr) (local.get $ptr)))
+    
+    (local.set $temp (i64.add 
+        (i64.load32_u (local.get $dest-ptr))
+        (i64.extend_i32_u (local.get $carry))))
+    (i64.store32 (local.get $dest-ptr) (local.get $temp))
+
+    (local.set $carry (i32.wrap_i64 (i64.shr_u (local.get $temp) (i64.const 32))))
+    (if (i32.eqz (local.get $carry))
+      (then (return (local.get $ptr))))
+
+    (%minus-eq $dest-ptr 4)
+    (br $b_start)))
+
+  (%inc $len)
+  (local.set $sign (%mp-sign-l $sign))
+  (%mp-alloc-sign-l $copy $len $sign)
+
+  (i32.store offset=4 (local.get $copy) (local.get $carry))
+  (call $memcpy 
+    (i32.add (local.get $copy) (i32.const 8))
+    (i32.add (local.get $ptr) (i32.const 4))
+    (%word-size (i32.sub (local.get $len) (i32.const 1))))
+
+  (return (local.get $copy)))
+
+(;
+
+  From: Clinger, William D. "How to read floating point numbers accurately." 
+        ACM SIGPLAN Notices 25.6 (1990): 92-101.
+
+  https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.45.4152&rep=rep1&type=pdf
+
+  ; Given exact integers f and e, with f nonnegative,
+  ; returns the floating point number closest to 
+  ; f * delta^e
+
+  (define (AlgorithmM (f e))
+
+    ; f * delta^e = u/v * beta^k
+
+    (define (loop (u v k))
+      (let ((x (quotient u v)))
+        (cond ((and (<= beta^n-1 x) (< x beta^n))
+               (ratio->float u v k))
+              ((< x beta^n-1)
+               (loop (* beta u) v (- k 1)))
+              ((<= beta^n x)
+               (loop u (* beta v) (+ k 1))))))
+
+    (if (negative? e)
+        (loop f (expt 10 (- e)) 0)
+        (loop (* f (expt 10 e)) 1 0)))
+
+  ; Given exact positive integers u and v with
+  ; beta^(n-1) <= u/v beta^n, and exact integer k,
+  ; returns the float closest to u/v * beta^k.
+
+  (define (ratio->float (u v k))
+    (let * ((q   (quotient u v))
+            (r   (- u (* q v)))
+            (v-r (- v r))
+            (z   (make-float q k)))
+      (cond ((< r v-r) z)
+            ((> r v-r) (nextfloat z))
+            ((even? q) z)
+            (else (nextfloat z)))))
+
+  (define delta 10)
+  (define beta 2)
+  (define n 53)
+  (define beta^n (expt beta n))
+  (define beta^n-1 (expt beta (- n 1)))
+
+  ; Given a normalized floating point number
+  ; z = m & beta^k, returns the normalized floating
+  ; point number whose value is (m+1) * beta^k
+
+  (define (nextfloat (z))
+    (let ((m (float-significand z))
+          (k (float-exponent z)))
+      (if (= m (- beta^n 1))
+          (make-float beta^n-1 (+ k 1))
+          (make-float (+ m 1) k))))
+
+  ; Given a normalized floating point number
+  ; z = m * beta^k, returns the greatest normalized
+  ; floating point number less than z. Note that the
+  ; value returned may be greater than (m-1) * beta^k
+
+  (define (prevfloat (z)
+    (let ((m (float-significand z))
+          (k (float-exponent z)))
+      (if (= m beta^n-1)
+          (make-float (- beta^n 1) (- k 1))
+          (make-float (- m 1) k))))
+
+;)
+
+(func $mp-algorithm-m (param $f i32) (param $e i32) (result f64)
+  (local $u i32)
+  (local $v i32)
+  (local $k i32)
+  (local $quot-rem i64)
+  (local $quot i32)
+  (local $rem i32)
+  (local $log2-quot i32)
+  (local $v-rem i32)
+  (local $z f64)
+  (local $rem-cmp i32)
+  (local $v-free i32)
+  (local $kdiff i32)
+  (local $sign i32)
+
+  (if (local.tee $sign (%mp-sign-l $f))
+    (then (call $mp-neg (local.get $f))))
+
+  (if (i32.le_s (local.get $e) (i32.const 0))
+    (then 
+      (local.set $u (call $mp-copy (local.get $f)))
+      (local.set $v (call $mp-10-pow (i32.sub (i32.const 0) (local.get $e)))))
+    (else
+      (local.set $u (call $mp-mul 
+          (local.get $f)
+          (call $mp-10-pow (local.get $e))))
+      (local.set $v (call $mp-10-pow (i32.const 0)))))
+  (local.set $v-free (i32.const 0))
+  (local.set $k (i32.const 52))
+
+  (if (local.get $sign) (then (call $mp-neg (local.get $f))))
+
+  (loop $b_forever
+    (local.set $quot-rem (call $mp-div (local.get $u) (local.get $v)))
+    (if (i64.eqz (local.get $quot-rem))
+      (then (unreachable)))
+    (local.set $quot (i32.wrap_i64 (i64.shr_u (local.get $quot-rem) (i64.const 32))))
+    (local.set $rem (i32.wrap_i64 (local.get $quot-rem)))
+
+    (local.set $log2-quot (i32.sub
+        (call $mp-log2 (local.get $quot)) 
+        (i32.const 1)))
+
+    (if (i32.eq (local.get $log2-quot) (i32.const 52)) (then
+        (block $b-ratio->float
+          (local.set $v-rem (call $mp-sub (local.get $v) (local.get $rem)))
+          (local.set $z (call $mp-make-float (local.get $quot) (local.get $k)))
+          (local.set $rem-cmp (call $mp-cmp (local.get $rem) (local.get $v-rem)))
+          (call $malloc-free (local.get $v-rem))
+        
+          (br_if $b-ratio->float (i32.lt_s (local.get $rem-cmp) (i32.const 0)))
+          (if (i32.gt_s (local.get $rem-cmp) (i32.const 0))
+            (then
+              (local.set $z (call $mp-next-float (local.get $z)))
+              (br $b-ratio->float)))
+          (br_if $b-ratio->float (i32.eqz (call $mp-bit-get 
+                (local.get $quot) 
+                (i32.const 0))))
+          (local.set $z (call $mp-next-float (local.get $z))))
+
+        (call $malloc-free (local.get $rem))
+        (call $malloc-free (local.get $quot))
+        (call $malloc-free (local.get $u))
+        (if (local.get $v-free) (then 
+            (call $malloc-free (local.get $v))))
+        (if (local.get $sign) (then 
+            (local.set $z (f64.neg (local.get $z)))))
+        (return (local.get $z))))
+    
+    (if (i32.lt_s (local.get $log2-quot) (i32.const 52)) 
+      (then
+        (local.set $kdiff (i32.sub (i32.const 52) (local.get $log2-quot)))
+        (local.set $u (call $mp-shl-eq (local.get $u) (local.get $kdiff)))
+        (local.set $k (i32.sub (local.get $k) (local.get $kdiff))))
+      (else
+        (local.set $kdiff (i32.sub (local.get $log2-quot) (i32.const 52)))
+        (if (local.get $v-free)
+          (then
+            (local.set $v (call $mp-shl-eq (local.get $v) (local.get $kdiff))))
+          (else
+            (local.set $v (call $mp-shl (local.get $v) (local.get $kdiff)))
+            (local.set $v-free (i32.const 1))))
+        (local.set $k (i32.add (local.get $k) (local.get $kdiff)))))
+
+    (call $malloc-free (local.get $rem))
+    (if (i32.ne (local.get $quot) (global.get $g-mp-zero)) (then 
+        (call $malloc-free (local.get $quot))))
+    (br $b_forever))
+
+  (unreachable))
+
+(func $mp-make-float (param $num i32) (param $exp i32) (result f64)
+  (return (call $mp-make-float-64 
+      (call $mp-to-u64 (local.get $num))
+      (local.get $exp))))
+
+(func $mp-make-float-64 (param $int64 i64) (param $exp i32) (result f64)
+  (%plus-eq $exp 0x3FF)
+  (if (i32.ge_s (local.get $exp) (i32.const 0x7FF)) (then 
+      (return (f64.const inf))))
+  (if (i32.lt_s (local.get $exp) (i32.const 0)) (then 
+      (return (f64.const 0))))
+
+  (return (f64.reinterpret_i64 (i64.or
+      (i64.shl (i64.extend_i32_u (local.get $exp)) (i64.const 52))
+      (i64.and (local.get $int64) (i64.const 0x000F_FFFF_FFFF_FFFF))))))
+
+(func $mp-next-float (param $z f64) (result f64)
+  (local $m i64)
+  (local $k i32)
+
+  (local.set $m (i64.or 
+      (i64.and
+        (i64.reinterpret_f64 (local.get $z))
+        (i64.const 0x000F_FFFF_FFFF_FFFF))
+      (i64.const 0x0010_0000_0000_0000)))
+
+  (local.set $k (i32.sub
+      (i32.wrap_i64 (i64.shr_u
+          (i64.reinterpret_f64 (f64.abs (local.get $z)))
+          (i64.const 52)))
+      (i32.const 0x3FF)))
+
+  (if (i64.eq (local.get $m) (i64.const 0x001F_FFFF_FFFF_FFFF)) (then 
+      (return (call $mp-make-float-64
+          (i64.const 0x0010_0000_0000_0000)
+          (i32.add (local.get $k) (i32.const 1))))))
+  
+  (return (call $mp-make-float-64
+      (i64.add (local.get $m) (i64.const 1))
+      (local.get $k))))

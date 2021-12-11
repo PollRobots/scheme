@@ -51,6 +51,74 @@
 
   (return (local.get $len)))
 
+;; (exact? <num>)
+(func $exact? (param $env i32) (param $args i32) (result i32)
+  (local $num i32)
+
+  (block $b_check
+    (block $b_fail
+      (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 1)))
+      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
+
+  (local.set $num (%car-l $args))
+  (return (select
+      (global.get $g-true)
+      (global.get $g-false)
+      (i32.ne (%get-type $num) (%f64-type)))))
+
+;; (inexact? <num>)
+(func $inexact? (param $env i32) (param $args i32) (result i32)
+  (local $num i32)
+
+  (block $b_check
+    (block $b_fail
+      (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 1)))
+      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
+
+  (local.set $num (%car-l $args))
+  (return (select
+      (global.get $g-true)
+      (global.get $g-false)
+      (i32.eq (%get-type $num) (%f64-type)))))
+
+(func $inexact (param $env i32) (param $args i32) (result i32)
+  (local $num i32)
+
+  (block $b_check
+    (block $b_fail
+      (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 1)))
+      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
+
+  (local.set $num (%car-l $args))
+  (if (i32.eq (%get-type $num) (%f64-type))
+    (then (return (local.get $num))))
+
+  (return (call $inexact-impl (local.get $num))))
+
+(func $inexact-impl (param $num i32) (result i32)
+  (local $num-type i32)
+
+  (local.set $num-type (%get-type $num))
+  (if (i32.eq (local.get $num-type) (%i64-type)) (then
+      (return (%alloc-f64 (f64.convert_i64_s 
+            (i64.load offset=4 (local.get $num)))))))
+
+  (if (i32.eq (local.get $num-type) (%big-int-type)) (then
+      (return (%alloc-f64 (call $mp-algorithm-m 
+            (%car-l $num) 
+            (i32.const 0))))))
+
+  (unreachable))
+
 (func $num-equal (param $env i32) (param $args i32) (result i32)
   (local $cmp i32)
   (local $cmp-type i32)
