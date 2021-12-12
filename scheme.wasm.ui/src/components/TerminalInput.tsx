@@ -8,6 +8,7 @@ interface TerminalInputProps {
   onEnter: (text: string) => void;
   onUp: () => void;
   onDown: () => void;
+  onEscape: (text: string) => void;
 }
 
 const kSanitizeConfig: sanitizeHtml.IOptions = {
@@ -53,7 +54,10 @@ export const TerminalInput: React.FunctionComponent<TerminalInputProps> = (
             props.onUp();
           } else if (e.key === "ArrowDown") {
             props.onDown();
+          } else if (e.key === "Escape" || (e.key === "e" && e.ctrlKey)) {
+            props.onEscape(sanitizeHtml(text.current, kSanitizeConfig));
           } else {
+            console.log(e);
             return;
           }
           e.stopPropagation();

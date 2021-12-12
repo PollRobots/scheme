@@ -1,10 +1,13 @@
+import Editor from "@monaco-editor/react";
 import React from "react";
 import { TerminalData } from "./TerminalData";
 import { TerminalInput } from "./TerminalInput";
+import { editor, KeyMod, KeyCode } from "monaco-editor";
 
 interface TerminalProps {
   welcomeMessage?: React.ReactNode;
   prompt: string;
+  onInput: (str: string) => string;
 }
 
 interface TerminalState {
@@ -13,6 +16,8 @@ interface TerminalState {
   hidx: number;
   input: string;
   cached: string;
+  editing: boolean;
+  line: string;
 }
 
 const kDefaultState: TerminalState = {
@@ -21,6 +26,8 @@ const kDefaultState: TerminalState = {
   hidx: 0,
   input: "",
   cached: "",
+  editing: false,
+  line: "",
 };
 
 export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
@@ -36,11 +43,19 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
       history.splice(hidx, 1);
     }
     history.push(cmd);
+
+    const output = [...state.output, props.prompt + cmd];
+    const result = props.onInput(cmd);
+    if (result.length > 0) {
+      output.push(result);
+    }
+
     setState({
+      ...state,
       input: "",
       history: history,
       hidx: history.length,
-      output: [...state.output, props.prompt + cmd],
+      output: output,
       cached: "",
     });
   };
@@ -51,7 +66,7 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
       return;
     }
     setState({
-      output: state.output,
+      ...state,
       history: state.history,
       hidx: state.hidx - 1,
       cached: state.hidx == state.history.length ? state.input : state.cached,
@@ -77,25 +92,104 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
     }
   };
 
-  return (
-    <div
-      style={{
-        backgroundColor: "#073642",
-        color: "#eee8d5",
-        fontFamily: "monospace",
-        fontSize: "1rem",
-        padding: "0.5em",
-      }}
-    >
-      {props.welcomeMessage}
-      <TerminalData text={state.output} />
-      <TerminalInput
-        prompt={props.prompt}
-        value={state.input}
-        onEnter={(text) => onEnter(text)}
-        onUp={() => onUp()}
-        onDown={() => onDown()}
-      />
-    </div>
-  );
+  const onEscape = (text: string) => {
+    setState({
+      ...state,
+      editing: true,
+      line: text,
+    });
+  };
+
+  const editorRef = React.useRef<editor.IStandaloneCodeEditor>();
+
+  const onEditorMount = (editor: editor.IStandaloneCodeEditor) => {
+    editorRef.current = editor;
+    editor.addAction({
+      id: "end-editing-scheme",
+      label: "End Editing",
+      keybindings: [
+        KeyMod.CtrlCmd | KeyCode.KeyE,
+        KeyMod.chord(
+          KeyMod.CtrlCmd | KeyCode.KeyK,
+          KeyMod.CtrlCmd | KeyCode.KeyD
+        ),
+      ],
+      contextMenuGroupId: "navigation",
+      contextMenuOrder: 1.5,
+      run: (ed) => {
+        setState({
+          ...state,
+          editing: false,
+          line: "",
+          input: ed.getValue(),
+        });
+      },
+    });
+  };
+
+  const onDoneEditing = () => {
+    setState({
+      ...state,
+      editing: false,
+      line: "",
+      input: editorRef.current ? editorRef.current.getValue() : state.line,
+    });
+  };
+
+  if (state.editing) {
+    return (
+      <div>
+        <div
+          style={{
+            display: "grid",
+            background: "#eee",
+            padding: "0.25em",
+            gridTemplateColumns: "1fr auto",
+          }}
+        >
+          <span style={{ fontWeight: "bold" }}>Editing Line</span>
+          <button
+            style={{
+              minWidth: "6em",
+              background: "#ddd",
+              border: "1px solid #ccc",
+            }}
+            onClick={() => onDoneEditing()}
+          >
+            Done
+          </button>
+        </div>
+        <Editor
+          height="90vh"
+          theme="vs-dark"
+          defaultLanguage="scheme"
+          defaultValue={state.line}
+          onMount={(editor) => onEditorMount(editor)}
+        />
+      </div>
+    );
+  } else {
+    return (
+      <div
+        style={{
+          backgroundColor: "#073642",
+          color: "#eee8d5",
+          fontFamily: "monospace",
+          fontSize: "1rem",
+          padding: "0.5em",
+        }}
+      >
+        {props.welcomeMessage}
+        <TerminalData text={state.output} />
+        <TerminalInput
+          prompt={props.prompt}
+          value={state.input}
+          onEnter={(text) => onEnter(text)}
+          onUp={() => onUp()}
+          onDown={() => onDown()}
+          onEscape={(text) => onEscape(text)}
+        />
+      </div>
+    );
+  }
 };
