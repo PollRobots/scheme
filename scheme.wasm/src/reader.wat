@@ -117,23 +117,28 @@
   (loop $forever
     ;; char = str-code-point-at
     (local.set $char (call $str-code-point-at (local.get $input) (local.get $in-off)))
-    ;; if (char == 1)
+    ;; if (char == -1)
     (if (i32.eq (local.get $char) (i32.const -1))
       ;; {
       (then
         (local.set $input (call $primitive-read (local.get $reader)))
 
         ;; if (input == 0) return 0;
-        (if (i32.eqz (local.get $input))
-          (then (return (i32.const 0)))
-        )
+        (if (i32.eqz (local.get $input)) (then 
+            ;; if nothing has been accumulated, then return 0
+            (if (i32.eqz (local.get $acc-off)) (then (return (i32.const 0))))
+            ;; return what we have so far.
+            ;; return str-from-code-points(accum, acc-off)
+            (return (call $str-from-code-points
+                (local.get $accum)
+                (local.get $acc-off)))))
+
         ;; in_off = reader.in_off
         (local.set $in-off (i32.load offset=4 (local.get $reader)))
         ;; Continue here rather than trying to read the first character,
         ;; just in case this is an empty string.
         ;; continue
-        (br $forever)
-      )
+        (br $forever))
       ;; } else {
       (else
         ;; reader.in-off = in-off++
@@ -141,10 +146,7 @@
           offset=4
           (local.get $reader)
           (local.tee $in-off (i32.add (local.get $in-off) (i32.const 1)))
-        )
-      )
-      ;; }
-    )
+        )))
 
     ;; if (first) {
     (if (local.get $first)
