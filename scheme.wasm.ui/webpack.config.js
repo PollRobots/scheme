@@ -64,8 +64,8 @@ module.exports = (env, argv) => {
       }),
       new CopyWebpack({
         patterns: [
-          { from: "node_modules/scheme.wasm/dist/scheme.wasm", to: "wasm" },
-          { from: "node_modules/scheme.wasm/dist/unicode/blocks.json.gz", to: "unicode" },
+          { from: "../scheme.wasm/dist/scheme.wasm", to: "wasm" },
+          { from: "../scheme.wasm/dist/unicode/blocks.json.gz", to: "unicode" },
         ],
       }),
     ],

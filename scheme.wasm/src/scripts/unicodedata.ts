@@ -3,15 +3,17 @@
 import fs from "fs/promises";
 import https from "https";
 import readline from "readline";
-import * as stream from "stream";
-import { buffer } from "stream/consumers";
-import zlib from 'zlib';
+import stream from "stream";
+import path from "path";
+import zlib from "zlib";
 
 const kUnicodeDataUrl =
   "https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt";
 
 const kDerivedCorePropertiesUrl =
   "https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt";
+
+const kBlocksJsonGz = "dist/unicode/blocks.json.gz";
 
 async function loadTextFile(url: string): Promise<stream.Readable> {
   return new Promise<stream.Readable>((resolve, reject) => {
@@ -144,23 +146,24 @@ function writeBlock(index: number, block: Uint8Array): Promise<void> {
   return fs.writeFile(name, block);
 }
 
-function gzip(input: string): Promise<Buffer>{
+function gzip(input: string): Promise<Buffer> {
   const buffer = Buffer.from(input);
-  const gz = zlib.createGzip()
+  const gz = zlib.createGzip();
   return new Promise<Buffer>((resolve, reject) =>
-    zlib.gzip(buffer, (err, buf) =>{
+    zlib.gzip(buffer, (err, buf) => {
       if (err) {
         reject(err);
       } else {
         resolve(buf);
       }
-    }));
+    })
+  );
 }
 
 async function writeBlockList(blocks: Record<number, string>) {
   const content = JSON.stringify(blocks);
-  const buffer = await gzip(content)
-  return fs.writeFile('dist/unicode/blocks.json.gz', buffer);
+  const buffer = await gzip(content);
+  return fs.writeFile(kBlocksJsonGz, buffer);
 }
 
 function setCodePoint(block: Uint8Array, offset: number, codePoint: number) {
@@ -170,6 +173,12 @@ function setCodePoint(block: Uint8Array, offset: number, codePoint: number) {
 }
 
 async function main(): Promise<void> {
+  try {
+    await fs.access(kBlocksJsonGz);
+    console.log("Skipping Unicode data already exists");
+    return;
+  } catch (err) {}
+
   const start = performance.now();
   const [alphabetic, uppercase, lowercase] = await loadDerivedCoreProperties();
   const whitespace = whitespaceRange();
@@ -190,7 +199,7 @@ async function main(): Promise<void> {
   const block = new Uint8Array(256 * 8);
   let blockIndex = 0;
   let count = 0;
-  const blocks: Record<number, string> = {}
+  const blocks: Record<number, string> = {};
 
   for await (const line of rl) {
     count++;
@@ -199,7 +208,7 @@ async function main(): Promise<void> {
     const targetBlock = codePoint >> 8;
     if (targetBlock != blockIndex) {
       await writeBlock(blockIndex, block);
-      blocks[blockIndex] = Buffer.from(block).toString('base64');
+      blocks[blockIndex] = Buffer.from(block).toString("base64");
       blockIndex = targetBlock;
     }
     const row = codePoint & 0xff;
@@ -244,7 +253,7 @@ async function main(): Promise<void> {
     }
   }
   await writeBlock(blockIndex, block);
-  blocks[blockIndex] = Buffer.from(block).toString('base64');
+  blocks[blockIndex] = Buffer.from(block).toString("base64");
   await writeBlockList(blocks);
   const end = performance.now();
   const duration = (end - start) / 1000;

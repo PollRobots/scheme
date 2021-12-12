@@ -1,8 +1,14 @@
 {
-  "name": "scheme-workspace",
+  "name": "scheme",
   "version": "0.0.1",
   "workspaces": [
     "scheme.wasm",
     "scheme.wasm.ui"
-  ]
+  ],
+  "scripts": {
+    "build-prod": "npm run build -w scheme.wasm && npm run build-prod -w scheme.wasm.ui",
+    "build-dev": "npm run build -w scheme.wasm && npm run build-dev -w scheme.wasm.ui",
+    "start": "npm run build -w scheme.wasm && npm run start -w scheme.wasm.ui",
+    "test": "npm run test -w scheme.wasm"
+  }
 }

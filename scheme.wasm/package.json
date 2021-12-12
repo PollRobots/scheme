@@ -10,6 +10,7 @@
     "start-dev": "nodemon --watch src -e ts --exec \"npm run start\"",
     "start": "node .",
     "prestart": "npm run build",
+    "prebuild": "npm run unicode",
     "build": "tsc -p . && npm run assemble",
     "assemble": "ts-node src/scripts/buildwat.ts ./buildwat.json --macros --output dist/scheme.wasm --tempfile dist/scheme.wat",
     "pretest": "ts-node src/scripts/buildwat.ts tests/buildwat.json --macros --output dist/test.wasm --tempfile dist/test.wat",

@@ -164,7 +164,7 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
           theme="vs-dark"
           defaultLanguage="scheme"
           defaultValue={state.line}
-          onMount={(editor) => onEditorMount(editor)}
+          onMount={(editor:editor.IStandaloneCodeEditor) => onEditorMount(editor)}
         />
       </div>
     );
