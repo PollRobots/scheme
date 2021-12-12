@@ -1,0 +1,7 @@
+*~
+*.swp
+*.zip
+ 
+node_modules/
+bundle/
+dist/

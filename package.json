@@ -1,0 +1,8 @@
+{
+  "name": "scheme-workspace",
+  "version": "0.0.1",
+  "workspaces": [
+    "scheme.wasm",
+    "scheme.wasm.ui"
+  ]
+}
