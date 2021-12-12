@@ -8,7 +8,7 @@
     "target": "ES2021",
     "declaration": true,
     "strict": true,
-    "types": ["node"],
+    "jsx": "react",
     "esModuleInterop": true,
     "resolveJsonModule": true
   }

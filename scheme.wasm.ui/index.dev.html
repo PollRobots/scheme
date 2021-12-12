@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title><%= htmlWebpackPlugin.options.title %></title>
+    <script>
+      window.addEventListener('error', event => {
+        const app = document.getElementById('app');
+        const head = document.createElement('h2');
+        const details = document.createElement('div');
+        if (event.message.toLowerCase().indexOf('script error') >= 0) {
+          head.append('Script Error');
+          details.append('See console for details');
+        } else {
+          head.append('Uncaught Error');
+          const message = [
+            'Message: ' + event.message,
+            'Url: ' + event.filename,
+            'Line: ' + event.lineno + ', column: ' + event.colno,
+            'Error: ' + event.error
+          ];
+          message.forEach(el => {
+            details.append(el);
+            details.append(document.createElement('br'));
+          });
+        }
+        app.append(head);
+        app.append(details);
+        return false;
+      });
+    </script>
+  </head>
+  <body style="font-family: Roboto, Arial, Helvetica, sans-serif;" }>
+    <div id="app"></div>
+    <script
+      crossorigin
+      src="https://unpkg.com/react@17/umd/react.development.js"
+    ></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"
+    ></script>
+  </body>
+</html>
