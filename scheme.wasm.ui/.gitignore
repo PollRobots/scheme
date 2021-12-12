@@ -1,0 +1,12 @@
+*~
+*.swp
+*.zip
+ 
+node_modules/
+bundle/
+dist/
+generated/
+data/
+logs/
+out/
+.VsCodeCounter/
