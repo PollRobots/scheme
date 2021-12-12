@@ -145,6 +145,11 @@ function writeBlock(index: number, block: Uint8Array): Promise<void> {
   return fs.writeFile(name, block);
 }
 
+function writeBlockList(blocks: number[]) {
+  const content = JSON.stringify({block:blocks});
+  return fs.writeFile('dist/unicode/blocks.json', content);
+}
+
 function setCodePoint(block: Uint8Array, offset: number, codePoint: number) {
   block[offset] = codePoint & 0xff;
   block[offset + 1] = (codePoint >> 8) & 0xff;
@@ -172,6 +177,7 @@ async function main(): Promise<void> {
   const block = new Uint8Array(256 * 8);
   let blockIndex = 0;
   let count = 0;
+  const blocks: number[] = [];
 
   for await (const line of rl) {
     count++;
@@ -180,6 +186,7 @@ async function main(): Promise<void> {
     const targetBlock = codePoint >> 8;
     if (targetBlock != blockIndex) {
       await writeBlock(blockIndex, block);
+      blocks.push(blockIndex);
       blockIndex = targetBlock;
     }
     const row = codePoint & 0xff;
@@ -224,6 +231,8 @@ async function main(): Promise<void> {
     }
   }
   await writeBlock(blockIndex, block);
+  blocks.push(blockIndex);
+  await writeBlockList(blocks);
   const end = performance.now();
   const duration = (end - start) / 1000;
   console.log(`Processed ${count} code points, in ${duration.toFixed(1)}s`);
