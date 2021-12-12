@@ -34,7 +34,7 @@ const App: React.FunctionComponent<{}> = (props) => {
         height: "95vh",
         width: "90vw",
         margin: "0 auto",
-        boxShadow: "#888 0 0.5em 1em",
+        boxShadow: "#444 0 0.5em 1em",
         overflowY: "scroll",
       }}
     >

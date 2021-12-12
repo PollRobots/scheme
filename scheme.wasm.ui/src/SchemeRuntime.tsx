@@ -1,17 +1,19 @@
+import pako from "pako";
+
 type WriteCallback = (str: string) => void;
 
 export class SchemeRuntime {
-  private instance_: WebAssembly.Instance;
-  private exports_: WebAssembly.Exports;
+  private readonly module_: WebAssembly.Module;
+  private instance_: WebAssembly.Instance | undefined;
+  private exports_: WebAssembly.Exports | undefined;
   private readonly unicodeData_: Record<number, ArrayBuffer> = {};
   private readonly lines_: string[] = [];
   private readonly writeCallbacks_: WriteCallback[] = [];
-  private started_: boolean = false;
+  private initialized_: boolean = false;
   private env_: number = 0;
 
-  constructor(instance: WebAssembly.Instance) {
-    this.instance_ = instance;
-    this.exports_ = instance.exports;
+  constructor(module: WebAssembly.Module) {
+    this.module_ = module;
   }
 
   addEventListener(event: "write", callback: WriteCallback) {
@@ -26,10 +28,16 @@ export class SchemeRuntime {
   }
 
   get instance(): WebAssembly.Instance {
+    if (!this.instance_) {
+      throw new Error("Invalid operation");
+    }
     return this.instance_;
   }
 
   get exports(): WebAssembly.Exports {
+    if (!this.exports_) {
+      throw new Error("Invalid operation");
+    }
     return this.exports_;
   }
 
@@ -182,6 +190,9 @@ export class SchemeRuntime {
   }
 
   reader(): number {
+    if (this.lines_.length == 0) {
+      return 0;
+    }
     const line = this.lines_.shift() || "";
     return this.createString(line);
   }
@@ -191,7 +202,9 @@ export class SchemeRuntime {
     this.writeCallbacks_.forEach((el) => el(str));
   }
 
-  exit(exitCode: number) {}
+  exit(exitCode: number) {
+    throw new Error(`Scheme exited with code: ${exitCode}`);
+  }
 
   unicodeLoadData(block: number, ptr: number) {
     const src = new Uint8Array(this.unicodeData_[block]);
@@ -200,76 +213,86 @@ export class SchemeRuntime {
   }
 
   processLine(str: string): string {
-    const written: string[] = [];
-    const onWrite = (str: string) => {
-      written.push(str);
-    };
-    this.addEventListener("write", onWrite);
-    this.lines_.push(str);
-    if (!this.started_) {
-      this.env_ = this.environmentInit(this.gHeap, 0);
-      this.registerBuiltins(this.gHeap, this.env_);
-      this.started_ = true;
-    }
-
-    const input = this.read();
-    if (this.isEofError(input)) {
-      this.readerRollback(this.gReader);
-    } else {
-      const result = this.eval(this.env_, input);
-      if (!this.isNil(result)) {
-        this.print(result);
+    try {
+      const written: string[] = [];
+      const onWrite = (str: string) => {
+        written.push(str);
+      };
+      this.addEventListener("write", onWrite);
+      this.lines_.push(str);
+      if (!this.initialized_) {
+        this.env_ = this.environmentInit(this.gHeap, 0);
+        this.registerBuiltins(this.gHeap, this.env_);
+        this.initialized_ = true;
       }
+
+      const input = this.read();
+      if (this.isEofError(input)) {
+        this.readerRollback(this.gReader);
+      } else {
+        const result = this.eval(this.env_, input);
+        if (!this.isNil(result)) {
+          this.print(result);
+        }
+      }
+      this.removeEventListener("write", onWrite);
+      return written.join("");
+    } catch (err) {
+      this.start();
+      return `\x1B[0;31m${err}
+
+\x1B[0;94mRestarting scheme runtime\x1B[0m
+`;
     }
-    this.removeEventListener("write", onWrite);
-    return written.join("");
   }
 
   async loadUnicodeBlocks() {
-    const response = await fetch("./unicode/blocks.json");
-    const data = await response.json();
-    if (!Reflect.has(data, "block" || Array.isArray(data.block))) {
-      throw new Error("Invalid unicode block list");
+    const response = await fetch("./unicode/blocks.json.gz");
+    const compressed = await response.arrayBuffer();
+    const raw = pako.inflate(new Uint8Array(compressed), { to: "string" });
+    const data = JSON.parse(raw);
+    if (typeof data !== "object") {
+      throw new Error("Invalid unicode block data");
     }
-    for (const blockIndex of data.block) {
-      if (typeof blockIndex !== "number") {
+    for (const key of Object.keys(data)) {
+      const blockIndex = Number(key);
+      if (isNaN(blockIndex)) {
         continue;
       }
-      const url = `./unicode/${blockIndex.toString(16).padStart(4, "0")}.bin`;
-      const blockResponse = await fetch(url);
-      this.unicodeData_[blockIndex] = await blockResponse.arrayBuffer();
+      const blockData = Uint8Array.from(atob(data[key]), (c) =>
+        c.charCodeAt(0)
+      );
+      this.unicodeData_[blockIndex] = blockData;
     }
   }
 
-  static async load() {
-    const response = await fetch("./wasm/scheme.wasm");
-
-    let reader = () => 0;
-    let writer = (ptr: number) => {};
-    let exit = (exitCode: number) => {};
-    let unicodeLoadData = (block: number, ptr: number) => {};
-
+  async start() {
     const imports: WebAssembly.Imports = {
       io: {
-        read: () => reader(),
-        write: (ptr: number) => writer(ptr),
+        read: () => this.reader(),
+        write: (ptr: number) => this.writer(ptr),
       },
       process: {
-        exit: (exitCode: number) => exit(exitCode),
+        exit: (exitCode: number) => this.exit(exitCode),
       },
       unicode: {
-        loadData: (block: number, ptr: number) => unicodeLoadData(block, ptr),
+        loadData: (block: number, ptr: number) =>
+          this.unicodeLoadData(block, ptr),
       },
     };
 
-    const module = await WebAssembly.instantiateStreaming(response, imports);
-    const runtime = new SchemeRuntime(module.instance);
+    this.instance_ = await WebAssembly.instantiate(this.module_, imports);
+    this.exports_ = this.instance.exports;
+    this.initialized_ = false;
+  }
+
+  static async load() {
+    const module = await WebAssembly.compileStreaming(
+      fetch("./wasm/scheme.wasm")
+    );
+    const runtime = new SchemeRuntime(module);
     await runtime.loadUnicodeBlocks();
-    reader = () => runtime.reader();
-    writer = (ptr: number) => runtime.writer(ptr);
-    exit = (exitCode: number) => runtime.exit(exitCode);
-    unicodeLoadData = (block: number, ptr: number) =>
-      runtime.unicodeLoadData(block, ptr);
+    await runtime.start();
     return runtime;
   }
 }

@@ -57,7 +57,6 @@ export const TerminalInput: React.FunctionComponent<TerminalInputProps> = (
           } else if (e.key === "Escape" || (e.key === "e" && e.ctrlKey)) {
             props.onEscape(sanitizeHtml(text.current, kSanitizeConfig));
           } else {
-            console.log(e);
             return;
           }
           e.stopPropagation();
