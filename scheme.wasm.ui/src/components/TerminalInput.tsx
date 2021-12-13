@@ -1,14 +1,21 @@
 import React from "react";
 import ContentEditable from "react-contenteditable";
 import sanitizeHtml from "sanitize-html";
+import { useOnClickOutside } from "./hooks";
 
 interface TerminalInputProps {
   value: string;
+  autofocus: boolean;
   prompt: string;
   onEnter: (text: string) => void;
   onUp: () => void;
   onDown: () => void;
   onEscape: (text: string) => void;
+  inputRef?: React.RefObject<HTMLElement>;
+}
+
+interface TerminalInputState {
+  text: string;
 }
 
 const kSanitizeConfig: sanitizeHtml.IOptions = {
@@ -18,11 +25,45 @@ const kSanitizeConfig: sanitizeHtml.IOptions = {
 export const TerminalInput: React.FunctionComponent<TerminalInputProps> = (
   props
 ) => {
-  const text = React.useRef("");
+  const [state, setState] = React.useState({ text: props.value });
+  const ref = React.useRef<HTMLElement>(null);
+  // const text = React.useRef("");
 
-  if (text.current !== props.value) {
-    text.current = props.value;
-  }
+  React.useEffect(() => {
+    if (!props.autofocus) {
+      return;
+    }
+    let t = 0;
+    const timeoutFn = (): number => {
+      if (
+        props.autofocus &&
+        ref.current &&
+        ref.current !== document.activeElement
+      ) {
+        ref.current.focus();
+      }
+      return window.setTimeout(() => {
+        t = timeoutFn();
+      }, 250);
+    };
+    t = timeoutFn();
+    return () => {
+      clearTimeout(t);
+    };
+  }, [props.autofocus]);
+
+  React.useEffect(() => {
+    if (ref.current) {
+      ref.current.innerHTML = props.value;
+    }
+  }, [props.value]);
+
+  const getValue = () => {
+    return sanitizeHtml(
+      ref.current ? ref.current.innerHTML : state.text,
+      kSanitizeConfig
+    );
+  };
 
   return (
     <div style={{ display: "flex" }}>
@@ -44,18 +85,20 @@ export const TerminalInput: React.FunctionComponent<TerminalInputProps> = (
           wordWrap: "break-word",
           wordBreak: "break-all",
         }}
-        html={sanitizeHtml(text.current, kSanitizeConfig)}
-        onChange={(e) => (text.current = e.target.value)}
+        innerRef={ref}
+        html={sanitizeHtml(state.text, kSanitizeConfig)}
+        spellCheck={false}
+        onChange={(e) => setState({ text: e.target.value })}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
-            props.onEnter(sanitizeHtml(text.current, kSanitizeConfig));
-            text.current = "";
+            props.onEnter(getValue());
+            setState({ text: "" });
           } else if (e.key === "ArrowUp") {
             props.onUp();
           } else if (e.key === "ArrowDown") {
             props.onDown();
           } else if (e.key === "Escape" || (e.key === "e" && e.ctrlKey)) {
-            props.onEscape(sanitizeHtml(text.current, kSanitizeConfig));
+            props.onEscape(getValue());
           } else {
             return;
           }

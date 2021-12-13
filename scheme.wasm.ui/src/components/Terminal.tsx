@@ -4,11 +4,13 @@ import { TerminalData } from "./TerminalData";
 import { TerminalInput } from "./TerminalInput";
 import { editor, KeyMod, KeyCode } from "monaco-editor";
 import { kLanguageId, registerLanguage } from "../monaco/scheme";
-import { defineTheme, kThemeName } from "../monaco/solarized";
+import { defineThemes } from "../monaco/solarized";
+import { EditorThemeContext, ThemeContext } from "./ThemeProvider";
 
 interface TerminalProps {
   welcomeMessage?: React.ReactNode;
   prompt: string;
+  autofocus: boolean;
   onInput: (str: string) => string;
 }
 
@@ -34,6 +36,8 @@ const kDefaultState: TerminalState = {
 
 export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
   const [state, setState] = React.useState<TerminalState>({ ...kDefaultState });
+  const theme = React.useContext(ThemeContext);
+  const editorTheme = React.useContext(EditorThemeContext) || theme;
 
   const onEnter = (text: string) => {
     const cmd = text;
@@ -106,7 +110,7 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
 
   const beforeEditorMount = (monaco: Monaco) => {
     registerLanguage(monaco);
-    defineTheme(monaco);
+    defineThemes(monaco);
   };
 
   const onEditorMount = (editor: editor.IStandaloneCodeEditor) => {
@@ -146,22 +150,39 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
 
   if (state.editing) {
     return (
-      <div>
+      <div
+        style={{
+          color: editorTheme.foreground,
+          background: editorTheme.background,
+        }}
+      >
         <div
           style={{
             display: "grid",
-            background: "#eee",
+            background: editorTheme.foreground,
             padding: "0.25em",
             gridTemplateColumns: "1fr auto",
           }}
         >
-          <span style={{ fontWeight: "bold" }}>Editing Line</span>
+          <span
+            style={{
+              color: editorTheme.background,
+              margin: "auto 1em",
+            }}
+          >
+            Edit current line
+          </span>
           <button
             style={{
               minWidth: "6em",
-              background: "#ddd",
-              border: "1px solid #ccc",
+              minHeight: "2em",
+              margin: "0.25em",
+              background: editorTheme.blue,
+              border: `1px solid ${theme.base00}`,
+              borderRadius: "0.25em",
+              color: editorTheme.foreground,
             }}
+            title={"Finish editing\nShortcuts:\n  · Ctrl+K Ctrl+D\n  · Ctrl+E"}
             onClick={() => onDoneEditing()}
           >
             Done
@@ -169,7 +190,7 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
         </div>
         <Editor
           height="90vh"
-          theme={kThemeName}
+          theme={editorTheme.name}
           defaultLanguage={kLanguageId}
           defaultValue={state.line}
           onMount={(editor: editor.IStandaloneCodeEditor) =>
@@ -183,8 +204,8 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
     return (
       <div
         style={{
-          backgroundColor: "#073642",
-          color: "#eee8d5",
+          backgroundColor: theme.background,
+          color: theme.foreground,
           fontFamily: "monospace",
           fontSize: "1rem",
           padding: "0.5em",
@@ -195,6 +216,7 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
         <TerminalInput
           prompt={props.prompt}
           value={state.input}
+          autofocus={props.autofocus}
           onEnter={(text) => onEnter(text)}
           onUp={() => onUp()}
           onDown={() => onDown()}
