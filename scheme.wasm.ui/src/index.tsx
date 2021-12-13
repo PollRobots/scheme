@@ -16,12 +16,14 @@ interface AppState {
   theme: string;
   editorTheme: string;
   open: boolean;
+  stopped: boolean;
 }
 
 const kDefaultState: AppState = {
   theme: "Dark",
   editorTheme: "Same",
   open: false,
+  stopped: false,
 };
 
 const App: React.FunctionComponent<{}> = (props) => {
@@ -36,15 +38,22 @@ const App: React.FunctionComponent<{}> = (props) => {
       .then((schemeRuntime) => {
         console.log("Loaded");
         runtime.current = schemeRuntime;
+        setState({ ...state, stopped: false });
       })
       .catch((err) => console.error(err));
   }, ["once"]);
 
   const onInput = (str: string): string => {
-    if (!runtime.current) {
-      return "";
+    if (!runtime.current || runtime.current.stopped) {
+      runtime.current?.start();
+      setTimeout(() => setState({ ...state, stopped: false }), 100);
+      return "\x1B[0;94mRestarted.\x1B[0m ";
     }
-    return runtime.current.processLine(str);
+    const result = runtime.current.processLine(str);
+    if (runtime.current.stopped) {
+      setTimeout(() => setState({ ...state, stopped: true }), 100);
+    }
+    return result;
   };
 
   const getEditorTheme = () => {
@@ -73,7 +82,8 @@ const App: React.FunctionComponent<{}> = (props) => {
           }}
         >
           <Terminal
-            prompt="> "
+            prompt={state.stopped ? "stopped:" : "> "}
+            pause={state.stopped}
             welcomeMessage="Welcome to scheme.wasm"
             autofocus={!state.open}
             onInput={(str) => onInput(str)}

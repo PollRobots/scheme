@@ -41,6 +41,10 @@ export class SchemeRuntime {
     return this.exports_;
   }
 
+  get stopped(): boolean {
+    return this.instance_ === undefined;
+  }
+
   get memory(): WebAssembly.Memory {
     return this.exports.memory as WebAssembly.Memory;
   }
@@ -213,6 +217,9 @@ export class SchemeRuntime {
   }
 
   processLine(str: string): string {
+    if (this.stopped) {
+      return "";
+    }
     try {
       const written: string[] = [];
       const onWrite = (str: string) => {
@@ -238,10 +245,12 @@ export class SchemeRuntime {
       this.removeEventListener("write", onWrite);
       return written.join("");
     } catch (err) {
-      this.start();
+      this.instance_ = undefined;
+      this.exports_ = undefined;
+      this.initialized_ = false;
       return `\x1B[0;31m${err}
 
-\x1B[0;94mRestarting scheme runtime\x1B[0m
+\x1B[0;94mPress <Enter> to restart scheme runtime.\x1B[0m
 `;
     }
   }

@@ -10,6 +10,7 @@ import { EditorThemeContext, ThemeContext } from "./ThemeProvider";
 interface TerminalProps {
   welcomeMessage?: React.ReactNode;
   prompt: string;
+  pause: boolean;
   autofocus: boolean;
   onInput: (str: string) => string;
 }
@@ -39,7 +40,7 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
   const theme = React.useContext(ThemeContext);
   const editorTheme = React.useContext(EditorThemeContext) || theme;
 
-  const onEnter = (text: string) => {
+  const onEnter = (prompt: string, text: string) => {
     const cmd = text;
     const history = [...state.history];
 
@@ -50,7 +51,7 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
     }
     history.push(cmd);
 
-    const output = [...state.output, props.prompt + cmd];
+    const output = [...state.output, prompt + cmd];
     const result = props.onInput(cmd);
     if (result.length > 0) {
       output.push(result);
@@ -148,7 +149,7 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
     });
   };
 
-  if (state.editing) {
+  if (state.editing && !props.pause) {
     return (
       <div
         style={{
@@ -215,9 +216,10 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
         <TerminalData text={state.output} />
         <TerminalInput
           prompt={props.prompt}
+          readonly={props.pause}
           value={state.input}
           autofocus={props.autofocus}
-          onEnter={(text) => onEnter(text)}
+          onEnter={(text) => onEnter(props.prompt, text)}
           onUp={() => onUp()}
           onDown={() => onDown()}
           onEscape={(text) => onEscape(text)}
