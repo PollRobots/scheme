@@ -97,7 +97,15 @@ const App: React.FunctionComponent<{}> = (props) => {
             <div style={{ lineHeight: "2em" }}>
               REPL Theme:{" "}
               <select
-                style={{ fontSize: "inherit", fontFamily: "inherit" }}
+                style={{
+                  fontSize: "inherit",
+                  fontFamily: "inherit",
+                  width: "10em",
+                  height: "1.5em",
+                  borderRadius: "0.25em",
+                  appearance: "none",
+                  padding: "0 0.25em",
+                }}
                 value={state.theme}
                 onChange={(e) => {
                   setState({ ...state, theme: e.target.value });
@@ -110,7 +118,15 @@ const App: React.FunctionComponent<{}> = (props) => {
             <div style={{ lineHeight: "2em" }}>
               Editor Theme:{" "}
               <select
-                style={{ fontSize: "inherit", fontFamily: "inherit" }}
+                style={{
+                  fontSize: "inherit",
+                  fontFamily: "inherit",
+                  width: "10em",
+                  height: "1.5em",
+                  borderRadius: "0.25em",
+                  appearance: "none",
+                  padding: "0 0.25em",
+                }}
                 value={state.editorTheme}
                 onChange={(e) => {
                   setState({ ...state, editorTheme: e.target.value });
