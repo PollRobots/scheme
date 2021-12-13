@@ -979,7 +979,7 @@
       (%ginc $g-eval-count)
       (if (i32.ge_u (global.get $g-eval-count) (%gc-threshold))
         (then
-          (call $print-symbol (global.get $g-gc-run))
+          ;; (call $print-symbol (global.get $g-gc-run))
           (global.set $g-eval-count (i32.const 0))))
 
       (if (global.get $g-dump-eval)

@@ -1,8 +1,10 @@
-import Editor from "@monaco-editor/react";
+import Editor, { Monaco } from "@monaco-editor/react";
 import React from "react";
 import { TerminalData } from "./TerminalData";
 import { TerminalInput } from "./TerminalInput";
 import { editor, KeyMod, KeyCode } from "monaco-editor";
+import { kLanguageId, registerLanguage } from "../monaco/scheme";
+import { defineTheme, kThemeName } from "../monaco/solarized";
 
 interface TerminalProps {
   welcomeMessage?: React.ReactNode;
@@ -102,8 +104,14 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
 
   const editorRef = React.useRef<editor.IStandaloneCodeEditor>();
 
+  const beforeEditorMount = (monaco: Monaco) => {
+    registerLanguage(monaco);
+    defineTheme(monaco);
+  };
+
   const onEditorMount = (editor: editor.IStandaloneCodeEditor) => {
     editorRef.current = editor;
+    // editor.updateOptions({ minimap: { enabled: false } });
     editor.addAction({
       id: "end-editing-scheme",
       label: "End Editing",
@@ -161,10 +169,13 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
         </div>
         <Editor
           height="90vh"
-          theme="vs-dark"
-          defaultLanguage="scheme"
+          theme={kThemeName}
+          defaultLanguage={kLanguageId}
           defaultValue={state.line}
-          onMount={(editor:editor.IStandaloneCodeEditor) => onEditorMount(editor)}
+          onMount={(editor: editor.IStandaloneCodeEditor) =>
+            onEditorMount(editor)
+          }
+          beforeMount={(instance: Monaco) => beforeEditorMount(instance)}
         />
       </div>
     );
