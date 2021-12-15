@@ -1,5 +1,6 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
+import { About } from "./components/About";
 import { Burger } from "./components/Burger";
 import { useOnClickOutside } from "./components/hooks";
 import { SettingsMenu } from "./components/SettingsMenu";
@@ -17,13 +18,20 @@ interface AppState {
   editorTheme: string;
   open: boolean;
   stopped: boolean;
+  about: boolean;
 }
 
 const kDefaultState: AppState = {
   theme: "Dark",
   editorTheme: "Same",
   open: false,
+  about: false,
   stopped: false,
+};
+
+const kSettingsSubHeading: React.CSSProperties = {
+  fontSize: "1.25em",
+  lineHeight: "2em",
 };
 
 const App: React.FunctionComponent<{}> = (props) => {
@@ -31,7 +39,9 @@ const App: React.FunctionComponent<{}> = (props) => {
   const runtime = React.useRef<SchemeRuntime>();
   const ref = React.useRef<HTMLDivElement>(null);
 
-  useOnClickOutside(ref, () => setState({ ...state, open: false }));
+  useOnClickOutside(ref, () =>
+    setState({ ...state, open: false, about: false })
+  );
 
   React.useEffect(() => {
     SchemeRuntime.load()
@@ -98,12 +108,13 @@ const App: React.FunctionComponent<{}> = (props) => {
             <div
               style={{
                 fontWeight: "bolder",
-                fontSize: "larger",
+                fontSize: "1.5em",
                 margin: "1rem 0",
               }}
             >
               Settings
             </div>
+            <div style={kSettingsSubHeading}>Theme</div>
             <div style={{ lineHeight: "2em" }}>
               REPL Theme:{" "}
               <select
@@ -147,8 +158,19 @@ const App: React.FunctionComponent<{}> = (props) => {
                 <option value="Light">Light</option>
               </select>
             </div>
+            <div
+              style={{
+                ...kSettingsSubHeading,
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+              onClick={(e) => setState({ ...state, about: true, open: false })}
+            >
+              About
+            </div>
           </SettingsMenu>
         </div>
+        {state.about ? <About /> : null}
       </EditorThemeProvider>
     </ThemeProvider>
   );

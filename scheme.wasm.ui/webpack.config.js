@@ -66,6 +66,7 @@ module.exports = (env, argv) => {
         patterns: [
           { from: "../scheme.wasm/dist/scheme.wasm", to: "wasm" },
           { from: "../scheme.wasm/dist/unicode/blocks.json.gz", to: "unicode" },
+          { from: "./about.html", to: 'static'},
         ],
       }),
     ],
