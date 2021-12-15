@@ -447,3 +447,101 @@
     (%inc $src)
     (i32.store8 (local.get $dest) (i32.load8_u (local.get $src))))
 )
+
+(func $memmove (param $dest i32) (param $src i32) (param $len i32)
+  (local $src-ptr i32)
+  (local $dest-ptr i32)
+
+  ;; if the src is at a higher memory address than the destination, then
+  ;; memcpy is safe
+  (if (i32.gt_u (local.get $src) (local.get $dest)) (then
+      (call $memcpy (local.get $dest) (local.get $src) (local.get $len))
+      (return)))
+
+  ;; if the src and dest don't overlap, then memcpy is safe
+  (if (i32.le_u 
+      (i32.add (local.get $src) (local.get $len))
+      (local.get $dest)) (then
+      (call $memcpy (local.get $dest) (local.get $src) (local.get $len))
+      (return)))
+
+  ;; copy backwards...
+  (local.set $src-ptr (i32.add (local.get $src) (local.get $len)))
+  (local.set $dest-ptr (i32.add (local.get $dest) (local.get $len)))
+
+  ;; TODO single byte copies until ptrs are aligned (obvi only if possible)
+
+  (block $b_end (loop $b_start
+      (br_if $b_end (i32.lt_u (local.get $len) (i32.const 32)))
+
+      (%minus-eq $src-ptr 32)
+      (%minus-eq $dest-ptr 32)
+
+      (i64.store offset=24 (local.get $dest-ptr) (i64.load offset=24 (local.get $src-ptr)))
+      (i64.store offset=16 (local.get $dest-ptr) (i64.load offset=16 (local.get $src-ptr)))
+      (i64.store offset=8 (local.get $dest-ptr) (i64.load offset=8 (local.get $src-ptr)))
+      (i64.store (local.get $dest-ptr) (i64.load (local.get $src-ptr)))
+
+      (%minus-eq $len 32)
+      (br $b_start)))
+
+  (block $b_end (loop $b_start
+      (br_if $b_end (i32.lt_u (local.get $len) (i32.const 4)))
+
+      (%minus-eq $dest-ptr 4)
+      (%minus-eq $src-ptr 4)
+
+      (i32.store (local.get $dest-ptr) (i32.load (local.get $src-ptr)))
+
+      (%minus-eq $len 4)
+      (br $b_start)))
+
+  (block $b_one
+    (br_if $b_one (i32.eqz (local.get $len)))
+    (%dec $dest-ptr)
+    (%dec $src-ptr)
+    (i32.store8 (local.get $dest-ptr) (i32.load8_u (local.get $src-ptr)))
+    (%dec $len)
+    (br_if $b_one (i32.eqz (local.get $len)))
+    (%dec $dest-ptr)
+    (%dec $src-ptr)
+    (i32.store8 (local.get $dest-ptr) (i32.load8_u (local.get $src-ptr)))
+    (%dec $len)
+    (br_if $b_one (i32.eqz (local.get $len)))
+    (%dec $dest-ptr)
+    (%dec $src-ptr)
+    (i32.store8 (local.get $dest-ptr) (i32.load8_u (local.get $src-ptr)))))
+
+
+
+(func $memset (param $dest i32) (param $byte i32) (param $len i32)
+  (local $ptr i32)
+  (local $word i32)
+
+  (local.set $ptr (local.get $dest))
+  (local.set $byte (i32.and (local.get $byte) (i32.const 0xFF)))
+
+  (if (i32.eqz (i32.and (local.get $ptr) (i32.const 0x3))) (then
+    ;; ptr is 32-bit aligned, set words at a time
+    (local.set $word (i32.mul (i32.const 0x01010101) (local.get $byte)))
+
+    (block $b_end (loop $b_start
+        (br_if $b_end (i32.lt_u (local.get $len) (i32.const 4)))
+
+        (i32.store (local.get $ptr) (local.get $word))
+
+        (%plus-eq $ptr 4)
+        (%minus-eq $len 4)
+        (br $b_start)))))
+
+  (block $b_end (loop $b_start
+      (br_if $b_end (i32.eqz (local.get $len)))
+
+      (i32.store8 (local.get $ptr) (local.get $byte))
+
+      (%inc $ptr)
+      (%dec $len)
+      (br $b_start))))
+
+
+   

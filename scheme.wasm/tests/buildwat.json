@@ -26,6 +26,7 @@
     "src/library/boolean.wat",
     "src/library/char.wat",
     "src/library/equiv.wat",
+    "src/library/grisu.wat",
     "src/library/mp.wat",
     "src/library/numerics.wat",
     "src/library/numerics-core.wat",

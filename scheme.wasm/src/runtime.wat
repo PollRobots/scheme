@@ -37,6 +37,9 @@
 (global $g-neg-inf    (mut i32) (i32.const 0))
 (global $g-nan        (mut i32) (i32.const 0))
 (global $g-neg-nan    (mut i32) (i32.const 0))
+(global $g-fzero      (mut i32) (i32.const 0))
+(global $g-exp        (mut i32) (i32.const 0))
+(global $g-neg        (mut i32) (i32.const 0))
 
 (func $runtime-init
   (global.set $g-reader (call $reader-init))
@@ -74,16 +77,21 @@
   (global.set $g-eval (%sym-64 0x203A6c617665 6))  ;; 'eval: '
   (global.set $g-gc-run (%sym-32 0x0A6367 3)) ;; 'gc\n'
   (global.set $g-div0 (%sym-32 0x30766964 4)) ;; 'div0'
-  (global.set $g-inf (%sym-64 0x302e666e692b 6)) ;; '+inf.0
-  (global.set $g-neg-inf (%sym-64 0x302e666e692d 6)) ;; '-inf.0
-  (global.set $g-nan (%sym-64 0x302e6e616e2b 6)) ;; '+nan.0
-  (global.set $g-neg-nan (%sym-64 0x302e6e616e2d 6)) ;; '-nan.0
+  (global.set $g-inf (%sym-64 0x302e666e692b 6)) ;; '+inf.0'
+  (global.set $g-neg-inf (%sym-64 0x302e666e692d 6)) ;; '-inf.0'
+  (global.set $g-nan (%sym-64 0x302e6e616e2b 6)) ;; '+nan.0'
+  (global.set $g-neg-nan (%sym-64 0x302e6e616e2d 6)) ;; '-nan.0'
+  (global.set $g-fzero (%sym-32 0x302e30 3)) ;; '0.0'
+  (global.set $g-exp (%sym-32 0x65 1)) ;; 'e'
+  (global.set $g-neg (%sym-32 0x2d 1)) ;; '-'
 
   (call $char-init)
   (call $cont-init)
+  (call $grisu-init)
 )
 
 (func $runtime-cleanup
+  (call $grisu-cleanup)
   (call $cont-cleanup)
   (call $char-cleanup)
 
@@ -584,7 +592,7 @@
           (br $b_real_special)))
       (if (call $str-eq (local.get $str-ptr) (%car (global.get $g-neg-nan)))
         (then
-          (local.set $real (f64.const nan))
+          (local.set $real (f64.reinterpret_i64 (i64.const 0xFFF0_0000_0000_0001)))
           (br $b_real_special)))
       (br $b_no_real_special))
     

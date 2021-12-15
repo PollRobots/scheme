@@ -38,6 +38,11 @@
         ;; break
         (br $b_switch)))
 
+    ;; case f64 (5):
+    (if (i32.eq (local.get $type) (%f64-type)) (then
+        (call $print-real (f64.load offset=4 (local.get $ptr)))
+        (br $b_switch)))
+
     ;; case symbol (6):
     (if (i32.eq (local.get $type) (%symbol-type))
       (then
@@ -371,6 +376,13 @@
 
   (return (local.get $str))
 )
+
+(func $print-real (param $num f64)
+  (local $str i32)
+
+  (local.set $str (call $real->string (local.get $num)))
+  (call $io-write (local.get $str))
+  (call $malloc-free (local.get $str)))
 
 (func $print-big-int (param $num i32) (param $radix i32)
   (local $str-ptr i32) 

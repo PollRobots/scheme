@@ -220,7 +220,7 @@ data: u32[size] -- the words of the number, words themselves are little
       (%dec $str-ptr)
       (br $b_start)))
 
-  (call $malloc-free (local.get $temp))
+  (call $mp-free (local.get $temp))
 
   (return (local.get $str)))
 
@@ -253,7 +253,7 @@ data: u32[size] -- the words of the number, words themselves are little
       (i32.const 1)))
 
   (local.set $quot (call $mp-copy (local.get $ptr)))
-  (local.set $ten (call $mp-from-u64 (i64.const 10)))
+  (local.set $ten (call $mp-10-pow (i32.const 1)))
   (local.set $actual-len (i32.const 0))
   (if (local.get $sign) 
     (then (call $mp-neg (local.get $quot))))
@@ -263,11 +263,11 @@ data: u32[size] -- the words of the number, words themselves are little
 
       (local.set $div-res (call $mp-div (local.get $quot) (local.get $ten)))
       ;; quotient is in the high word, remainder in the low word
-      (call $malloc-free (local.get $quot))
+      (call $mp-free (local.get $quot))
       (local.set $quot (i32.wrap_i64 (i64.shr_u (local.get $div-res) (i64.const 32))))
       (local.set $rem (i32.wrap_i64 (local.get $div-res)))
       (local.set $digit (i32.wrap_i64 (call $mp-to-u64 (local.get $rem))))
-      (call $malloc-free (local.get $rem))
+      (call $mp-free (local.get $rem))
 
       (i32.store8 (local.get $char-ptr) (i32.add (local.get $digit) (i32.const 0x30)))
 
@@ -276,8 +276,8 @@ data: u32[size] -- the words of the number, words themselves are little
       (br $b_start)))
 
   (if (i32.ne (local.get $quot) (global.get $g-mp-zero))
-    (then (call $malloc-free (local.get $quot))))
-  (call $malloc-free (local.get $ten))
+    (then (call $mp-free (local.get $quot))))
+  (call $mp-free (local.get $ten))
 
   (if (local.get $sign)
     (then
@@ -358,18 +358,18 @@ data: u32[size] -- the words of the number, words themselves are little
       (local.get $split)))
   (if (i32.eq (local.get $high) (i32.const -1))
     (then 
-      (call $malloc-free (local.get $low))
+      (call $mp-free (local.get $low))
       (return (i32.const -1))))
 
   (local.set $scaled-high (call $mp-mul
       (local.get $high)
       (call $mp-10-pow (local.get $low-split))))
 
-  (call $malloc-free (local.get $high))
+  (call $mp-free (local.get $high))
 
   (local.set $res (call $mp-add (local.get $low) (local.get $scaled-high)))
-  (call $malloc-free (local.get $scaled-high))
-  (call $malloc-free (local.get $low))
+  (call $mp-free (local.get $scaled-high))
+  (call $mp-free (local.get $low))
 
   (return (local.get $res)))
 
@@ -620,7 +620,7 @@ data: u32[size] -- the words of the number, words themselves are little
 (func $mp-sub-eq (param $left i32) (param $right i32) (result i32)
   (local $temp i32)
   (local.set $temp (call $mp-sub (local.get $left) (local.get $right)))
-  (call $malloc-free (local.get $left))
+  (call $mp-free (local.get $left))
   (return (local.get $temp)))
 
 (func $mp-sub (param $left i32) (param $right i32) (result i32)
@@ -779,7 +779,7 @@ data: u32[size] -- the words of the number, words themselves are little
     (%word-size-l $norm-len))
 
   (if (local.get $free)
-    (then (call $malloc-free (local.get $ptr))))
+    (then (call $mp-free (local.get $ptr))))
 
   (return (local.get $norm)))
 
@@ -1075,6 +1075,26 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (global.set $g-mp-10-cache (i32.const 0))
   (global.set $g-mp-10-cache-len (i32.const 0)))
 
+(func $mp-is-10-pow (param $ptr i32) (result i32)
+  (local $cache-ptr i32)
+  (local $count i32)
+
+  (if (i32.eqz (local.tee $cache-ptr (global.get $g-mp-10-cache))) (then
+    (return (i32.const 0))))
+  (local.set $count (global.get $g-mp-10-cache-len))
+  
+  (block $b_end (loop $b_start
+      (br_if $b_end (i32.eqz (local.get $count)))
+
+      (if (i32.eq (i32.load (local.get $cache-ptr)) (local.get $ptr)) (then
+        (return (i32.const 1))))
+
+      (%dec $count)
+      (%plus-eq $cache-ptr 4)
+      (br $b_start)))
+
+  (return (i32.const 0)))
+
 (func $mp-zero? (param $ptr i32) (result i32)
   (return (select
     (i32.const 1)
@@ -1093,6 +1113,27 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
       (global.set $g-mp-zero (local.get $ptr))))
 
   (return (global.get $g-mp-zero)))
+
+(global $g-mp-one (mut i32) (i32.const 0))
+
+(func $mp-one (result i32)
+  (local $ptr i32)
+  (if (i32.eqz (global.get $g-mp-one))
+    (then
+      (local.set $ptr (call $malloc (i32.const 8)))
+      (i32.store (local.get $ptr) (i32.const 1))
+      (i32.store offset=4 (local.get $ptr) (i32.const 1))
+      (global.set $g-mp-one (local.get $ptr))))
+
+  (return (global.get $g-mp-one)))
+
+(func $mp-free (param $ptr i32)
+  (block $b_check
+    (br_if $b_check (i32.eq (local.get $ptr) (global.get $g-mp-zero)))
+    (br_if $b_check (i32.eq (local.get $ptr) (global.get $g-mp-one)))
+    (br_if $b_check (call $mp-is-10-pow (local.get $ptr)))
+
+    (call $malloc-free (local.get $ptr))))
 
 ;; Integer division.
 ;;
@@ -1197,7 +1238,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
         (call $mp-shr-ip (local.get $testor) (i32.const 1))
         (br $b_start)))
 
-    (call $malloc-free (local.get $testor)))
+    (call $mp-free (local.get $testor)))
 
   ;; The quotient has the xor of the signs (i.e if one is negative, 
   ;; the quotient is negative, otherwise positive).
@@ -1329,7 +1370,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
           (local.set $res (call $mp-shl 
               (local.get $partial) 
               (local.get $small-shift)))
-          (call $malloc-free (local.get $partial))
+          (call $mp-free (local.get $partial))
           (return (local.get $res))))))
 
   ;; small-shift-inv = 32 - small-shift
@@ -1599,7 +1640,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local $res i32)
 
   (local.set $res (call $mp-add (local.get $left) (local.get $right)))
-  (call $malloc-free (local.get $left))
+  (call $mp-free (local.get $left))
 
   (return (local.get $res)))
 
@@ -1607,7 +1648,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local $res i32)
 
   (local.set $res (call $mp-mul (local.get $left) (local.get $right)))
-  (call $malloc-free (local.get $left))
+  (call $mp-free (local.get $left))
 
   (return (local.get $res)))
 
@@ -1615,7 +1656,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local $res i32)
 
   (local.set $res (call $mp-sub (local.get $left) (local.get $right)))
-  (call $malloc-free (local.get $left))
+  (call $mp-free (local.get $left))
 
   (return (local.get $res)))
 
@@ -1623,7 +1664,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local $res i32)
 
   (local.set $res (call $mp-shl (local.get $left) (local.get $shift)))
-  (call $malloc-free (local.get $left))
+  (call $mp-free (local.get $left))
 
   (return (local.get $res)))
 
@@ -1754,6 +1795,9 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local $kdiff i32)
   (local $sign i32)
 
+  (if (call $mp-zero? (local.get $f)) (then
+      (return (f64.const 0.0))))
+
   (if (local.tee $sign (%mp-sign-l $f))
     (then (call $mp-neg (local.get $f))))
 
@@ -1787,7 +1831,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
           (local.set $v-rem (call $mp-sub (local.get $v) (local.get $rem)))
           (local.set $z (call $mp-make-float (local.get $quot) (local.get $k)))
           (local.set $rem-cmp (call $mp-cmp (local.get $rem) (local.get $v-rem)))
-          (call $malloc-free (local.get $v-rem))
+          (call $mp-free (local.get $v-rem))
         
           (br_if $b-ratio->float (i32.lt_s (local.get $rem-cmp) (i32.const 0)))
           (if (i32.gt_s (local.get $rem-cmp) (i32.const 0))
@@ -1799,11 +1843,10 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
                 (i32.const 0))))
           (local.set $z (call $mp-next-float (local.get $z))))
 
-        (call $malloc-free (local.get $rem))
-        (call $malloc-free (local.get $quot))
-        (call $malloc-free (local.get $u))
-        (if (local.get $v-free) (then 
-            (call $malloc-free (local.get $v))))
+        (call $mp-free (local.get $rem))
+        (call $mp-free (local.get $quot))
+        (call $mp-free (local.get $u))
+        (call $mp-free (local.get $v))
         (if (local.get $sign) (then 
             (local.set $z (f64.neg (local.get $z)))))
         (return (local.get $z))))
@@ -1823,9 +1866,8 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
             (local.set $v-free (i32.const 1))))
         (local.set $k (i32.add (local.get $k) (local.get $kdiff)))))
 
-    (call $malloc-free (local.get $rem))
-    (if (i32.ne (local.get $quot) (global.get $g-mp-zero)) (then 
-        (call $malloc-free (local.get $quot))))
+    (call $mp-free (local.get $rem))
+    (call $mp-free (local.get $quot))
     (br $b_forever))
 
   (unreachable))

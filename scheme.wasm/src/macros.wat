@@ -110,3 +110,10 @@
 (%define %alloc-values (%car %cdr) (call $heap-alloc (global.get $g-heap) (%values-type) %car %cdr))
 (%define %alloc-quote (%val) (%alloc-cons (global.get $quote-sym) (%alloc-cons %val (global.get $g-nil))))
 (%define %alloc-cont (%cont) (call $heap-alloc (global.get $g-heap) (%cont-type) %cont (i32.const 0)))
+
+(%define %pack-64 (%hi %lo) (i64.or (i64.shl (i64.extend_i32_u %hi) (i64.const 32)) (i64.extend_i32_u %lo)))
+(%define %pack-64-l (%hi %lo) (%pack-64 (local.get %hi) (local.get %lo)))
+(%define %unpack-64-hi (%packed) (i32.wrap_i64 (i64.shr_u %packed (i64.const 32))))
+(%define %unpack-64-hi-l (%packed) (%unpack-64-hi (local.get %packed)))
+(%define %unpack-64-lo (%packed) (i32.wrap_i64 %packed))
+(%define %unpack-64-lo-l (%packed) (%unpack-64-lo (local.get %packed)))
