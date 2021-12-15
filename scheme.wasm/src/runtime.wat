@@ -1090,7 +1090,9 @@
           (call $cont-alloc
             (%cont-apply-form)
             (local.get $env)
-            (%alloc-cons (local.get $op) (global.get $g-nil))
+            (%alloc-cons 
+              (global.get $g-nil) 
+              (%alloc-cons (local.get $op) (global.get $g-nil)))
             (i32.const 0))))))
 
   (return
@@ -1118,9 +1120,7 @@
   (%pop-l $op $args)
   (local.set $op-type (%get-type $op))
 
-  (local.set $args (call $reverse 
-      (local.get $env) 
-      (%alloc-cons (local.get $temp) (global.get $g-nil))))
+  (local.set $args (call $reverse-impl (local.get $temp)))
 
   (if (i32.eq (local.get $op-type) (%builtin-type))
     (then
