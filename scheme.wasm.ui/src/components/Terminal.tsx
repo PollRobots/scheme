@@ -12,7 +12,7 @@ interface TerminalProps {
   prompt: string;
   pause: boolean;
   autofocus: boolean;
-  onInput: (str: string) => string;
+  onInput: (str: string) => Promise<string>;
 }
 
 interface TerminalState {
@@ -40,7 +40,7 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
   const theme = React.useContext(ThemeContext);
   const editorTheme = React.useContext(EditorThemeContext) || theme;
 
-  const onEnter = (prompt: string, text: string) => {
+  const onEnter = async (prompt: string, text: string) => {
     const cmd = text;
     const history = [...state.history];
 
@@ -52,7 +52,7 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
     history.push(cmd);
 
     const output = [...state.output, prompt + cmd];
-    const result = props.onInput(cmd);
+    const result = await props.onInput(cmd);
     if (result.length > 0) {
       output.push(result);
     }

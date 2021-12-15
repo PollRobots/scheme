@@ -19,6 +19,7 @@ interface AppState {
   open: boolean;
   stopped: boolean;
   about: boolean;
+  first: boolean;
 }
 
 const kDefaultState: AppState = {
@@ -26,7 +27,8 @@ const kDefaultState: AppState = {
   editorTheme: "Same",
   open: false,
   about: false,
-  stopped: false,
+  stopped: true,
+  first: true,
 };
 
 const kSettingsSubHeading: React.CSSProperties = {
@@ -44,26 +46,46 @@ const App: React.FunctionComponent<{}> = (props) => {
   );
 
   React.useEffect(() => {
-    SchemeRuntime.load()
-      .then((schemeRuntime) => {
-        console.log("Loaded");
-        runtime.current = schemeRuntime;
-        setState({ ...state, stopped: false });
-      })
-      .catch((err) => console.error(err));
+    // SchemeRuntime.load()
+    //   .then((schemeRuntime) => {
+    //     console.log("Loaded");
+    //     runtime.current = schemeRuntime;
+    //     setState({ ...state, stopped: false });
+    //   })
+    //   .catch((err) => {
+    //     if (err instanceof Error) {
+    //       setState({ ...state, err: err });
+    //     } else {
+    //       console.error(err);
+    //     }
+    //   });
   }, ["once"]);
 
-  const onInput = (str: string): string => {
-    if (!runtime.current || runtime.current.stopped) {
-      runtime.current?.start();
-      setTimeout(() => setState({ ...state, stopped: false }), 100);
-      return "\x1B[0;94mRestarted.\x1B[0m ";
+  const onInput = async (str: string): Promise<string> => {
+    try {
+      if (!runtime.current) {
+        runtime.current = await SchemeRuntime.load();
+        setTimeout(
+          () => setState({ ...state, first: false, stopped: false }),
+          100
+        );
+        return "\x1B[0;94mStarted runtime.\x1B[0m ";
+      } else if (!runtime.current || runtime.current.stopped) {
+        await runtime.current?.start();
+        setTimeout(() => setState({ ...state, stopped: false }), 100);
+        return "\x1B[0;94mRestarted.\x1B[0m ";
+      }
+      const result = runtime.current.processLine(str);
+      if (runtime.current.stopped) {
+        setTimeout(() => setState({ ...state, stopped: true }), 100);
+      }
+      return result;
+    } catch (err) {
+      return `\x1B[0;31m${err}
+
+\x1B[0;94mIt's unlikely that trying again will help ‾\\_(シ)_/‾ \x1B[0m
+`;
     }
-    const result = runtime.current.processLine(str);
-    if (runtime.current.stopped) {
-      setTimeout(() => setState({ ...state, stopped: true }), 100);
-    }
-    return result;
   };
 
   const getEditorTheme = () => {
@@ -92,7 +114,7 @@ const App: React.FunctionComponent<{}> = (props) => {
           }}
         >
           <Terminal
-            prompt={state.stopped ? "stopped:" : "> "}
+            prompt={state.first ? "start:" : state.stopped ? "stopped:" : "> "}
             pause={state.stopped}
             welcomeMessage="Welcome to scheme.wasm"
             autofocus={!state.open}

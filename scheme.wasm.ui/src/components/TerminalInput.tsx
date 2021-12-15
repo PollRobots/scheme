@@ -89,15 +89,6 @@ export class TerminalInput extends React.Component<
     e.preventDefault();
   }
 
-  onPauseKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter") {
-      this.props.onEnter("");
-      this.setState({ text: "" });
-    }
-    e.stopPropagation();
-    e.preventDefault();
-  }
-
   render() {
     return (
       <div style={{ display: "flex" }}>
@@ -123,11 +114,7 @@ export class TerminalInput extends React.Component<
           html={sanitizeHtml(this.state.text, kSanitizeConfig)}
           spellCheck={false}
           onChange={(e) => this.setState({ text: e.target.value })}
-          onKeyDown={
-            this.props.readonly
-              ? (e) => this.onPauseKeyDown(e)
-              : (e) => this.onKeyDown(e)
-          }
+          onKeyDown={(e) => this.onKeyDown(e)}
         />
       </div>
     );

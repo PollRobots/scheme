@@ -245,6 +245,7 @@ export class SchemeRuntime {
       this.removeEventListener("write", onWrite);
       return written.join("");
     } catch (err) {
+      console.error(err);
       this.instance_ = undefined;
       this.exports_ = undefined;
       this.initialized_ = false;
