@@ -153,8 +153,10 @@
 (%define %builtin-exact?()                    (i32.const 152))
 (%define %builtin-inexact?()                  (i32.const 153))
 (%define %builtin-inexact()                   (i32.const 154))
+(%define %builtin-exact()                     (i32.const 155))
+(%define %builtin-real?()                     (i32.const 156))
 
-(table $table-builtin 155 anyfunc)
+(table $table-builtin 157 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -298,6 +300,8 @@
   (%add-builtin (%sym-64 0x3f7463617865 6) (%builtin-exact?)) ;; 'exact?'
   (%add-builtin (%sym-64 0x3f74636178656e69 8) (%builtin-inexact?)) ;; 'inexact?'
   (%add-builtin (%sym-64 0x74636178656e69 7) (%builtin-inexact)) ;; 'inexact'
+  (%add-builtin (%sym-64 0x7463617865 5) (%builtin-exact)) ;; 'exact'
+  (%add-builtin (%sym-64 0x3f6c616572 5) (%builtin-real?)) ;; 'real?'
 
   (global.set $lambda-sym (%sym-64 0x6164626d616c 6)) ;; 'lambda'
   (global.set $quote-sym (%sym-64 0x65746f7571 5)) ;; 'quote'
@@ -478,3 +482,5 @@
 (elem $table-builtin (%builtin-exact?) $exact?)
 (elem $table-builtin (%builtin-inexact?) $inexact?)
 (elem $table-builtin (%builtin-inexact) $inexact)
+(elem $table-builtin (%builtin-exact) $exact)
+(elem $table-builtin (%builtin-real?) $real?)

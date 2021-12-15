@@ -5,25 +5,26 @@
   (if (i32.eq (local.get $ptr-type) (local.get $other-type))
     (then (return (local.get $ptr))))
 
-  (if 
-    (i32.or 
-      (i32.eq (local.get $ptr-type) (%big-int-type))
-      (i32.eq (local.get $other-type) (%big-int-type)))
-    (then
-      (if (i32.eq (local.get $ptr-type) (%big-int-type))
-        (then (return (local.get $ptr))))
+  (if (i32.eq (local.get $ptr-type) (%f64-type)) (then
+      (return (local.get $ptr))))
 
-      (if (i32.eq (local.get $other-type) (%big-int-type))
+  (if (i32.eq (local.get $other-type) (%f64-type)) (then
+      (return (call $inexact-impl (local.get $ptr)))))
+
+  (if (i32.eq (local.get $ptr-type) (%big-int-type))
+    (then (return (local.get $ptr))))
+
+  (if (i32.eq (local.get $other-type) (%big-int-type))
+    (then
+      (local.set $temp-64 (i64.load offset=4 (local.get $ptr)))
+      (if (i64.lt_s (local.get $temp-64) (i64.const 0))
         (then
-          (local.set $temp-64 (i64.load offset=4 (local.get $ptr)))
-          (if (i64.lt_s (local.get $temp-64) (i64.const 0))
-            (then
-              (local.set $temp-64 (i64.sub (i64.const 0) (local.get $temp-64)))
-              (local.set $mp (call $mp-from-u64 (local.get $temp-64)))
-              (call $mp-neg (local.get $mp)))
-            (else
-              (local.set $mp (call $mp-from-u64 (local.get $temp-64)))))
-          (return (%alloc-big-int (local.get $mp)))))))
+          (local.set $temp-64 (i64.sub (i64.const 0) (local.get $temp-64)))
+          (local.set $mp (call $mp-from-u64 (local.get $temp-64)))
+          (call $mp-neg (local.get $mp)))
+        (else
+          (local.set $mp (call $mp-from-u64 (local.get $temp-64)))))
+      (return (%alloc-big-int (local.get $mp)))))
 
   (unreachable))
 
@@ -59,6 +60,11 @@
     (then (return (call $mp-cmp
           (%car-l $left-reg)
           (%car-l $right-reg)))))
+
+  (if (i32.eq (local.get $reg-type) (%f64-type))
+    (then (return (call $num-core-cmp-real
+          (local.get $left-reg)
+          (local.get $right-reg)))))
   
   (unreachable))
 
@@ -76,6 +82,21 @@
     (i32.const -1)
     (i32.const 1)
     (i64.lt_s (local.get $diff) (i64.const 0)))))
+
+(func $num-core-cmp-real (param $left i32) (param $right i32) (result i32)
+  (local $left-v f64)
+  (local $right-v f64)
+
+  (local.set $left-v (f64.load offset=4 (local.get $left)))
+  (local.set $right-v (f64.load offset=4 (local.get $right)))
+
+  (if (f64.eq (local.get $left-v) (local.get $right-v)) (then 
+      (return (i32.const 0))))
+
+  (return (select
+      (i32.const -1)
+      (i32.const 1)
+      (f64.lt (local.get $left-v) (local.get $right-v)))))
 
 (func $num-core-add (param $left i32) (param $right i32) (result i32)
   (local $left-type i32)
@@ -131,6 +152,11 @@
             (%car-l $left-reg)
             (%car-l $right-reg)))))))
   
+  (if (i32.eq (local.get $reg-type) (%f64-type)) (then
+      (return (%alloc-f64 (f64.add
+            (f64.load offset=4 (local.get $left-reg))
+            (f64.load offset=4 (local.get $right-reg)))))))
+  
   (unreachable))
 
 (func $num-core-64-abs-log2 (param $val i64) (result i32)
@@ -184,12 +210,16 @@
             (i64.load offset=4 (local.get $left-reg))
             (i64.load offset=4 (local.get $right-reg)))))))
 
-  (if (i32.eq (local.get $reg-type) (%big-int-type))
-    (then 
+  (if (i32.eq (local.get $reg-type) (%big-int-type)) (then 
       (return (call $num-core-maybe-demote-mp 
           (%alloc-big-int (call $mp-mul
             (%car-l $left-reg)
             (%car-l $right-reg)))))))
+
+  (if (i32.eq (local.get $reg-type) (%f64-type)) (then
+      (return (%alloc-f64 (f64.mul
+            (f64.load offset=4 (local.get $left-reg))
+            (f64.load offset=4 (local.get $right-reg)))))))
   
   (unreachable))
 
@@ -217,6 +247,9 @@
       (local.get $mp (call $mp-copy (%car-l $num)))
       (call $mp-neg (local.get $mp))
       (return (call $num-core-maybe-demote-mp (%alloc-big-int (local.get $mp))))))
+  
+  (if (i32.eq (local.get $num-type) (%f64-type)) (then 
+      (return (%alloc-f64 (f64.neg (f64.load offset=4 (local.get $num)))))))
   
   (unreachable))
 
@@ -270,6 +303,12 @@
           (%alloc-big-int (call $mp-sub
             (%car-l $left-reg)
             (%car-l $right-reg)))))))
+
+  (if (i32.eq (local.get $reg-type) (%f64-type)) (then 
+      (return (%alloc-f64 (f64.sub 
+            (f64.load offset=4 (local.get $left-reg))
+            (f64.load offset=4 (local.get $right-reg)))))))
+          
   
   (unreachable))
 
@@ -295,31 +334,34 @@
   (local $num-64 i64)
   (local $mp i32)
   (local $sign i32)
+  (local $real f64)
 
   (local.set $type (%get-type $num))
 
-  (if (i32.eq (local.get $type) (%i64-type))
-    (then
+  (if (i32.eq (local.get $type) (%i64-type)) (then
       (local.get $num-64 (i64.load offset=4 (local.get $num)))
       (if (i64.ge_s (local.get $num-64) (i64.const 0))
         (then (return (local.get $num))))
-      (if (i64.eq (local.get $num-64) (i64.const 0x8000_0000_0000_0000))
-        (then
+      (if (i64.eq (local.get $num-64) (i64.const 0x8000_0000_0000_0000)) (then
           (local.set $mp (call $calloc (i32.const 3) (i32.const 4)))
           (i32.store offset=0 (local.get $mp) (i32.const 0x8000_0002))
           (i32.store offset=4 (local.get $mp) (i32.const 0x8000_0000))
           (return (%alloc-big-int (local.get $mp)))))
       (return (%alloc-i64 (i64.sub (i64.const 0) (local.get $num-64))))))
 
-  (if (i32.eq (local.get $type) (%big-int-type))
-    (then
+  (if (i32.eq (local.get $type) (%big-int-type)) (then
       (local.set $mp (%car-l $num))
-      (if (i32.and (i32.load (local.get $mp)) (i32.const 0x8000_0000))
-        (then
+      (if (i32.and (i32.load (local.get $mp)) (i32.const 0x8000_0000)) (then
           (local.set $mp (call $mp-copy (local.get $mp)))
           (call $mp-neg (local.get $mp))
           (return (%alloc-big-int (local.get $mp)))))
       (return (local.get $num))))
+
+  (if (i32.eq (local.get $type) (%f64-type)) (then
+      (local.set $real (f64.load offset=4 (local.get $num)))
+      (if (f64.ge (local.get $real) (f64.const 0)) (then
+          (return (local.get $num))))
+      (return (%alloc-f64 (f64.neg (local.get $real))))))
 
   (unreachable))
 

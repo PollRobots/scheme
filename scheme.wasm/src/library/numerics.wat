@@ -15,6 +15,20 @@
 
   (return (global.get $g-false)))
 
+;; (real? obj)
+(func $real? (param $env i32) (param $args i32) (result i32)
+  (local $obj i32)
+
+  (if (i32.ne (call $list-len (local.get $args)) (i32.const 1)) (then 
+      (return (call $argument-error (local.get $args)))))
+
+  (local.set $obj (%car-l $args))
+
+  (if (i32.eq (%get-type $obj) (%f64-type)) (then 
+      (return (global.get $g-true))))
+
+  (return (global.get $g-false)))
+
 (func $all-numeric (param $args i32) (result i32)
   (local $temp i32)
   (local $temp-type i32)
@@ -104,6 +118,26 @@
 
   (return (call $inexact-impl (local.get $num))))
 
+(func $exact (param $env i32) (param $args i32) (result i32)
+  (local $num i32)
+
+  (block $b_check
+    (block $b_fail
+      (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 1)))
+      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
+
+  (local.set $num (%car-l $args))
+  (if (i32.eq (%get-type $num) (%big-int-type)) (then 
+      (return (local.get $num))))
+
+  (if (i32.eq (%get-type $num) (%i64-type)) (then 
+      (return (local.get $num))))
+
+  (return (call $exact-impl (local.get $num))))
+
 (func $inexact-impl (param $num i32) (result i32)
   (local $num-type i32)
 
@@ -118,6 +152,66 @@
             (i32.const 0))))))
 
   (unreachable))
+
+(func $exact-impl (param $num i32) (result i32)
+  (local $num-type i32)
+  (local $v f64)
+  (local $e i32)
+  (local $f i64)
+  (local $neg i32)
+  (local $mp i32)
+
+  (local.set $num-type (%get-type $num))
+  (if (i32.ne (local.get $num-type) (%f64-type)) (then (unreachable)))
+
+  (local.set $v (f64.load offset=4 (local.get $num)))
+  (block $b_check (block $b_fail
+      (br_if $b_fail (call $ieee-inf? (local.get $v)))
+      (br_if $b_fail (call $ieee-nan? (local.get $v)))
+      (br $b_check))
+
+    (return (call $argument-error 
+        (%alloc-cons (local.get $num) (global.get $g-nil)))))
+
+  (local.set $v (f64.nearest (local.get $v)))
+
+  ;; if abs(v) < 1 --> 0
+  (if (f64.lt (f64.abs (local.get $v)) (f64.const 1)) (then
+    (return (%alloc-i64 (i64.const 0)))))
+
+  (local.set $neg (call $ieee-negative? (local.get $v)))
+
+  (local.set $e (i32.sub 
+      (i32.wrap_i64 (call $ieee-exponent-bits (local.get $v)))
+      (i32.const 0x433)))
+  (local.set $f (i64.add 
+      (i64.const 0x0010_0000_0000_0000) 
+      (call $ieee-significand-bits (local.get $v))))
+
+  ;; number is less than 53 bits
+  (if (i32.lt_s (local.get $e) (i32.const 0)) (then
+      (local.set $f (i64.shr_u 
+          (local.get $f) 
+          (i64.extend_i32_u (i32.sub (i32.const 0) (local.get $e)))))
+      (local.set $e (i32.const 0))))
+
+  ;; number is less than 63 bits
+  (if (i32.lt_s (local.get $e) (i32.const 10)) (then
+      (local.set $f (i64.shl (local.get $f) (i64.extend_i32_u (local.get $e))))
+      (local.set $e (i32.const 0))))
+
+  ;; if the number has an exponent of 1, then convert directly to an int
+  (if (i32.eqz (local.get $e)) (then
+      (if (local.get $neg)
+        (then (return (%alloc-i64 (i64.sub (i64.const 0) (local.get $f)))))
+        (else (return (%alloc-i64 (local.get $f)))))))
+
+  (local.set $mp (call $mp-from-u64 (local.get $f)))
+
+  (if (local.get $neg) (then (call $mp-neg (local.get $mp))))
+  (local.set $mp (call $mp-shl-eq (local.get $mp) (local.get $e)))
+
+  (return (%alloc-big-int (local.get $mp))))
 
 (func $num-equal (param $env i32) (param $args i32) (result i32)
   (local $cmp i32)
