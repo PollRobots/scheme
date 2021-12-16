@@ -35,22 +35,32 @@ export class TerminalInput extends React.Component<
     this.state = { text: props.value };
   }
 
+  runAutoFocus() {
+    const timeoutFn = () => {
+      if (
+        this.props.autofocus &&
+        this.ref.current &&
+        this.ref.current !== document.activeElement
+      ) {
+        this.ref.current.focus();
+        this.ref.current.scrollIntoView(false);
+      }
+      if (this.props.autofocus) {
+        return window.setTimeout(() => {
+          timeoutFn();
+        }, 250);
+      }
+    };
+    timeoutFn();
+  }
+
+  componentDidMount() {
+    this.runAutoFocus();
+  }
+
   componentDidUpdate(prevProps: TerminalInputProps) {
     if (prevProps.autofocus != this.props.autofocus) {
-      const timeoutFn = () => {
-        if (
-          this.props.autofocus &&
-          this.ref.current &&
-          this.ref.current !== document.activeElement
-        ) {
-          this.ref.current.focus();
-        }
-        if (this.props.autofocus) {
-          return window.setTimeout(() => {
-            timeoutFn();
-          }, 250);
-        }
-      };
+      this.runAutoFocus();
     }
     if (prevProps.value != this.props.value) {
       if (this.ref.current) {
