@@ -829,6 +829,10 @@
         (return (call $inexact-impl (local.get $num)))))
       (return (local.get $num))))
 
+  ;; apply the exponent sign
+  (if (local.get $neg-exp) (then 
+      (local.set $exponent (i32.sub (i32.const 0) (local.get $exponent)))))
+
   ;; create a big-int containing both the integer and fractional parts
   (if (local.get $integer-overflow)
     (then (local.set $big-int (call $mp-string->mp
@@ -856,8 +860,6 @@
       (local.set $big-int (call $mp-plus-eq
           (local.get $big-int) 
           (local.get $big-int-fraction)))
-      (if (local.get $neg-exp) (then 
-          (local.set $exponent (i32.sub (i32.const 0) (local.get $exponent)))))
       (local.set $exponent (i32.sub
           (local.get $exponent) 
           (local.get $fraction-digits)))
