@@ -155,8 +155,18 @@
 (%define %builtin-inexact()                   (i32.const 154))
 (%define %builtin-exact()                     (i32.const 155))
 (%define %builtin-real?()                     (i32.const 156))
+(%define %builtin-finite?()                   (i32.const 157))
+(%define %builtin-infinite?()                 (i32.const 158))
+(%define %builtin-nan?()                      (i32.const 159))
+(%define %builtin-real-div()                  (i32.const 160))
+(%define %builtin-floor()                     (i32.const 161))
+(%define %builtin-ceiling()                   (i32.const 162))
+(%define %builtin-truncate()                  (i32.const 163))
+(%define %builtin-round()                     (i32.const 164))
+(%define %builtin-log()                       (i32.const 165))
+(%define %builtin-exp()                       (i32.const 166))
 
-(table $table-builtin 157 anyfunc)
+(table $table-builtin 167 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -302,6 +312,16 @@
   (%add-builtin (%sym-64 0x74636178656e69 7) (%builtin-inexact)) ;; 'inexact'
   (%add-builtin (%sym-64 0x7463617865 5) (%builtin-exact)) ;; 'exact'
   (%add-builtin (%sym-64 0x3f6c616572 5) (%builtin-real?)) ;; 'real?'
+  (%add-builtin (%sym-64 0x3f6574696e6966 7) (%builtin-finite?)) ;; 'finite?'
+  (%add-builtin (%sym-128 0x6574696e69666e69 0x3f 9) (%builtin-infinite?)) ;; 'infinite?'
+  (%add-builtin (%sym-32 0x3F6e616e 4) (%builtin-nan?)) ;; 'nan?'
+  (%add-builtin (%sym-32 0x2F 1) (%builtin-real-div)) ;; '/'
+  (%add-builtin (%sym-64 0x726f6f6c66 5) (%builtin-floor)) ;; 'floor'
+  (%add-builtin (%sym-64 0x676e696c696563 7) (%builtin-ceiling)) ;; 'ceiling
+  (%add-builtin (%sym-64 0x657461636e757274 8) (%builtin-truncate)) ;; 'truncate'
+  (%add-builtin (%sym-64 0x646e756f72 5) (%builtin-round)) ;; 'round'
+  (%add-builtin (%sym-32 0x676f6c 3) (%builtin-log)) ;; 'log'
+  (%add-builtin (%sym-32 0x707865 3) (%builtin-exp)) ;; 'exp'
 
   (global.set $lambda-sym (%sym-64 0x6164626d616c 6)) ;; 'lambda'
   (global.set $quote-sym (%sym-64 0x65746f7571 5)) ;; 'quote'
@@ -484,3 +504,13 @@
 (elem $table-builtin (%builtin-inexact) $inexact)
 (elem $table-builtin (%builtin-exact) $exact)
 (elem $table-builtin (%builtin-real?) $real?)
+(elem $table-builtin (%builtin-finite?) $finite?)
+(elem $table-builtin (%builtin-infinite?) $infinite?)
+(elem $table-builtin (%builtin-nan?) $nan?)
+(elem $table-builtin (%builtin-real-div) $real-div)
+(elem $table-builtin (%builtin-floor) $floor)
+(elem $table-builtin (%builtin-ceiling) $ceiling)
+(elem $table-builtin (%builtin-truncate) $truncate)
+(elem $table-builtin (%builtin-round) $round)
+(elem $table-builtin (%builtin-log) $log)
+(elem $table-builtin (%builtin-exp) $exp)

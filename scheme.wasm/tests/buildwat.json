@@ -32,6 +32,7 @@
     "src/library/numerics-core.wat",
     "src/library/pair.wat",
     "src/library/process.wat",
+    "src/library/real.wat",
     "src/library/string.wat",
     "src/library/symbol.wat",
     "src/library/vector.wat"

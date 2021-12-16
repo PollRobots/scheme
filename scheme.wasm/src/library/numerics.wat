@@ -142,6 +142,10 @@
   (local $num-type i32)
 
   (local.set $num-type (%get-type $num))
+
+  (if (i32.eq (local.get $num-type) (%f64-type)) (then
+      (return (local.get $num))))
+
   (if (i32.eq (local.get $num-type) (%i64-type)) (then
       (return (%alloc-f64 (f64.convert_i64_s 
             (i64.load offset=4 (local.get $num)))))))
