@@ -240,7 +240,7 @@
           (i32.store offset=0 (local.get $mp) (i32.const 0x8000_0002))
           (i32.store offset=4 (local.get $mp) (i32.const 0x8000_0000))
           (return (%alloc-big-int (local.get $mp)))))
-      (return (%alloc-i64 (local.get $temp-64)))))
+      (return (%alloc-i64 (i64.sub (i64.const 0) (local.get $temp-64))))))
 
   (if (i32.eq (local.get $num-type) (%big-int-type))
     (then 
