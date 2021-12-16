@@ -3,6 +3,7 @@ import * as ReactDOM from "react-dom";
 import { About } from "./components/About";
 import { Burger } from "./components/Burger";
 import { useOnClickOutside } from "./components/hooks";
+import { Settings } from "./components/Settings";
 import { SettingsMenu } from "./components/SettingsMenu";
 import { Terminal } from "./components/Terminal";
 import {
@@ -127,69 +128,12 @@ const App: React.FunctionComponent<{}> = (props) => {
             onClick={() => setState({ ...state, open: !state.open })}
           />
           <SettingsMenu open={state.open}>
-            <div
-              style={{
-                fontWeight: "bolder",
-                fontSize: "1.5em",
-                margin: "1rem 0",
-              }}
-            >
-              Settings
-            </div>
-            <div style={kSettingsSubHeading}>Theme</div>
-            <div style={{ lineHeight: "2em" }}>
-              REPL Theme:{" "}
-              <select
-                style={{
-                  fontSize: "inherit",
-                  fontFamily: "inherit",
-                  width: "10em",
-                  height: "1.5em",
-                  borderRadius: "0.25em",
-                  appearance: "none",
-                  padding: "0 0.25em",
-                }}
-                value={state.theme}
-                onChange={(e) => {
-                  setState({ ...state, theme: e.target.value });
-                }}
-              >
-                <option value="Dark">Dark</option>
-                <option value="Light">Light</option>
-              </select>
-            </div>
-            <div style={{ lineHeight: "2em" }}>
-              Editor Theme:{" "}
-              <select
-                style={{
-                  fontSize: "inherit",
-                  fontFamily: "inherit",
-                  width: "10em",
-                  height: "1.5em",
-                  borderRadius: "0.25em",
-                  appearance: "none",
-                  padding: "0 0.25em",
-                }}
-                value={state.editorTheme}
-                onChange={(e) => {
-                  setState({ ...state, editorTheme: e.target.value });
-                }}
-              >
-                <option value="Same">Same as REPL</option>
-                <option value="Dark">Dark</option>
-                <option value="Light">Light</option>
-              </select>
-            </div>
-            <div
-              style={{
-                ...kSettingsSubHeading,
-                cursor: "pointer",
-                textDecoration: "underline",
-              }}
-              onClick={(e) => setState({ ...state, about: true, open: false })}
-            >
-              About
-            </div>
+            <Settings
+              theme={state.theme}
+              editorTheme={state.editorTheme}
+              onChange={(update) => setState({ ...state, ...update })}
+              onAbout={() => setState({ ...state, about: true, open: false })}
+            />
           </SettingsMenu>
         </div>
         {state.about ? <About /> : null}
