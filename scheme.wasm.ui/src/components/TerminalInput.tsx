@@ -64,9 +64,9 @@ export class TerminalInput extends React.Component<
       this.ref.current ? this.ref.current.innerHTML : this.state.text,
       kSanitizeConfig
     )
-      .replace("&gt;", ">")
-      .replace("&lt;", "<")
-      .replace("&amp;", "&");
+      .replaceAll("&gt;", ">")
+      .replaceAll("&lt;", "<")
+      .replaceAll("&amp;", "&");
   }
 
   onKeyDown(e: React.KeyboardEvent) {
