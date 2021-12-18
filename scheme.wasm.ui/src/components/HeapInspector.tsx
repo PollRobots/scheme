@@ -1,11 +1,14 @@
 import React, { useEffect } from "react";
 import { SchemeRuntimeContext } from "./SchemeRuntimeProvider";
 import { ThemeContext } from "./ThemeProvider";
+import { ToggleSwitch } from "./ToggleSwitch";
 
 interface HeapInspectorProps {}
 interface HeapInspectorState {
   ptr: string;
   lookupRes: string;
+  counter: number;
+  showEmpty: boolean;
 }
 
 export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
@@ -16,6 +19,8 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
   const [state, setState] = React.useState<HeapInspectorState>({
     ptr: "",
     lookupRes: "",
+    counter: 0,
+    showEmpty: false,
   });
 
   if (!runtime || runtime.stopped) {
@@ -81,15 +86,17 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
         {nextHeap.toString(16)}
       </div>
     );
-    heaps.push(
-      <HeapView
-        key={`cvs${ptr}`}
-        ptr={ptr}
-        size={size}
-        width={512}
-        onLookup={(ptr) => onLookup(ptr)}
-      />
-    );
+    if (state.showEmpty || !isHeapEmpty(ptr, size, runtime.memory)) {
+      heaps.push(
+        <HeapView
+          key={`cvs${ptr}`}
+          ptr={ptr}
+          size={size}
+          width={512}
+          onLookup={(ptr) => onLookup(ptr)}
+        />
+      );
+    }
     ptr = nextHeap;
   }
 
@@ -108,32 +115,26 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
           gridTemplateColumns: "1fr 1fr 1fr 1fr",
           maxHeight: "75vh",
           overflowY: "auto",
+          color: theme.background,
         }}
       >
+        <div>Memory</div>
+        <div
+          style={{ gridColumnStart: 2, gridColumnEnd: 5, justifySelf: "end" }}
+        >
+          Show empty slabs{" "}
+          <ToggleSwitch
+            on={state.showEmpty}
+            onChange={(on) => setState({ ...state, showEmpty: on })}
+          />
+        </div>
         <div style={kColumnHeapStyle}>Address</div>
         <div style={kColumnHeapStyle}>Size</div>
         <div style={kColumnHeapStyle}>FreePtr</div>
         <div style={kColumnHeapStyle}>Next</div>
         {heaps}
       </div>
-      <div
-        style={{ display: "grid", gridTemplateColumns: "auto auto auto 1fr" }}
-      >
-        <button
-          style={{ margin: "0.25em", alignSelf: "start" }}
-          onClick={() => {
-            const output: string[] = [];
-            const listener = (str: string) => {
-              output.push(str);
-            };
-            runtime.addEventListener("write", listener);
-            runtime.gcRun(runtime.replEnv);
-            runtime.removeEventListener("write", listener);
-            console.log(output.join(""));
-          }}
-        >
-          gc
-        </button>
+      <div style={{ display: "grid", gridTemplateColumns: "auto auto 1fr" }}>
         <input
           style={{ margin: "0.25em", alignSelf: "start", width: "4em" }}
           type="text"
@@ -172,8 +173,123 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
           {state.lookupRes}
         </span>
       </div>
+      <div
+        style={{
+          display: "grid",
+          columnGap: "0.25em",
+          rowGap: "0.25em",
+          gridTemplateColumns: "auto 1fr 1fr 1fr auto",
+          fontSize: "smaller",
+          color: theme.background,
+        }}
+      >
+        <div
+          style={{ fontSize: "larger", gridColumnStart: 1, gridColumnEnd: 5 }}
+        >
+          GC stats
+        </div>
+        <button
+          style={{ margin: "0.25em", alignSelf: "start", justifySelf: "end" }}
+          onClick={() => {
+            const output: string[] = [];
+            const listener = (str: string) => {
+              output.push(str);
+            };
+            runtime.addEventListener("write", listener);
+            runtime.gcRun(runtime.replEnv);
+            runtime.removeEventListener("write", listener);
+            console.log(output.join(""));
+            if (output.length) {
+              console.log(output.join(""));
+            }
+            setState({ ...state, counter: state.counter + 1 });
+          }}
+        >
+          gc
+        </button>
+
+        <div>{runtime.gGcIsCollecting ? "active" : "idle"} </div>
+
+        <div style={{ gridColumnStart: 2 }}>Collected</div>
+        <div style={{ gridColumnStart: 3 }}>Kept</div>
+        <div style={{ gridColumnStart: 4 }}>Total</div>
+
+        <div style={{ gridColumnStart: 1 }}>Last Collection</div>
+        <div>
+          {runtime.gGcCollectedCount}{" "}
+          <Percentage
+            val={runtime.gGcCollectedCount}
+            total={runtime.gGcCollectedCount + runtime.gGcNotCollectedCount}
+          />
+        </div>
+
+        <div>
+          {runtime.gGcNotCollectedCount}{" "}
+          <Percentage
+            val={runtime.gGcNotCollectedCount}
+            total={runtime.gGcCollectedCount + runtime.gGcNotCollectedCount}
+          />
+        </div>
+        <div>{runtime.gGcCollectedCount + runtime.gGcNotCollectedCount}</div>
+
+        <div style={{ gridColumnStart: 1 }}>
+          {runtime.gGcCollectionCount} Collections
+        </div>
+        <div>
+          {runtime.gGcTotalCollectedCount}{" "}
+          <Percentage
+            val={runtime.gGcTotalCollectedCount}
+            total={
+              runtime.gGcTotalCollectedCount + runtime.gGcTotalNotCollectedCount
+            }
+          />
+        </div>
+
+        <div>
+          {runtime.gGcTotalNotCollectedCount}{" "}
+          <Percentage
+            val={runtime.gGcTotalNotCollectedCount}
+            total={
+              runtime.gGcTotalCollectedCount + runtime.gGcTotalNotCollectedCount
+            }
+          />
+        </div>
+        <div>
+          {runtime.gGcTotalCollectedCount + runtime.gGcTotalNotCollectedCount}
+        </div>
+      </div>
     </div>
   );
+};
+
+function isHeapEmpty(
+  ptr: number,
+  size: number,
+  memory: WebAssembly.Memory
+): boolean {
+  const words = new Uint32Array(
+    memory.buffer.slice(ptr, ptr + 12 * (1 + size))
+  );
+  for (let i = 1; i <= size; i++) {
+    if ((words[i * 3] & 0x1f) != 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+const Percentage: React.FunctionComponent<{
+  val: number;
+  total: number;
+  round?: number;
+}> = (props) => {
+  if (props.total == 0) {
+    return <span>--%</span>;
+  }
+  const pct = (100 * props.val) / props.total;
+  const display =
+    props.round === undefined ? Math.round(pct) : pct.toFixed(props.round);
+  return <span>{display}%</span>;
 };
 
 interface HeapViewProps {
