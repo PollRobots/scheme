@@ -906,6 +906,9 @@
   (local $temp-cont i32)
   (local $next-cont i32)
 
+  (local $res-mode i32)
+  (local $handler i32)
+
   (local.set $cont-stack (call $cont-alloc
     (i32.const 0)
     (local.get $env)
@@ -914,34 +917,51 @@
   (local.set $fn (i32.const 0))
 
   (loop $forever
-    (if (i32.eqz (local.get $fn))
-      (then
-        ;; check if a gc has been indicated
-        (if (i32.ge_u (global.get $g-eval-count) (%gc-threshold))
-          (then
-            ;; gray set must include cont stack, args, and env. If there is already
-            ;; a collection, simply allocating these will add them to the gray set
-            ;; otherwise they are passed into the call to gc-run (and thence to 
-            ;; gc-init)
-            (local.set $gray (%alloc-cons 
-                (local.get $env) 
-                (%alloc-cons 
-                  (local.get $args)
-                  (%alloc-cont (local.get $cont-stack)))))
+    (block $b_eval_cont
+      (if (i32.eqz (local.get $fn)) (then
+          ;; check if a gc has been indicated
+          (if (i32.ge_u (global.get $g-eval-count) (%gc-threshold))
+            (then
+              ;; gray set must include cont stack, args, and env. If there is already
+              ;; a collection, simply allocating these will add them to the gray set
+              ;; otherwise they are passed into the call to gc-run (and thence to 
+              ;; gc-init)
+              (local.set $gray (%alloc-cons 
+                  (local.get $env) 
+                  (%alloc-cons 
+                    (local.get $args)
+                    (%alloc-cont (local.get $cont-stack)))))
 
-            ;; (call $print-symbol (global.get $g-gc-run))
-            (call $gc-run (local.get $gray))
-            (global.set $g-eval-count (i32.const 0))))
+              ;; (call $print-symbol (global.get $g-gc-run))
+              (call $gc-run (local.get $gray))
+              (global.set $g-eval-count (i32.const 0))))
 
-        ;; this is a call to eval. So pass to eval inner
-        (local.set $result (call $eval-inner (local.get $env) (local.get $args))))
-      (else 
-        ;; some other function is the continuation
-        (local.get $env)
-        (local.get $args)
-        (local.get $fn)
-        call_indirect $table-builtin (type $builtin-type)
-        (local.set $result)))
+          ;; this is a call to eval. So pass to eval inner
+          (local.set $result (call $eval-inner (local.get $env) (local.get $args)))
+          (br $b_eval_cont)))
+
+      (if (i32.eq (local.get $fn) (%guard-fn)) (then
+          ;; executing a guard fn is a no-op, with no return value, if the args 
+          ;; stack has a value simply pop it and set it as the result, otherwise
+          ;; set result to 0
+          (if (i32.eq 
+              (local.get $args) 
+              (i32.load offset=8 (local.get $cont-stack))) 
+            (then
+              ;; args is the same as included in the buffer, set result to 0
+              (local.set $result (i32.const 0)))
+            (else
+              ;; there is an argument to pass to the next continuation
+              (local.set $result (%car-l $args))))
+          
+          (br $b_eval_cont)))
+
+      ;; some other function is the continuation
+      (local.get $env)
+      (local.get $args)
+      (local.get $fn)
+      call_indirect $table-builtin (type $builtin-type)
+      (local.set $result))
 
     ;; done with this item, so pop it off the cont-stack
     (local.set $prev-cont (local.get $cont-stack))
@@ -949,27 +969,129 @@
     ;; free the old continuation
     (call $cont-free (local.get $prev-cont))
 
-    (if (i32.eq (%get-type $result) (%cont-type)) (then 
-        ;; result is a continuation (or list of), place them on the top of the 
-        ;; continuation stack
-        (local.set $temp-cont (%car-l $result))
-        (block $t_end
-          (loop $t_start
-            (local.set $next-cont (i32.load offset=12 (local.get $temp-cont)))
-            (br_if $t_end (i32.eqz (local.get $next-cont)))
-            (local.set $temp-cont (local.get $next-cont))
-            (br $t_start)))
-        (i32.store offset=12 (local.get $temp-cont) (local.get $cont-stack))
-        (local.set $cont-stack (%car-l $result))
-        (call $heap-free (global.get $g-heap) (local.get $result))
-        (local.set $result (i32.const 0)))
-    (else
-      ;; not a continuation
-      (if (i32.eqz (local.get $cont-stack))
-        (then
-          ;; nothing on the cont stack, simply return this result
-          (return (local.get $result))
-        ))))
+    (if (i32.eq (%get-type $result) (%cont-type))
+      (then 
+        (block $b_done
+          (local.set $res-mode (%cdr-l $result))
+
+          (if (i32.eqz (local.get $res-mode)) (then
+              ;; result is a continuation (or list of), place them on the top of the 
+              ;; continuation stack
+              (local.set $temp-cont (%car-l $result))
+              (block $t_end
+                (loop $t_start
+                  (local.set $next-cont (i32.load offset=12 (local.get $temp-cont)))
+                  (br_if $t_end (i32.eqz (local.get $next-cont)))
+                  (local.set $temp-cont (local.get $next-cont))
+                  (br $t_start)))
+              (i32.store offset=12 (local.get $temp-cont) (local.get $cont-stack))
+              (local.set $cont-stack (%car-l $result))
+              (call $heap-free (global.get $g-heap) (local.get $result))
+              (local.set $result (i32.const 0))
+              (br $b_done)))
+
+          (if (i32.eq (local.get $res-mode) (i32.const 1)) (then
+              ;; result is an raised exception
+              ;; pop from the cont stack until a guard is found, or the stack 
+              ;; is empty
+              (block $b_raise_end (loop $b_raise_start
+                  (if (i32.eqz (local.get $cont-stack)) (then
+                      ;; no guard frame, return the exception as the result
+                      (return (%car-l $result))))
+
+                  ;; if this stack frame is a guard function, then stop here
+                  (br_if $b_raise_end (i32.eq 
+                      (i32.load (local.get $cont-stack)) 
+                      (%guard-fn)))
+
+                  (local.set $prev-cont (local.get $cont-stack))
+                  (local.set $cont-stack (i32.load offset=12 (local.get $prev-cont)))
+                  ;; free the old continuation
+                  (call $cont-free (local.get $prev-cont))
+
+                  (br $b_raise_start)))
+
+              ;; extract the env and the handler from the top of the cont stack
+              (local.set $env (i32.load offset=4 (local.get $cont-stack)))
+              (local.set $handler (i32.load offset=8 (local.get $cont-stack)))
+              ;; remove the guard frame from the stack
+              (local.set $prev-cont (local.get $cont-stack))
+              (local.set $cont-stack (i32.load offset=12 (local.get $prev-cont)))
+              ;; free the old continuation
+              (call $cont-free (local.get $prev-cont))
+
+              (local.set $temp-cont (call $cont-alloc
+                  ;; add an eval frame for the handler
+                  (%eval-fn)
+                  (local.get $env)
+                  (%alloc-list-2 (local.get $handler)  (%car-l $result))
+                  (call $cont-alloc
+                    ;; add a re-raise frame to the stack
+                    (%cont-raise)
+                    (local.get $env)
+                    (%alloc-list-1 (%car-l $result))
+                    (local.get $cont-stack))))
+
+              (local.set $cont-stack (local.get $temp-cont))
+              (local.set $result (i32.const 0))
+
+              (br $b_done)))
+
+          ;; A continuable exception was thrown 
+          (if (i32.eq (local.get $res-mode) (i32.const 2)) (then
+              ;; result is an raised, continuable, exception
+
+              ;; look through the stack to see if there is a guard
+              (local.set $temp-cont (local.get $cont-stack))
+              (block $b_raise_end (loop $b_raise_start
+                  (br_if $b_raise_end (i32.eqz (local.get $temp-cont)))
+
+                  ;; if this stack frame is a guard function, then stop here
+                  (br_if $b_raise_end (i32.eq 
+                      (i32.load (local.get $temp-cont)) 
+                      (%guard-fn)))
+
+                  (local.set $temp-cont (i32.load offset=12 (local.get $temp-cont)))
+                  (br $b_raise_start)))
+
+              (if (i32.eqz (local.get $temp-cont)) (then
+                  ;; no guard frame, free the cont stack and return the 
+                  ;; exception as the result
+                  (block $b_free_end (loop $b_free_start
+                      (br_if $b_free_end (i32.eqz (local.get $cont-stack)))
+                      (local.set $prev-cont (local.get $cont-stack))
+                      (local.set $cont-stack 
+                        (i32.load offset=12 (local.get $prev-cont)))
+                      (call $cont-free (local.get $prev-cont))
+                      (br $b_free_start)))
+                  (return (%car-l $result))))
+
+              ;; extract the env and the handler from the top of the cont stack
+              (local.set $env (i32.load offset=4 (local.get $temp-cont)))
+              (local.set $handler (i32.load offset=8 (local.get $temp-cont)))
+
+              (local.set $temp-cont (call $cont-alloc
+                  ;; add an eval frame for the handler, the result from this
+                  ;; will end up on the cont stack
+                  (%eval-fn)
+                  (local.get $env)
+                  (%alloc-list-2 (local.get $handler)  (%car-l $result))
+                  (local.get $cont-stack)))
+
+              (local.set $cont-stack (local.get $temp-cont))
+              (local.set $result (i32.const 0))
+
+              (br $b_done)))
+
+          ;; unexpected result mode
+          (unreachable)))
+      (else
+        ;; not a continuation
+        (if (i32.eqz (local.get $cont-stack))
+          (then
+            ;; nothing on the cont stack, simply return this result
+            (return (local.get $result))
+          ))))
     
     (local.set $fn (i32.load offset=0 (local.get $cont-stack)))
     (local.set $env (i32.load offset=4 (local.get $cont-stack)))

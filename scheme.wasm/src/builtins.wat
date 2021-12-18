@@ -1,5 +1,8 @@
 (type $builtin-type (func (param i32 i32) (result i32)))
 
+(%define %eval-fn ()                          (i32.const 0))
+(%define %guard-fn ()                         (i32.const -1))
+
 (%define %special-if ()                       (i32.const 2))
 (%define %special-let ()                      (i32.const 3))
 (%define %special-lambda ()                   (i32.const 4))
@@ -168,8 +171,17 @@
 (%define %builtin-sin()                       (i32.const 167))
 (%define %builtin-cos()                       (i32.const 168))
 (%define %builtin-display()                   (i32.const 169))
+(%define %builtin-raise()                     (i32.const 170))
+(%define %builtin-error()                     (i32.const 171))
+(%define %builtin-error-object?()             (i32.const 172))
+(%define %builtin-error-object-message()      (i32.const 173))
+(%define %builtin-error-object-irritants()    (i32.const 174))
+(%define %builtin-with-exception-handler()    (i32.const 175))
+(%define %cont-raise()                        (i32.const 176))
+(%define %builtin-raise-continuable()         (i32.const 176))
 
-(table $table-builtin 170 anyfunc)
+
+(table $table-builtin 177 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -328,6 +340,13 @@
   (%add-builtin (%sym-32 0x6e6973 3) (%builtin-sin)) ;; 'sin'
   (%add-builtin (%sym-32 0x736F63 3) (%builtin-cos)) ;; 'cos'
   (%add-builtin (%sym-64 0x79616c70736964 7) (%builtin-display)) ;; 'display'
+  (%add-builtin (%sym-64 0x6573696172 5) (%builtin-raise)) ;; 'raise'
+  (%add-builtin (%sym-64 0x726f727265 5) (%builtin-error)) ;; 'error'
+  (%add-builtin (%sym-128 0x626f2D726f727265 0x3F7463656a 13) (%builtin-error-object?)) ;; 'error-object?'
+  (%add-builtin (%sym-192 0x626f2D726f727265 0x73656d2D7463656a 0x65676173  20) (%builtin-error-object-message)) ;; 'error-object-message'
+  (%add-builtin (%sym-192 0x626f2D726f727265 0x7272692D7463656a 0x73746e617469 22) (%builtin-error-object-irritants)) ;; 'error-object-irritants'
+  (%add-builtin (%sym-192 0x6378652D68746977 0x682D6e6f69747065 0x72656c646e61 22) (%builtin-with-exception-handler)) ;; 'with-exception-handler'
+  (%add-builtin (%sym-192 0x6f632D6573696172 0x6c6261756e69746e 0x65 17) (%builtin-raise-continuable)) ;; 'raise-continuable'
 
   (global.set $lambda-sym (%sym-64 0x6164626d616c 6)) ;; 'lambda'
   (global.set $quote-sym (%sym-64 0x65746f7571 5)) ;; 'quote'
@@ -389,6 +408,7 @@
 (elem $table-builtin (%cont-or) $cont-or)
 (elem $table-builtin (%cont-when) $cont-when)
 (elem $table-builtin (%cont-unless) $cont-unless)
+(elem $table-builtin (%cont-raise) $cont-raise)
 
 (elem $table-builtin (%builtin-add) $num-add)
 (elem $table-builtin (%builtin-sub) $num-sub)
@@ -523,3 +543,10 @@
 (elem $table-builtin (%builtin-sin) $sin)
 (elem $table-builtin (%builtin-cos) $cos)
 (elem $table-builtin (%builtin-display) $display)
+(elem $table-builtin (%builtin-raise) $raise)
+(elem $table-builtin (%builtin-error) $error)
+(elem $table-builtin (%builtin-error-object?) $error-object?)
+(elem $table-builtin (%builtin-error-object-message) $error-object-message)
+(elem $table-builtin (%builtin-error-object-irritants) $error-object-irritants)
+(elem $table-builtin (%builtin-with-exception-handler) $with-exception-handler)
+(elem $table-builtin (%builtin-raise-continuable) $raise-continuable)

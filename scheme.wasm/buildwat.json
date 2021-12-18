@@ -11,6 +11,7 @@
     "src/define.wat",
     "src/display.wat",
     "src/environment.wat",
+    "src/exceptions.wat",
     "src/gc.wat",
     "src/hashtable.wat",
     "src/heap.wat",
