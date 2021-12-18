@@ -93,6 +93,15 @@
   )
 )
 
+(func $environment-has (param $env i32) (param $key i32) (result i32)
+  ;; check that key is a symbol
+  (if (i32.ne (%get-type $key) (%symbol-type)) (then 
+    (return (i32.const 0))))
+
+  ;; check that there isn't an existing entry in the hashtable
+  ;; return hashtable-has(hashtable, key-str)
+  (return (call $hashtable-has (%car-l $env) (%car-l $key))))
+
 (func $environment-get (param $env i32) (param $key i32) (result i32)
   (local $key-str i32)
   (local $hashtable i32)

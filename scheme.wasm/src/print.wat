@@ -88,7 +88,7 @@
     ;; case lambda:
     (if (i32.eq (local.get $type) (%lambda-type))
       (then
-        (call $print-other (global.get $lambda-sym) (local.get $type) (local.get $ptr))
+        (call $print-lambda (local.get $ptr))
         (br $b_switch)))
 
     ;; case error:
@@ -196,8 +196,18 @@
   (call $print-integer (i64.extend_i32_u (local.get $type)) (i32.const 10))
   (call $print-symbol (global.get $g-space))
   (call $print-integer (i64.extend_i32_u (local.get $ptr)) (i32.const 16))
-  (call $print-symbol (global.get $g-gt))
-)
+  (call $print-symbol (global.get $g-gt)))
+
+(func $print-lambda (param $ptr i32)
+  (call $print-symbol (global.get $g-lt))
+  (call $print-symbol (global.get $lambda-sym))
+  (call $print-symbol (global.get $g-space))
+  (call $print-integer (i64.extend_i32_u (local.get $ptr)) (i32.const 16))
+  (call $print-symbol (global.get $g-space))
+  (call $print-integer (i64.extend_i32_u (%car-l $ptr)) (i32.const 16))
+  (call $print-symbol (global.get $g-space))
+  (call $print-integer (i64.extend_i32_u (%cdr-l $ptr)) (i32.const 16))
+  (call $print-symbol (global.get $g-gt)))
 
 (func $print-builtin (param $type i32) (param $ptr i32)
   (call $print-symbol (global.get $g-lt))

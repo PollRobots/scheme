@@ -68,7 +68,6 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
   };
 
   const onUp = () => {
-    console.log("up");
     if (state.hidx <= 0) {
       return;
     }

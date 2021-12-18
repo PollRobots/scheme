@@ -54,7 +54,7 @@ while the working set is non-empty:
 ;)
 
 
-(func $gc-run (param $env i32)
+(func $gc-run (param $gray-init i32)
   (local $ptr i32)
   (local $i i32)
   (local $curr i32)
@@ -62,8 +62,8 @@ while the working set is non-empty:
 
   ;; if (!g-gc-collecting?) {
   (if (i32.eqz (global.get $g-gc-collecting?))
-    ;; gc-init(env);
-    (then (call $gc-init (local.get $env)))
+    ;; gc-init(gray-init);
+    (then (call $gc-init (local.get $gray-init)))
   ;; }
   )
 
@@ -105,6 +105,13 @@ while the working set is non-empty:
     ;; curr = gc-gray-dequeue()
     (local.set $curr (call $gc-gray-dequeue))
     ;; assert(curr)
+    (if (i32.eqz (local.get $curr)) (then
+      (call $print-symbol (global.get $g-gc-run))
+      (call $print-integer 
+        (i64.extend_i32_s (i32.load offset=16 (local.get $ptr)))
+        (i32.const 10))
+        (i32.store offset=16 (local.get $ptr) (i32.const 0))
+        (br $forever)))
     (%assert (local.get $curr))
     ;; type = get-type(curr)
     (local.set $type (%get-type $curr))
@@ -112,63 +119,55 @@ while the working set is non-empty:
     (block $b_switch
       ;; switch (type) {
       ;; case cons-type:
-      (if (i32.eq (local.get $type) (%cons-type))
-        (then
+      (if (i32.eq (local.get $type) (%cons-type)) (then
           ;; gc-maybe-gray-enqueue(car(curr))
           (call $gc-maybe-gray-enqueue (%car-l $curr))
           ;; gc-maybe-gray-enqueue(cdr(curr))
           (call $gc-maybe-gray-enqueue (%cdr-l $curr))
           ;; break
-          (br $b_switch)
-        )
-      )
+          (br $b_switch)))
+
       ;; case lambda-type
-      (if (i32.eq (local.get $type) (%lambda-type))
-        (then
+      (if (i32.eq (local.get $type) (%lambda-type)) (then
           ;; gc-maybe-gray-enqueue(car(curr))
           (call $gc-maybe-gray-enqueue (%car-l $curr))
           ;; gc-maybe-gray-enqueue(cdr(curr))
           (call $gc-maybe-gray-enqueue (%cdr-l $curr))
           ;; break
-          (br $b_switch)
-        )
-      )
+          (br $b_switch)))
+
       ;; case env-type
-      (if (i32.eq (local.get $type) (%env-type))
-        (then
+      (if (i32.eq (local.get $type) (%env-type)) (then
           ;; gc-enqueue-env-items(env)
           (call $gc-enqueue-env-items (local.get $curr))
           ;; break
-          (br $b_switch)
-        )
-      )
+          (br $b_switch)))
+
       ;; case error-type
-      (if (i32.eq (local.get $type) (%error-type))
-        (then
+      (if (i32.eq (local.get $type) (%error-type)) (then
           ;; gc-maybe-gray-enqueue(car(curr))
           (call $gc-maybe-gray-enqueue (%car-l $curr))
           ;; gc-maybe-gray-enqueue(cdr(curr))
           (call $gc-maybe-gray-enqueue (%cdr-l $curr))
-          (br $b_switch)
-        )
-      )
+          (br $b_switch)))
+
       ;; case values-type
-      (if (i32.eq (local.get $type) (%values-type))
-        (then
+      (if (i32.eq (local.get $type) (%values-type)) (then
           ;; gc-maybe-gray-enqueue(car(curr))
           (call $gc-maybe-gray-enqueue (%car-l $curr))
           ;; gc-maybe-gray-enqueue(cdr(curr))
           (call $gc-maybe-gray-enqueue (%cdr-l $curr))
-          (br $b_switch)
-        )
-      )
+          (br $b_switch)))
+
       ;; case vector-type
-      (if (i32.eq (local.get $type) (%vector-type))
-        (then
+      (if (i32.eq (local.get $type) (%vector-type)) (then
           (call $gc-gray-vector (local.get $curr))
-          (br $b_switch)
-        )
-      )
+          (br $b_switch)))
+
+      (if (i32.eq (local.get $type) (%cont-type)) (then
+          (call $gc-gray-continuation (%car-l $curr))
+          (br $b_switch)))
+          
       ;; }
     )
 
@@ -199,6 +198,16 @@ while the working set is non-empty:
     (%plus-eq $ptr 4)
     (%dec $count)
     (br $forever)))
+
+(func $gc-gray-continuation (param $cont i32)
+  (loop $forever
+    ;; continuation env is gray
+    (call $gc-maybe-gray-enqueue (i32.load offset=4 (local.get $cont)))
+    ;; continuation args are gray
+    (call $gc-maybe-gray-enqueue (i32.load offset=8 (local.get $cont)))
+
+    ;; if there is a next continuation, process it also 
+    (br_if $forever (local.tee $cont (i32.load offset=12 (local.get $cont))))))
 
 (func $gc-finalize (param $heap i32)
   (local $size i32)
@@ -247,6 +256,15 @@ while the working set is non-empty:
             )
             ;; } else {
             ;; assert(gc-is-white(ptr))
+            (if (i32.eqz (call $gc-is-white (local.get $ptr))) (then
+              (call $print-symbol (global.get $g-newline))
+              (call $print-symbol (global.get $g-error))
+              (call $print-integer (i64.extend_i32_u (local.get $ptr)) (i32.const 10))
+              (call $print-symbol (global.get $g-space))
+              (call $print-integer (i64.extend_i32_u (local.get $ptr)) (i32.const 16))
+              ;; oops, this should be black or white, but is gray
+              ;; treat as black
+              (br $if_b_or_s_done)))
             (%assert (call $gc-is-white (local.get $ptr)))
             ;; if (type == %str-type) {
             ;; (call $print (global.get $g-collect))
@@ -408,6 +426,10 @@ while the working set is non-empty:
         (br_if $b_then (i32.eq (local.get $type) (%cons-type)))
         (br_if $b_then (i32.eq (local.get $type) (%lambda-type)))
         (br_if $b_then (i32.eq (local.get $type) (%env-type)))
+        (br_if $b_then (i32.eq (local.get $type) (%error-type)))
+        (br_if $b_then (i32.eq (local.get $type) (%values-type)))
+        (br_if $b_then (i32.eq (local.get $type) (%vector-type)))
+        (br_if $b_then (i32.eq (local.get $type) (%cont-type)))
         (br $b_else)
       )
       ;; mark-gray(item)
@@ -424,7 +446,7 @@ while the working set is non-empty:
   )
 )
 
-(func $gc-init (param $env i32)
+(func $gc-init (param $gray-init i32)
   (local $array i32)
 
   ;; array = malloc(0x408)
@@ -437,7 +459,8 @@ while the working set is non-empty:
   (i32.store offset=4 (local.get $array) (i32.const 1))
   ;; array.data[0] = env
   ;; array[8] = env
-  (i32.store offset=8 (local.get $array) (local.get $env))
+  (i32.store offset=8 (local.get $array) (local.get $gray-init))
+  (call $gc-mark-gray (local.get $gray-init) (%get-type $gray-init))
 
   ;; g-gc-state = malloc(16)
   (global.set $g-gc-state (call $malloc (i32.const 20)))
@@ -628,6 +651,13 @@ while the working set is non-empty:
       ;; ptr.tail-idx = idx
       ;; ptr[12] = idx
       (i32.store offset=12 (local.get $ptr) (local.get $idx))
+      ;; if (ptr.head-idx == -1)
+      (if (i32.eq (i32.load offset=4 (local.get $ptr)) (i32.const -1)) (then
+        ;; grey queue was completely empty, so need to set the head-idx to point
+        ;; here
+        (i32.store offset=4 
+          (local.get $ptr) 
+          (i32.sub (local.get $idx) (i32.const 1)))))
     )
     ;; } else {
     (else

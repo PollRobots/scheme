@@ -41,6 +41,10 @@ export class SchemeRuntime {
     return this.exports_;
   }
 
+  get replEnv(): number {
+    return this.env_;
+  }
+
   get stopped(): boolean {
     return this.instance_ === undefined;
   }

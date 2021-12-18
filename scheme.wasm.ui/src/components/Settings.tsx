@@ -1,8 +1,10 @@
 import React from "react";
+import { ToggleSwitch } from "./ToggleSwitch";
 
 interface SettingsBase {
   theme: string;
   editorTheme: string;
+  inspector: boolean;
 }
 
 interface SettingsProps extends SettingsBase {
@@ -74,6 +76,18 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
           <option value="Dark">Dark</option>
           <option value="Light">Light</option>
         </select>
+      </div>
+      <div style={kSettingsSubHeading}>Debug</div>
+      <div>
+        <span style={{ marginRight: "0.5em" }}>Show inspector</span>
+        <ToggleSwitch
+          on={props.inspector}
+          onChange={(on) => {
+            if (props.onChange) {
+              props.onChange({ ...props, inspector: on });
+            }
+          }}
+        />
       </div>
       <div
         style={{

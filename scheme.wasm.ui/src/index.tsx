@@ -2,7 +2,10 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { About } from "./components/About";
 import { Burger } from "./components/Burger";
+import { Flyout } from "./components/Flyout";
+import { HeapInspector } from "./components/HeapInspector";
 import { useOnClickOutside } from "./components/hooks";
+import { SchemeRuntimeProvider } from "./components/SchemeRuntimeProvider";
 import { Settings } from "./components/Settings";
 import { SettingsMenu } from "./components/SettingsMenu";
 import { Terminal } from "./components/Terminal";
@@ -21,6 +24,7 @@ interface AppState {
   stopped: boolean;
   about: boolean;
   first: boolean;
+  inspector: boolean;
 }
 
 const kDefaultState: AppState = {
@@ -30,6 +34,7 @@ const kDefaultState: AppState = {
   about: false,
   stopped: true,
   first: true,
+  inspector: true,
 };
 
 const kSettingsSubHeading: React.CSSProperties = {
@@ -103,41 +108,52 @@ const App: React.FunctionComponent<{}> = (props) => {
     <ThemeProvider
       value={state.theme == "Dark" ? kSolarizedDark : kSolarizedLight}
     >
-      <EditorThemeProvider value={getEditorTheme()}>
-        <div
-          style={{
-            display: "grid",
-            height: "95vh",
-            width: "90vw",
-            margin: "0 auto",
-            boxShadow: "#444 0 0.5em 1em",
-            overflowY: "scroll",
-          }}
-        >
-          <Terminal
-            prompt={state.first ? "start:" : state.stopped ? "stopped:" : "> "}
-            pause={state.stopped}
-            welcomeMessage="Welcome to scheme.wasm"
-            autofocus={!state.open}
-            onInput={(str) => onInput(str)}
-          />
-        </div>
-        <div ref={ref}>
-          <Burger
-            open={state.open}
-            onClick={() => setState({ ...state, open: !state.open })}
-          />
-          <SettingsMenu open={state.open}>
-            <Settings
-              theme={state.theme}
-              editorTheme={state.editorTheme}
-              onChange={(update) => setState({ ...state, ...update })}
-              onAbout={() => setState({ ...state, about: true, open: false })}
+      <SchemeRuntimeProvider value={runtime.current}>
+        <EditorThemeProvider value={getEditorTheme()}>
+          <div
+            style={{
+              display: "grid",
+              height: "95vh",
+              width: "90vw",
+              margin: "0 auto",
+              boxShadow: "#444 0 0.5em 1em",
+              overflowY: "scroll",
+            }}
+          >
+            <Terminal
+              prompt={
+                state.first ? "start:" : state.stopped ? "stopped:" : "> "
+              }
+              pause={state.stopped}
+              welcomeMessage="Welcome to scheme.wasm"
+              autofocus={!state.open && !state.inspector}
+              onInput={(str) => onInput(str)}
             />
-          </SettingsMenu>
-        </div>
-        {state.about ? <About /> : null}
-      </EditorThemeProvider>
+          </div>
+          {state.inspector ? (
+            <Flyout label="Inspector">
+              <HeapInspector />
+            </Flyout>
+          ) : null}
+
+          <div ref={ref}>
+            <Burger
+              open={state.open}
+              onClick={() => setState({ ...state, open: !state.open })}
+            />
+            <SettingsMenu open={state.open}>
+              <Settings
+                theme={state.theme}
+                editorTheme={state.editorTheme}
+                inspector={state.inspector}
+                onChange={(update) => setState({ ...state, ...update })}
+                onAbout={() => setState({ ...state, about: true, open: false })}
+              />
+            </SettingsMenu>
+          </div>
+          {state.about ? <About /> : null}
+        </EditorThemeProvider>
+      </SchemeRuntimeProvider>
     </ThemeProvider>
   );
 };

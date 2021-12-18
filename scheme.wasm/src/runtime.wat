@@ -41,6 +41,9 @@
 (global $g-exp        (mut i32) (i32.const 0))
 (global $g-neg        (mut i32) (i32.const 0))
 
+(global $g-eval-count (mut i32) (i32.const 0))
+(%define %gc-threshold () (i32.const 256))
+
 (func $runtime-init
   (global.set $g-reader (call $reader-init))
   (global.set $g-heap (call $heap-create (i32.const 1024)))
@@ -894,6 +897,7 @@
 (func $eval (param $env i32) (param $args i32) (result i32)
   (local $result i32)
   (local $fn i32)
+  (local $gray i32)
 
   (local $cont-stack i32)
   (local $prev-cont i32)
@@ -910,6 +914,23 @@
   (loop $forever
     (if (i32.eqz (local.get $fn))
       (then
+        ;; check if a gc has been indicated
+        (if (i32.ge_u (global.get $g-eval-count) (%gc-threshold))
+          (then
+            ;; gray set must include cont stack, args, and env. If there is already
+            ;; a collection, simply allocating these will add them to the gray set
+            ;; otherwise they are passed into the call to gc-run (and thence to 
+            ;; gc-init)
+            (local.set $gray (%alloc-cons 
+                (local.get $env) 
+                (%alloc-cons 
+                  (local.get $args)
+                  (%alloc-cont (local.get $cont-stack)))))
+
+            ;; (call $print-symbol (global.get $g-gc-run))
+            (call $gc-run (local.get $gray))
+            (global.set $g-eval-count (i32.const 0))))
+
         ;; this is a call to eval. So pass to eval inner
         (local.set $result (call $eval-inner (local.get $env) (local.get $args))))
       (else 
@@ -965,8 +986,6 @@
 
   (unreachable))
 
-(global $g-eval-count (mut i32) (i32.const 0))
-(%define %gc-threshold () (i32.const 256))
 
 (func $eval-inner (param $env i32) (param $args i32) (result i32)
   (local $type i32)
@@ -987,10 +1006,6 @@
   (if (i32.eq (local.get $type) (%cons-type))
     (then
       (%ginc $g-eval-count)
-      (if (i32.ge_u (global.get $g-eval-count) (%gc-threshold))
-        (then
-          ;; (call $print-symbol (global.get $g-gc-run))
-          (global.set $g-eval-count (i32.const 0))))
 
       (if (global.get $g-dump-eval)
         (then
@@ -1017,36 +1032,6 @@
   ;; default:
   ;; return args
   (return (local.get $args)))
-
-(func $eval-list (param $env i32) (param $args i32) (result i32)
-  (local $type i32)
-  ;; type =*args & 0xF 
-  (local.set $type (%get-type $args))
-  ;; if (type == %nil-type) {
-  (if (i32.eq (local.get $type) (%nil-type))
-    (then
-    ;; return args
-      (return (local.get $args))
-    )
-  ;; }
-  )
-  ;; if (type != %cons-type) {
-  (if (i32.ne (local.get $type) (%cons-type)) 
-    ;; trap
-    (then unreachable)
-  ;; }
-  )
-
-  ;; return heap-alloc(g-heap, %cons-type, eval(env, args[4]), eval-list(env, args[8])) 
-  (return
-    (call $heap-alloc
-      (global.get $g-heap)
-      (%cons-type)
-      (call $eval (local.get $env) (%car-l $args))
-      (call $eval-list (local.get $env) (%cdr-l $args))
-    )
-  )
-)
 
 (func $cont-apply (param $env i32) (param $args i32) (result i32)
   (local $op i32)

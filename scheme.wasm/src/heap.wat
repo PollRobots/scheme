@@ -101,14 +101,14 @@
   ;; *heap-ptr = heap-size
   (i32.store (local.get $heap-ptr) (local.get $size))
   ;; heap-ptr[8] = 0
-  (i32.store (i32.add (local.get $heap-ptr) (i32.const 8)) (i32.const 0))
+  (i32.store offset=8 (local.get $heap-ptr) (i32.const 0))
 
   ;; set all entries to empty
   ;; entry-ptr = heap-ptr + 12
   (local.set $entry-ptr (i32.add (local.get $heap-ptr) (i32.const 12)))
   ;; set free ptr to first empty entry
   ;; heap-ptr[4] = entry-ptr
-  (i32.store (i32.add (local.get $heap-ptr) (i32.const 4)) (local.get $entry-ptr))
+  (i32.store offset=4 (local.get $heap-ptr) (local.get $entry-ptr))
 
   ;; next = entry-ptr + 12
   (local.set $next (i32.add (local.get $entry-ptr) (i32.const 12)))
@@ -123,13 +123,13 @@
       (then
         ;; last slot has an next-ptr of 0
         ;; *(entry-ptr + 4) = 0
-        (i32.store (i32.add (local.get $entry-ptr) (i32.const 4)) (i32.const 0))
+        (i32.store offset=4 (local.get $entry-ptr) (i32.const 0))
         ;; return heap-ptr
         (return (local.get $heap-ptr))
       )
       (else
         ;; *(entry-ptr + 4) = next
-        (i32.store (i32.add (local.get $entry-ptr) (i32.const 4)) (local.get $next))
+        (i32.store offset=4 (local.get $entry-ptr) (local.get $next))
       )
     )
 
@@ -378,7 +378,7 @@
     )
     ;; heap[4] = ptr ;; set free ptr to be this ptr
     (i32.store
-      (i32.add (local.get $ptr) (i32.const 4))
+      (i32.add (local.get $heap) (i32.const 4))
       (local.get $ptr)
     )
   

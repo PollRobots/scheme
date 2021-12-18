@@ -42,6 +42,9 @@
           (global.get $lambda-sym)
           (%alloc-cons (local.get $formals) (local.get $temp))))))
 
+  (if (call $environment-has (local.get $env) (local.get $var)) (then
+      (return (call $argument-error (local.get $args)))))
+
   (return (%alloc-cont (call $cont-alloc
         (i32.const 0) ;; eval
         (local.get $env)
