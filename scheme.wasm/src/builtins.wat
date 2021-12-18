@@ -167,8 +167,9 @@
 (%define %builtin-exp()                       (i32.const 166))
 (%define %builtin-sin()                       (i32.const 167))
 (%define %builtin-cos()                       (i32.const 168))
+(%define %builtin-display()                   (i32.const 169))
 
-(table $table-builtin 169 anyfunc)
+(table $table-builtin 170 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -326,6 +327,7 @@
   (%add-builtin (%sym-32 0x707865 3) (%builtin-exp)) ;; 'exp'
   (%add-builtin (%sym-32 0x6e6973 3) (%builtin-sin)) ;; 'sin'
   (%add-builtin (%sym-32 0x736F63 3) (%builtin-cos)) ;; 'cos'
+  (%add-builtin (%sym-64 0x79616c70736964 7) (%builtin-display)) ;; 'display'
 
   (global.set $lambda-sym (%sym-64 0x6164626d616c 6)) ;; 'lambda'
   (global.set $quote-sym (%sym-64 0x65746f7571 5)) ;; 'quote'
@@ -520,3 +522,4 @@
 (elem $table-builtin (%builtin-exp) $exp)
 (elem $table-builtin (%builtin-sin) $sin)
 (elem $table-builtin (%builtin-cos) $cos)
+(elem $table-builtin (%builtin-display) $display)

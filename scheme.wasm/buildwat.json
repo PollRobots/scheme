@@ -9,6 +9,7 @@
     "src/conditionals.wat",
     "src/continuations.wat",
     "src/define.wat",
+    "src/display.wat",
     "src/environment.wat",
     "src/gc.wat",
     "src/hashtable.wat",

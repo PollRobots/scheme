@@ -23,6 +23,7 @@
 (global $g-eof        (mut i32) (i32.const 0))
 (global $g-quote      (mut i32) (i32.const 0))
 (global $g-args       (mut i32) (i32.const 0))
+(global $g-not-impl   (mut i32) (i32.const 0))
 (global $g-vec-open   (mut i32) (i32.const 0))
 (global $g-u8vec      (mut i32) (i32.const 0))
 (global $g-u8-open    (mut i32) (i32.const 0))
@@ -70,6 +71,7 @@
   (global.set $g-eof (%sym-32 0x666f65 3))        ;; eof
   (global.set $g-quote (%sym-32 0x22 1))          ;; "
   (global.set $g-args (%sym-32 0x73677261 4))     ;; args
+  (global.set $g-not-impl (%sym-64 0x6c706d692D746f6e 8))     ;; not-impl
   (global.set $g-vec-open (%sym-32 0x2823 2))     ;; #(
   (global.set $g-u8vec (%sym-64 0x6365763875 5))  ;; u8vec
   (global.set $g-u8-open (%sym-32 0x28387523 4))  ;; #u8(
@@ -947,8 +949,7 @@
     ;; free the old continuation
     (call $cont-free (local.get $prev-cont))
 
-    (if (i32.eq (%get-type $result) (%cont-type))
-      (then 
+    (if (i32.eq (%get-type $result) (%cont-type)) (then 
         ;; result is a continuation (or list of), place them on the top of the 
         ;; continuation stack
         (local.set $temp-cont (%car-l $result))
@@ -962,14 +963,13 @@
         (local.set $cont-stack (%car-l $result))
         (call $heap-free (global.get $g-heap) (local.get $result))
         (local.set $result (i32.const 0)))
-      (else
-        ;; not a continuation
-        (if (i32.eqz (local.get $cont-stack))
-          (then
-            ;; nothing on the cont stack, simply return this result
-            (return (local.get $result))
-          ))))
-
+    (else
+      ;; not a continuation
+      (if (i32.eqz (local.get $cont-stack))
+        (then
+          ;; nothing on the cont stack, simply return this result
+          (return (local.get $result))
+        ))))
     
     (local.set $fn (i32.load offset=0 (local.get $cont-stack)))
     (local.set $env (i32.load offset=4 (local.get $cont-stack)))
@@ -1300,9 +1300,11 @@
 
 (func $argument-error (param $args i32) (result i32)
   (return
-    (%alloc-error-cons (global.get $g-args) (local.get $args))
-  )
-)
+    (%alloc-error-cons (global.get $g-args) (local.get $args))))
+
+(func $not-implemented-error (param $args i32) (result i32)
+  (return
+    (%alloc-error-cons (global.get $g-not-impl) (local.get $args))))
 
 (global $g-dump-eval (mut i32) (i32.const 0))
 (global $g-dump-eval-indent (mut i32) (i32.const 0))
