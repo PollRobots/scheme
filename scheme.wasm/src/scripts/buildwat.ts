@@ -173,6 +173,12 @@ async function getLastInputEdit(files: string[]) {
   return latest;
 }
 
+function stripNonAscii(input: string): string {
+  return Array.from(input)
+    .map((el) => ((el.codePointAt(0) || 0) > 127 ? "_" : el))
+    .join("");
+}
+
 async function main() {
   const program = new Command();
   program
@@ -181,12 +187,18 @@ async function main() {
     .version("0.0.0.1")
     .requiredOption("-o, --output <wasm file>", "The output to generate")
     .option("-t, --tempfile <tempfile>", "Save the intermediate WAT file")
-    .option('-m, --macros', "Use macro expansion")
-    .option('-f, --force', "Build even if output is older than inputs")
+    .option("-m, --macros", "Use macro expansion")
+    .option("-f, --force", "Build even if output is older than inputs")
     .argument("<config>", "build configuration file");
 
   program.parse();
-  const opts = program.opts<{ output: string; tempfile?: string, macros?: boolean, force?: boolean }>();
+  const opts =
+    program.opts<{
+      output: string;
+      tempfile?: string;
+      macros?: boolean;
+      force?: boolean;
+    }>();
 
   const config = JSON.parse(await fs.readFile(program.args[0], "utf-8"));
   if (!isBuildWatConfig(config)) {
@@ -195,15 +207,16 @@ async function main() {
 
   if (!opts.force) {
     try {
-      const lastInputEdit = await getLastInputEdit([...config.files, program.args[0]]);
+      const lastInputEdit = await getLastInputEdit([
+        ...config.files,
+        program.args[0],
+      ]);
       const lastOutputEdit = await getLastInputEdit([opts.output]);
       if (lastOutputEdit > lastInputEdit) {
-        console.log(`${program.name()}: build skipped.`)
+        console.log(`${program.name()}: build skipped.`);
         return;
       }
-    } catch (err) {
-
-    }
+    } catch (err) {}
   }
 
   const wabtModule = await wabt();
@@ -218,7 +231,7 @@ async function main() {
       `  ;; ${el}`,
       "  ;;;;;;;;;;;;;;;;;;;;",
       "",
-      content
+      stripNonAscii(content)
     );
   }
 
@@ -228,10 +241,10 @@ async function main() {
   if (opts.macros) {
     try {
       const parsed = parse(joined);
-      const expanded = emit(parsed)
-      console.log('Expanded macros');
-      joined = expanded.join('');
-    } catch(e) {
+      const expanded = emit(parsed);
+      console.log("Expanded macros");
+      joined = expanded.join("");
+    } catch (e) {
       console.error("Error expanding macros");
       console.error(
         Reflect.has(e as object, "message")
