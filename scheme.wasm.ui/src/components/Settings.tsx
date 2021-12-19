@@ -1,4 +1,5 @@
 import React from "react";
+import { ThemeContext } from "./ThemeProvider";
 import { ToggleSwitch } from "./ToggleSwitch";
 
 interface SettingsBase {
@@ -19,6 +20,7 @@ const kSettingsSubHeading: React.CSSProperties = {
 };
 
 export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
+  const theme = React.useContext(ThemeContext);
   return (
     <div>
       <div
@@ -42,6 +44,8 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
             borderRadius: "0.25em",
             appearance: "none",
             padding: "0 0.25em",
+            background: theme.boldForeground,
+            color: theme.background,
           }}
           value={props.theme}
           onChange={(e) => {
@@ -65,6 +69,8 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
             borderRadius: "0.25em",
             appearance: "none",
             padding: "0 0.25em",
+            background: theme.boldForeground,
+            color: theme.background,
           }}
           value={props.editorTheme}
           onChange={(e) => {

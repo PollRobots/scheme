@@ -16,6 +16,11 @@ import {
 } from "./components/ThemeProvider";
 import { kSolarizedDark, kSolarizedLight } from "./monaco/solarized";
 import { SchemeRuntime } from "./SchemeRuntime";
+import fonts from "./styles/fonts.module.css";
+import css from "./styles/page.module.css";
+import { reference } from "./util";
+
+reference(fonts, css);
 
 interface AppState {
   theme: string;

@@ -1,5 +1,9 @@
 import React from "react";
 import { ThemeContext } from "./ThemeProvider";
+import { reference } from "../util";
+import animations from "../styles/animations.module.css";
+
+reference(animations);
 
 interface BurgerProps {
   open: boolean;

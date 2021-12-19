@@ -1,0 +1,74 @@
+@keyframes :global(shake) {
+  0% {
+    transform: rotate(0deg);
+  }
+  5% {
+    transform: rotate(5deg);
+  }
+  10% {
+    transform: rotate(-5deg);
+  }
+  15% {
+    transform: rotate(10deg);
+  }
+  20% {
+    transform: rotate(-10deg);
+  }
+  25% {
+    transform: rotate(15deg);
+  }
+  30% {
+    transform: rotate(-15deg);
+  }
+  35% {
+    transform: rotate(15deg);
+  }
+  40% {
+    transform: rotate(-15deg);
+  }
+  45% {
+    transform: rotate(15deg);
+  }
+  50% {
+    transform: rotate(-15deg);
+  }
+  55% {
+    transform: rotate(15deg);
+  }
+  60% {
+    transform: rotate(-12.5deg);
+  }
+  65% {
+    transform: rotate(12.5deg);
+  }
+  70% {
+    transform: rotate(-10deg);
+  }
+  75% {
+    transform: rotate(10deg);
+  }
+  80% {
+    transform: rotate(-7.5deg);
+  }
+  85% {
+    transform: rotate(7.5deg);
+  }
+  90% {
+    transform: rotate(-5deg);
+  }
+  95% {
+    transform: rotate(5deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes :global(zoom) {
+  0% {
+    transform: scale(1, 0.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

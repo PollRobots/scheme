@@ -45,7 +45,7 @@ module.exports = (env, argv) => {
         },
         {
           test: /\.css$/,
-          use: ["css-loader"],
+          use: ["style-loader", "css-loader"],
         },
       ],
     },
@@ -66,7 +66,7 @@ module.exports = (env, argv) => {
         patterns: [
           { from: "../scheme.wasm/dist/scheme.wasm", to: "wasm" },
           { from: "../scheme.wasm/dist/unicode/blocks.json.gz", to: "unicode" },
-          { from: "./about.html", to: 'static'},
+          { from: "./about.html", to: "static" },
         ],
       }),
     ],

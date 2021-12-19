@@ -70,7 +70,8 @@ export const ToggleSwitch: React.FunctionComponent<ToggleSwitchProps> = (
         htmlFor={id.current}
         style={{
           ...kToggleLabelStyle,
-          border: `1px solid  ${theme.background}`,
+          borderWidth: 1,
+          borderStyle: "solid",
           backgroundColor: props.on ? theme.blue : theme.foreground,
           borderColor: theme.base00,
         }}
