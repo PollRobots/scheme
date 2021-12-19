@@ -178,10 +178,21 @@
 (%define %builtin-error-object-irritants()    (i32.const 174))
 (%define %builtin-with-exception-handler()    (i32.const 175))
 (%define %cont-raise()                        (i32.const 176))
-(%define %builtin-raise-continuable()         (i32.const 176))
+(%define %builtin-raise-continuable()         (i32.const 177))
+(%define %builtin-bytevector?()               (i32.const 178))
+(%define %builtin-make-bytevector()           (i32.const 179))
+(%define %builtin-bytevector()                (i32.const 180))
+(%define %builtin-bytevector-length()         (i32.const 181))
+(%define %builtin-bytevector-u8-ref()         (i32.const 182))
+(%define %builtin-bytevector-u8-set!()        (i32.const 183))
+(%define %builtin-bytevector-copy()           (i32.const 184))
+(%define %builtin-bytevector-copy!()          (i32.const 185))
+(%define %builtin-bytevector-append()         (i32.const 186))
+(%define %builtin-utf8->string ()             (i32.const 187))
+(%define %builtin-string->utf8 ()             (i32.const 188))
 
 
-(table $table-builtin 177 anyfunc)
+(table $table-builtin 189 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -347,6 +358,17 @@
   (%add-builtin (%sym-192 0x626f2D726f727265 0x7272692D7463656a 0x73746e617469 22) (%builtin-error-object-irritants)) ;; 'error-object-irritants'
   (%add-builtin (%sym-192 0x6378652D68746977 0x682D6e6f69747065 0x72656c646e61 22) (%builtin-with-exception-handler)) ;; 'with-exception-handler'
   (%add-builtin (%sym-192 0x6f632D6573696172 0x6c6261756e69746e 0x65 17) (%builtin-raise-continuable)) ;; 'raise-continuable'
+  (%add-builtin (%sym-128 0x7463657665747962 0x3F726f 11) (%builtin-bytevector?)) ;; 'bytevector?'
+  (%add-builtin (%sym-128 0x7479622D656b616d 0x726f7463657665 15) (%builtin-make-bytevector)) ;; 'make-bytevector'
+  (%add-builtin (%sym-128 0x7463657665747962 0x726f 10) (%builtin-bytevector)) ;; 'bytevector'
+  (%add-builtin (%sym-192 0x7463657665747962 0x74676e656c2D726f 0x68 17) (%builtin-bytevector-length)) ;; 'bytevector-length'
+  (%add-builtin (%sym-192 0x7463657665747962 0x65722D38752D726f 0x66 17) (%builtin-bytevector-u8-ref)) ;; 'bytevector-u8-ref'
+  (%add-builtin (%sym-192 0x7463657665747962 0x65732D38752D726f 0x2174 18) (%builtin-bytevector-u8-set!)) ;; 'bytevector-u8-set!'
+  (%add-builtin (%sym-128 0x7463657665747962 0x79706f632D726f 15) (%builtin-bytevector-copy)) ;; 'bytevector-copy'
+  (%add-builtin (%sym-128 0x7463657665747962 0x2179706f632D726f 16) (%builtin-bytevector-copy!)) ;; 'bytevector-copy!'
+  (%add-builtin (%sym-192 0x7463657665747962 0x6e657070612D726f 0x64 17) (%builtin-bytevector-append)) ;; 'bytevector-append'
+  (%add-builtin (%sym-128 0x74733E2D38667475 0x676e6972 12) (%builtin-utf8->string)) ;; 'utf8->string'
+  (%add-builtin (%sym-128 0x3E2D676e69727473 0x38667475 12) (%builtin-string->utf8)) ;; 'string->utf8'
 
   (global.set $lambda-sym (%sym-64 0x6164626d616c 6)) ;; 'lambda'
   (global.set $quote-sym (%sym-64 0x65746f7571 5)) ;; 'quote'
@@ -550,3 +572,14 @@
 (elem $table-builtin (%builtin-error-object-irritants) $error-object-irritants)
 (elem $table-builtin (%builtin-with-exception-handler) $with-exception-handler)
 (elem $table-builtin (%builtin-raise-continuable) $raise-continuable)
+(elem $table-builtin (%builtin-bytevector?) $bytevector?)
+(elem $table-builtin (%builtin-make-bytevector) $make-bytevector)
+(elem $table-builtin (%builtin-bytevector) $bytevector)
+(elem $table-builtin (%builtin-bytevector-length) $bytevector-length)
+(elem $table-builtin (%builtin-bytevector-u8-ref) $bytevector-u8-ref)
+(elem $table-builtin (%builtin-bytevector-u8-set!) $bytevector-u8-set!)
+(elem $table-builtin (%builtin-bytevector-copy) $bytevector-copy)
+(elem $table-builtin (%builtin-bytevector-copy!) $bytevector-copy!)
+(elem $table-builtin (%builtin-bytevector-append) $bytevector-append)
+(elem $table-builtin (%builtin-utf8->string) $utf8->string)
+(elem $table-builtin (%builtin-string->utf8) $string->utf8)

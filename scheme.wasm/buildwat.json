@@ -26,6 +26,7 @@
     "src/start.wat",
     "src/xxh3.wat",
     "src/library/boolean.wat",
+    "src/library/bytevector.wat",
     "src/library/char.wat",
     "src/library/equiv.wat",
     "src/library/grisu.wat",
