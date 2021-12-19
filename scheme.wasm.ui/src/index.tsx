@@ -1,35 +1,34 @@
-import * as React from "react";
-import * as ReactDOM from "react-dom";
+import React from "react";
+import ReactDOM from "react-dom";
 import { About } from "./components/About";
 import { Burger } from "./components/Burger";
 import { Flyout } from "./components/Flyout";
 import { HeapInspector } from "./components/HeapInspector";
 import { useOnClickOutside } from "./components/hooks";
 import { SchemeRuntimeProvider } from "./components/SchemeRuntimeProvider";
-import { Settings } from "./components/Settings";
+import { Settings, SettingsBase } from "./components/Settings";
 import { SettingsMenu } from "./components/SettingsMenu";
 import { Terminal } from "./components/Terminal";
-import {
-  EditorThemeProvider,
-  ThemeContext,
-  ThemeProvider,
-} from "./components/ThemeProvider";
+import { EditorThemeProvider, ThemeProvider } from "./components/ThemeProvider";
 import { kSolarizedDark, kSolarizedLight } from "./monaco/solarized";
 import { SchemeRuntime } from "./SchemeRuntime";
+import { reference } from "./util";
+
 import fonts from "./styles/fonts.module.css";
 import css from "./styles/page.module.css";
-import { reference } from "./util";
 
 reference(fonts, css);
 
 interface AppState {
   theme: string;
   editorTheme: string;
+  fontSize: number;
   open: boolean;
   stopped: boolean;
   about: boolean;
   first: boolean;
   inspector: boolean;
+  persist: boolean;
 }
 
 const kDefaultState: AppState = {
@@ -39,7 +38,9 @@ const kDefaultState: AppState = {
   about: false,
   stopped: true,
   first: true,
-  inspector: true,
+  inspector: false,
+  persist: false,
+  fontSize: 12,
 };
 
 const kSettingsSubHeading: React.CSSProperties = {
@@ -47,30 +48,75 @@ const kSettingsSubHeading: React.CSSProperties = {
   lineHeight: "2em",
 };
 
+const kSettingsKey = "scheme.wasm.ui:settings";
+
+function storeSettings(settings: SettingsBase) {
+  const data: SettingsBase = {
+    theme: settings.theme,
+    editorTheme: settings.editorTheme,
+    fontSize: settings.fontSize,
+    inspector: settings.inspector,
+  };
+
+  localStorage.setItem(kSettingsKey, JSON.stringify(data));
+}
+
+function loadSettings(): Partial<SettingsBase> {
+  const value = localStorage.getItem(kSettingsKey);
+  const settings: Partial<SettingsBase> = {};
+  if (value) {
+    const data = JSON.parse(value);
+    if (data && typeof data === "object") {
+      if (
+        Reflect.has(data, "theme") &&
+        typeof data.theme === "string" &&
+        (data.theme === "Dark" || data.theme === "Light")
+      ) {
+        settings.theme = data.theme;
+      }
+      if (
+        Reflect.has(data, "editorTheme") &&
+        typeof data.editorTheme === "string" &&
+        (data.editorTheme === "Dark" ||
+          data.editorTheme === "Light" ||
+          data.editorTheme === "Same")
+      ) {
+        settings.editorTheme = data.editorTheme;
+      }
+      if (
+        Reflect.has(data, "fontSize") &&
+        typeof data.fontSize === "number" &&
+        data.fontSize >= 6 &&
+        data.fontSize <= 96
+      ) {
+        settings.fontSize = data.fontSize;
+      }
+      if (
+        Reflect.has(data, "inspector") &&
+        typeof data.inspector === "boolean"
+      ) {
+        settings.inspector = data.inspector;
+      }
+    }
+  }
+  return settings;
+}
+
+function clearSettings() {
+  localStorage.removeItem(kSettingsKey);
+}
+
 const App: React.FunctionComponent<{}> = (props) => {
-  const [state, setState] = React.useState<AppState>(kDefaultState);
+  const [state, setState] = React.useState<AppState>({
+    ...kDefaultState,
+    ...loadSettings(),
+  });
   const runtime = React.useRef<SchemeRuntime>();
   const ref = React.useRef<HTMLDivElement>(null);
 
   useOnClickOutside(ref, () =>
     setState({ ...state, open: false, about: false })
   );
-
-  React.useEffect(() => {
-    // SchemeRuntime.load()
-    //   .then((schemeRuntime) => {
-    //     console.log("Loaded");
-    //     runtime.current = schemeRuntime;
-    //     setState({ ...state, stopped: false });
-    //   })
-    //   .catch((err) => {
-    //     if (err instanceof Error) {
-    //       setState({ ...state, err: err });
-    //     } else {
-    //       console.error(err);
-    //     }
-    //   });
-  }, ["once"]);
 
   const onInput = async (str: string): Promise<string> => {
     try {
@@ -124,6 +170,7 @@ const App: React.FunctionComponent<{}> = (props) => {
               boxSizing: "border-box",
               boxShadow: "#444 0 0.5em 1em",
               overflowY: "scroll",
+              fontSize: `${state.fontSize}pt`,
             }}
           >
             <Terminal
@@ -133,6 +180,7 @@ const App: React.FunctionComponent<{}> = (props) => {
               pause={state.stopped}
               welcomeMessage="Welcome to scheme.wasm"
               autofocus={!state.open && !state.inspector}
+              fontSize={(4 * state.fontSize) / 3}
               onInput={(str) => onInput(str)}
             />
           </div>
@@ -152,7 +200,16 @@ const App: React.FunctionComponent<{}> = (props) => {
                 theme={state.theme}
                 editorTheme={state.editorTheme}
                 inspector={state.inspector}
-                onChange={(update) => setState({ ...state, ...update })}
+                fontSize={state.fontSize}
+                persist={state.persist}
+                onChange={(update) => {
+                  if (update.persist) {
+                    storeSettings(update);
+                  } else if (state.persist) {
+                    clearSettings();
+                  }
+                  setState({ ...state, ...update });
+                }}
                 onAbout={() => setState({ ...state, about: true, open: false })}
               />
             </SettingsMenu>

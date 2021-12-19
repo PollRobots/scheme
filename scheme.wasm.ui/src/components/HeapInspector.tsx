@@ -18,7 +18,8 @@ function buttonStyle(theme: Theme, disabled?: boolean): React.CSSProperties {
     alignSelf: "start",
     background: theme.blue,
     borderColor: theme.base00,
-    color: disabled ? theme.base00 : theme.boldBackground,
+    color: theme.boldForeground,
+    opacity: disabled ? 0.7 : 1,
     borderWidth: 1,
     borderStyle: "solid",
     borderRadius: "0.25em",
@@ -131,7 +132,7 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
           gridTemplateColumns: "1fr 1fr 1fr 1fr",
           maxHeight: "75vh",
           overflowY: "auto",
-          color: theme.background,
+          color: theme.foreground,
         }}
       >
         <div style={{ fontWeight: 500 }}>Memory</div>
@@ -157,8 +158,8 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
             alignSelf: "start",
             width: "4em",
             borderColor: theme.base00,
-            background: theme.boldForeground,
-            color: theme.background,
+            background: theme.background,
+            color: theme.foreground,
           }}
           type="text"
           pattern="[0-9a-zA-Z]+"
@@ -188,12 +189,12 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
           style={{
             margin: "0.25em",
             border: "1px solid",
-            background: theme.boldForeground,
+            background: theme.background,
             borderColor: theme.base00,
             maxHeight: "4em",
             lineHeight: "1em",
             overflowY: "auto",
-            color: theme.background,
+            color: theme.foreground,
           }}
         >
           {state.lookupRes}
@@ -206,7 +207,7 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
           rowGap: "0.25em",
           gridTemplateColumns: "auto 1fr 1fr 1fr 1fr auto",
           fontSize: "smaller",
-          color: theme.background,
+          color: theme.foreground,
         }}
       >
         <div

@@ -46,8 +46,8 @@ export const Flyout: React.FunctionComponent<FlyoutProps> = (props) => {
         <div
           style={{
             zIndex: 1,
-            background: state.expanded ? theme.foreground : theme.base00,
-            color: state.expanded ? theme.background : theme.foreground,
+            background: state.expanded ? theme.boldBackground : theme.base00,
+            color: state.expanded ? theme.foreground : theme.foreground,
             borderStyle: "solid",
             borderWidth: "1px 0 1px 1px",
             borderColor: theme.base00,
@@ -84,7 +84,8 @@ export const Flyout: React.FunctionComponent<FlyoutProps> = (props) => {
           style={{
             minWidth: "10em",
             minHeight: `calc(2em + ${labelHeight})`,
-            background: theme.foreground,
+            background: theme.boldBackground,
+            color: theme.foreground,
             borderStyle: "solid",
             borderWidth: "1px 0 1px 1px",
             borderColor: theme.base00,

@@ -33,6 +33,7 @@ const kBurgerLineStyle: React.CSSProperties = {
   height: "0.25rem",
   borderRadius: "0.125rem",
   position: "relative",
+  transition: "background 0.4s",
 };
 
 export const Burger: React.FunctionComponent<BurgerProps> = (props) => {
@@ -41,7 +42,7 @@ export const Burger: React.FunctionComponent<BurgerProps> = (props) => {
 
   const lineStyle = {
     ...kBurgerLineStyle,
-    background: props.open ? theme.background : theme.base02,
+    background: props.open ? theme.foreground : theme.boldBackground,
   };
   return (
     <div

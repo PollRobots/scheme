@@ -72,7 +72,7 @@ export const ToggleSwitch: React.FunctionComponent<ToggleSwitchProps> = (
           ...kToggleLabelStyle,
           borderWidth: 1,
           borderStyle: "solid",
-          backgroundColor: props.on ? theme.blue : theme.foreground,
+          backgroundColor: props.on ? theme.blue : theme.background,
           borderColor: theme.base00,
         }}
       >
@@ -84,7 +84,8 @@ export const ToggleSwitch: React.FunctionComponent<ToggleSwitchProps> = (
             top: 0,
             width: "1.5em",
             textAlign: "center",
-            color: theme.background,
+            color: theme.foreground,
+            lineHeight: "1em",
           }}
         >
           {props.on ? props.labelOn || "on" : props.labelOff || "off"}
@@ -92,7 +93,7 @@ export const ToggleSwitch: React.FunctionComponent<ToggleSwitchProps> = (
         <span
           style={{
             ...kToggleInnerStyle,
-            backgroundColor: props.on ? theme.foreground : theme.base00,
+            backgroundColor: props.on ? theme.background : theme.base00,
             left: props.on ? "1.7em" : "-0.2em",
           }}
         />

@@ -12,6 +12,7 @@ interface TerminalProps {
   prompt: string;
   pause: boolean;
   autofocus: boolean;
+  fontSize: number;
   onInput: (str: string) => Promise<string>;
 }
 
@@ -137,7 +138,15 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
         });
       },
     });
+    editor.updateOptions({ fontSize: props.fontSize });
   };
+
+  React.useEffect(() => {
+    if (editorRef.current) {
+      const editor = editorRef.current;
+      editor.updateOptions({ fontSize: props.fontSize });
+    }
+  }, [props.fontSize]);
 
   const onDoneEditing = () => {
     setState({
@@ -159,14 +168,13 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
         <div
           style={{
             display: "grid",
-            background: editorTheme.foreground,
+            background: editorTheme.boldBackground,
             padding: "0.25em",
             gridTemplateColumns: "1fr auto",
           }}
         >
           <span
             style={{
-              color: editorTheme.background,
               margin: "auto 1em",
             }}
           >
@@ -207,7 +215,6 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
           backgroundColor: theme.background,
           color: theme.foreground,
           fontFamily: "'Source Code Pro', monospace",
-          fontSize: "1rem",
           padding: "0.5em",
           minWidth: "40rem",
         }}

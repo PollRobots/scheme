@@ -13,8 +13,8 @@ export const SettingsMenu: React.FunctionComponent<SettingsMenuProps> = (
   return (
     <div
       style={{
-        background: theme.foreground,
-        color: theme.background,
+        background: theme.boldBackground,
+        color: theme.foreground,
         height: "100vh",
         textAlign: "left",
         padding: "2rem",

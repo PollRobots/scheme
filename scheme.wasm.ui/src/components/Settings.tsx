@@ -1,11 +1,14 @@
 import React from "react";
+import { Theme } from "../monaco/theme";
 import { ThemeContext } from "./ThemeProvider";
 import { ToggleSwitch } from "./ToggleSwitch";
 
-interface SettingsBase {
+export interface SettingsBase {
   theme: string;
   editorTheme: string;
   inspector: boolean;
+  fontSize: number;
+  persist?: boolean;
 }
 
 interface SettingsProps extends SettingsBase {
@@ -19,6 +22,24 @@ const kSettingsSubHeading: React.CSSProperties = {
   lineHeight: "2em",
 };
 
+const kFontSizes: number[] = [
+  6, 7, 8, 9, 10, 11, 12, 14, 18, 24, 30, 36, 48, 60, 72, 96,
+];
+
+function selectStyle(theme: Theme): React.CSSProperties {
+  return {
+    fontSize: "inherit",
+    fontFamily: "inherit",
+    width: "10em",
+    height: "1.5em",
+    borderRadius: "0.25em",
+    appearance: "none",
+    padding: "0 0.25em",
+    background: theme.background,
+    color: theme.foreground,
+  };
+}
+
 export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
   const theme = React.useContext(ThemeContext);
   return (
@@ -30,23 +51,13 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
           margin: "1rem 0",
         }}
       >
-        Settings
+        Appearance
       </div>
       <div style={kSettingsSubHeading}>Theme</div>
       <div style={{ lineHeight: "2em" }}>
         REPL Theme:{" "}
         <select
-          style={{
-            fontSize: "inherit",
-            fontFamily: "inherit",
-            width: "10em",
-            height: "1.5em",
-            borderRadius: "0.25em",
-            appearance: "none",
-            padding: "0 0.25em",
-            background: theme.boldForeground,
-            color: theme.background,
-          }}
+          style={selectStyle(theme)}
           value={props.theme}
           onChange={(e) => {
             if (props.onChange) {
@@ -61,17 +72,7 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
       <div style={{ lineHeight: "2em" }}>
         Editor Theme:{" "}
         <select
-          style={{
-            fontSize: "inherit",
-            fontFamily: "inherit",
-            width: "10em",
-            height: "1.5em",
-            borderRadius: "0.25em",
-            appearance: "none",
-            padding: "0 0.25em",
-            background: theme.boldForeground,
-            color: theme.background,
-          }}
+          style={selectStyle(theme)}
           value={props.editorTheme}
           onChange={(e) => {
             if (props.onChange) {
@@ -84,14 +85,43 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
           <option value="Light">Light</option>
         </select>
       </div>
+      <div style={{ lineHeight: "2em" }}>
+        Font Size:{" "}
+        <select
+          style={selectStyle(theme)}
+          value={props.fontSize}
+          onChange={(e) => {
+            if (props.onChange) {
+              props.onChange({ ...props, fontSize: Number(e.target.value) });
+            }
+          }}
+        >
+          {kFontSizes.map((el) => (
+            <option value={el} key={el}>
+              {el}pt
+            </option>
+          ))}
+        </select>
+      </div>
       <div style={kSettingsSubHeading}>Debug</div>
-      <div>
+      <div style={{ lineHeight: "2em" }}>
         <span style={{ marginRight: "0.5em" }}>Show inspector</span>
         <ToggleSwitch
           on={props.inspector}
           onChange={(on) => {
             if (props.onChange) {
               props.onChange({ ...props, inspector: on });
+            }
+          }}
+        />
+      </div>
+      <div style={{ lineHeight: "2em" }}>
+        <span style={{ marginRight: "0.5em" }}>Persist Settings</span>
+        <ToggleSwitch
+          on={!!props.persist}
+          onChange={(on) => {
+            if (props.onChange) {
+              props.onChange({ ...props, persist: on });
             }
           }}
         />
