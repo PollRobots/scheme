@@ -34,6 +34,7 @@
     "src/library/numerics.wat",
     "src/library/numerics-core.wat",
     "src/library/pair.wat",
+    "src/library/procedures.wat",
     "src/library/process.wat",
     "src/library/real.wat",
     "src/library/string.wat",

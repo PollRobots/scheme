@@ -79,16 +79,6 @@
 
   (return  (%cdr-l $obj)))
 
-(func $procedure? (param $obj i32) (result i32)
-  (local $type i32)
-  (local.set $type (%get-type $obj))
-
-  (if (i32.eq (local.get $type) (%special-type)) (then (return (i32.const 1))))
-  (if (i32.eq (local.get $type) (%builtin-type)) (then (return (i32.const 1))))
-  (if (i32.eq (local.get $type) (%lambda-type)) (then (return (i32.const 1))))
-
-  (return (i32.const 0)))
-
 ;; (with-exception-handler <handler> <thunk>)
 (func $with-exception-handler (param $env i32) (param $args i32) (result i32)
   (local $handler i32)
@@ -97,9 +87,9 @@
   (block $check (block $fail
       (br_if $fail (i32.ne (call $list-len (local.get $args)) (i32.const 2)))
       (local.set $handler (%car-l $args))
-      (br_if $fail (i32.eqz (call $procedure? (local.get $handler))))
+      (br_if $fail (i32.eqz (call $procedure?-impl (local.get $handler))))
       (local.set $thunk (%car (%cdr-l $args)))
-      (br_if $fail (i32.eqz (call $procedure? (local.get $thunk))))
+      (br_if $fail (i32.eqz (call $procedure?-impl (local.get $thunk))))
       (br $check))
 
     (return (call $argument-error (local.get $args))))

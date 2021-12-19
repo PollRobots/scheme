@@ -75,6 +75,7 @@
 
 (%define %set-car!-l (%cons %val) (i32.store offset=4 (local.get %cons) (local.get %val)))
 (%define %set-cdr!-l (%cons %val) (i32.store offset=8 (local.get %cons) (local.get %val)))
+(%define %set-cdr! (%cons %val) (i32.store offset=8 %cons %val))
 
 (%define %word-size-l (%val) (i32.shl (local.get %val) (i32.const 2)))
 (%define %word-size (%val) (i32.shl %val (i32.const 2)))
@@ -105,8 +106,8 @@
 (%define %alloc-cons (%car %cdr) (call $heap-alloc (global.get $g-heap) (%cons-type) %car %cdr))
 (%define %alloc-list-1 (%v1) (%alloc-cons %v1 (global.get $g-nil)))
 (%define %alloc-list-2 (%v1 %v2) (%alloc-cons %v1 (%alloc-list-1 %v2)))
-(%define %alloc-list-3 (%v1 %v2 %v3) (%alloc-cons %v1 (%alloc-list2 %v2 %v3)))
-(%define %alloc-list-4 (%v1 %v2 %v3 %v4) (%alloc-cons %v1 (%alloc-list3 %v2 %v3 %v4)))
+(%define %alloc-list-3 (%v1 %v2 %v3) (%alloc-cons %v1 (%alloc-list-2 %v2 %v3)))
+(%define %alloc-list-4 (%v1 %v2 %v3 %v4) (%alloc-cons %v1 (%alloc-list-3 %v2 %v3 %v4)))
 (%define %alloc-str (%str) (call $heap-alloc (global.get $g-heap) (%str-type) %str (i32.const 0)))
 (%define %alloc-symbol (%str) (call $heap-alloc (global.get $g-heap) (%symbol-type) %str (i32.const 0)))
 (%define %alloc-error-cons (%sym %args) (call $heap-alloc (global.get $g-heap) (%error-type) %sym %args))

@@ -137,6 +137,22 @@
 
   (return (i32.const 1)))
 
+(func $all-list? (param $args i32) (result i32)
+  (local $temp i32)
+
+  (block $done (loop $forever
+      (%chk-type $done $args %cons-type)
+
+      (%pop-l $temp $args)
+
+      (if (i32.eqz (call $is-list-impl (local.get $temp))) (then 
+          (return (i32.const 0))))
+
+      (local.set $args (%cdr-l $args))
+      (br $forever)))
+
+  (return (i32.const 1)))
+
 (func $list? (param $env i32) (param $args i32) (result i32)
   (local $type i32)
   (local $arg i32)
