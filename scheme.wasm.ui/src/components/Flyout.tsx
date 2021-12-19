@@ -15,7 +15,7 @@ const kDefaultState: FlyoutState = {
 
 const kFlyoutStyle: React.CSSProperties = {
   position: "absolute",
-  top: 0,
+  top: "1rem",
   right: 0,
 };
 
@@ -27,7 +27,12 @@ export const Flyout: React.FunctionComponent<FlyoutProps> = (props) => {
   const labelHeight = `${(1.5 * height) / 20}em`;
 
   return (
-    <div style={kFlyoutStyle}>
+    <div
+      style={{
+        ...kFlyoutStyle,
+        pointerEvents: state.expanded ? undefined : "none",
+      }}
+    >
       <div
         style={{
           display: "grid",
@@ -41,7 +46,8 @@ export const Flyout: React.FunctionComponent<FlyoutProps> = (props) => {
         <div
           style={{
             zIndex: 1,
-            background: theme.foreground,
+            background: state.expanded ? theme.foreground : theme.base00,
+            color: state.expanded ? theme.background : theme.foreground,
             borderStyle: "solid",
             borderWidth: "1px 0 1px 1px",
             borderColor: theme.base00,
@@ -49,6 +55,8 @@ export const Flyout: React.FunctionComponent<FlyoutProps> = (props) => {
             borderRadius: "0.25em 0 0 0.25em",
             cursor: "pointer",
             alignSelf: "start",
+            transition: "background 0.3s, color 0.5s",
+            pointerEvents: "all",
           }}
           onClick={() => setState({ ...state, expanded: !state.expanded })}
         >
@@ -65,7 +73,7 @@ export const Flyout: React.FunctionComponent<FlyoutProps> = (props) => {
                 transform={`rotate(90 5 ${height / 2})`}
                 x="5"
                 y={height / 2}
-                fill={theme.background}
+                fill="currentColor"
               >
                 {props.label || "flyout"}
               </text>

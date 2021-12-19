@@ -206,9 +206,10 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
         style={{
           backgroundColor: theme.background,
           color: theme.foreground,
-          fontFamily: "monospace",
+          fontFamily: "'Source Code Pro', monospace",
           fontSize: "1rem",
           padding: "0.5em",
+          minWidth: "40rem",
         }}
       >
         {props.welcomeMessage}

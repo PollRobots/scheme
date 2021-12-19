@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { Theme } from "../monaco/theme";
 import { SchemeRuntimeContext } from "./SchemeRuntimeProvider";
 import { ThemeContext } from "./ThemeProvider";
 import { ToggleSwitch } from "./ToggleSwitch";
@@ -9,6 +10,21 @@ interface HeapInspectorState {
   lookupRes: string;
   counter: number;
   showEmpty: boolean;
+}
+
+function buttonStyle(theme: Theme, disabled?: boolean): React.CSSProperties {
+  return {
+    margin: "0.25em",
+    alignSelf: "start",
+    background: theme.blue,
+    borderColor: theme.base00,
+    color: disabled ? theme.base00 : theme.boldBackground,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderRadius: "0.25em",
+    minWidth: "4em",
+    padding: "0.25em",
+  };
 }
 
 export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
@@ -118,7 +134,7 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
           color: theme.background,
         }}
       >
-        <div>Memory</div>
+        <div style={{ fontWeight: 500 }}>Memory</div>
         <div
           style={{ gridColumnStart: 2, gridColumnEnd: 5, justifySelf: "end" }}
         >
@@ -136,7 +152,14 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "auto auto 1fr" }}>
         <input
-          style={{ margin: "0.25em", alignSelf: "start", width: "4em" }}
+          style={{
+            margin: "0.25em",
+            alignSelf: "start",
+            width: "4em",
+            borderColor: theme.base00,
+            background: theme.boldForeground,
+            color: theme.background,
+          }}
           type="text"
           pattern="[0-9a-zA-Z]+"
           value={state.ptr}
@@ -146,7 +169,7 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
         />
         <button
           disabled={state.ptr === ""}
-          style={{ margin: "0.25em", alignSelf: "start" }}
+          style={buttonStyle(theme, state.ptr === "")}
           onClick={() => {
             let ptr = 0;
             if (state.ptr.match(/^[0-9]+$/)) {
@@ -164,10 +187,13 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
         <span
           style={{
             margin: "0.25em",
-            border: "1px inset",
+            border: "1px solid",
+            background: theme.boldForeground,
+            borderColor: theme.base00,
             maxHeight: "4em",
             lineHeight: "1em",
             overflowY: "auto",
+            color: theme.background,
           }}
         >
           {state.lookupRes}
@@ -178,18 +204,24 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
           display: "grid",
           columnGap: "0.25em",
           rowGap: "0.25em",
-          gridTemplateColumns: "auto 1fr 1fr 1fr auto",
+          gridTemplateColumns: "auto 1fr 1fr 1fr 1fr auto",
           fontSize: "smaller",
           color: theme.background,
         }}
       >
         <div
-          style={{ fontSize: "larger", gridColumnStart: 1, gridColumnEnd: 5 }}
+          style={{
+            fontSize: "larger",
+            gridColumnStart: 1,
+            gridColumnEnd: 6,
+            fontWeight: 500,
+            alignSelf: "end",
+          }}
         >
           GC stats
         </div>
         <button
-          style={{ margin: "0.25em", alignSelf: "start", justifySelf: "end" }}
+          style={{ ...buttonStyle(theme), justifySelf: "end" }}
           onClick={() => {
             const output: string[] = [];
             const listener = (str: string) => {
@@ -210,12 +242,24 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
 
         <div>{runtime.gGcIsCollecting ? "active" : "idle"} </div>
 
-        <div style={{ gridColumnStart: 2 }}>Collected</div>
-        <div style={{ gridColumnStart: 3 }}>Kept</div>
-        <div style={{ gridColumnStart: 4 }}>Total</div>
+        <div
+          style={{ gridColumnStart: 2, fontWeight: 500, justifySelf: "end" }}
+        >
+          Collected
+        </div>
+        <div
+          style={{ gridColumnStart: 3, fontWeight: 500, justifySelf: "end" }}
+        >
+          Kept
+        </div>
+        <div
+          style={{ gridColumnStart: 4, fontWeight: 500, justifySelf: "end" }}
+        >
+          Total
+        </div>
 
         <div style={{ gridColumnStart: 1 }}>Last Collection</div>
-        <div>
+        <div style={{ justifySelf: "end" }}>
           {runtime.gGcCollectedCount}{" "}
           <Percentage
             val={runtime.gGcCollectedCount}
@@ -223,19 +267,21 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
           />
         </div>
 
-        <div>
+        <div style={{ justifySelf: "end" }}>
           {runtime.gGcNotCollectedCount}{" "}
           <Percentage
             val={runtime.gGcNotCollectedCount}
             total={runtime.gGcCollectedCount + runtime.gGcNotCollectedCount}
           />
         </div>
-        <div>{runtime.gGcCollectedCount + runtime.gGcNotCollectedCount}</div>
+        <div style={{ justifySelf: "end" }}>
+          {runtime.gGcCollectedCount + runtime.gGcNotCollectedCount}
+        </div>
 
         <div style={{ gridColumnStart: 1 }}>
           {runtime.gGcCollectionCount} Collections
         </div>
-        <div>
+        <div style={{ justifySelf: "end" }}>
           {runtime.gGcTotalCollectedCount}{" "}
           <Percentage
             val={runtime.gGcTotalCollectedCount}
@@ -245,7 +291,7 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
           />
         </div>
 
-        <div>
+        <div style={{ justifySelf: "end" }}>
           {runtime.gGcTotalNotCollectedCount}{" "}
           <Percentage
             val={runtime.gGcTotalNotCollectedCount}
@@ -254,7 +300,7 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
             }
           />
         </div>
-        <div>
+        <div style={{ justifySelf: "end" }}>
           {runtime.gGcTotalCollectedCount + runtime.gGcTotalNotCollectedCount}
         </div>
       </div>

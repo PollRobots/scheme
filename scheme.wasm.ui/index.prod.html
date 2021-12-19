@@ -29,8 +29,48 @@
         return false;
       });
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+body {
+  font-family: Roboto, Arial, Helvetica, sans-serif; 
+  background: #93a1a1;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+.app {
+  overflow-x: hidden;
+  position: relative;
+}
+
+@keyframes shake {
+  0% {transform: rotate(0deg); }
+  5% {transform: rotate(5deg); }
+  10% {transform: rotate(-5deg); }
+  15% {transform: rotate(10deg); }
+  20% {transform: rotate(-10deg); }
+  25% {transform: rotate(15deg); }
+  30% {transform: rotate(-15deg); }
+  35% {transform: rotate(15deg); }
+  40% {transform: rotate(-15deg); }
+  45% {transform: rotate(15deg); }
+  50% {transform: rotate(-15deg); }
+  55% {transform: rotate(15deg); }
+  60% {transform: rotate(-12.5deg); }
+  65% {transform: rotate(12.5deg); }
+  70% {transform: rotate(-10deg); }
+  75% {transform: rotate(10deg); }
+  80% {transform: rotate(-7.5deg); }
+  85% {transform: rotate(7.5deg); }
+  90% {transform: rotate(-5deg); }
+  95% {transform: rotate(5deg); }
+  100% {transform: rotate(0deg); }
+}
+    </style>
   </head>
-  <body style="font-family: Roboto, Arial, Helvetica, sans-serif; background: #93a1a1" }>
+  <body>
     <div id="app"></div>
     <script
       crossorigin

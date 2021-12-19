@@ -13,6 +13,7 @@ interface SettingsProps extends SettingsBase {
 }
 
 const kSettingsSubHeading: React.CSSProperties = {
+  fontWeight: 500,
   fontSize: "1.25em",
   lineHeight: "2em",
 };
@@ -22,7 +23,7 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
     <div>
       <div
         style={{
-          fontWeight: "bolder",
+          fontWeight: 700,
           fontSize: "1.5em",
           margin: "1rem 0",
         }}

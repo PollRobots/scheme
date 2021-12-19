@@ -25,6 +25,8 @@ export const kSolarizedDark: Theme = {
   ...kSolarizedColors,
   background: kSolarizedColors.base02,
   foreground: kSolarizedColors.base2,
+  boldBackground: kSolarizedColors.base03,
+  boldForeground: kSolarizedColors.base3,
 };
 
 export const kSolarizedLight: Theme = {
@@ -32,6 +34,8 @@ export const kSolarizedLight: Theme = {
   ...kSolarizedColors,
   background: kSolarizedColors.base2,
   foreground: kSolarizedColors.base02,
+  boldBackground: kSolarizedColors.base3,
+  boldForeground: kSolarizedColors.base03,
 };
 
 export const kDarkThemeName = "r7rsSchemeThemeDark";

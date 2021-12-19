@@ -21,7 +21,6 @@ const kBurgerStyle: React.CSSProperties = {
   cursor: "pointer",
   padding: 0,
   zIndex: 10,
-  transition: "all 0.3s linear",
   transformOrigin: "0.75rem 0.75rem",
 };
 
@@ -34,6 +33,7 @@ const kBurgerLineStyle: React.CSSProperties = {
 
 export const Burger: React.FunctionComponent<BurgerProps> = (props) => {
   const theme = React.useContext(ThemeContext);
+  const ref = React.useRef<HTMLDivElement>(null);
 
   const lineStyle = {
     ...kBurgerLineStyle,
@@ -41,35 +41,22 @@ export const Burger: React.FunctionComponent<BurgerProps> = (props) => {
   };
   return (
     <div
-      style={{
-        ...kBurgerStyle,
-        transform: props.open ? "rotate(180deg)" : "rotate(0)",
+      ref={ref}
+      onAnimationEnd={(e) => {
+        if (ref.current) {
+          ref.current.style.animation = "";
+        }
       }}
+      style={kBurgerStyle}
       onClick={() => {
         if (props.onClick) {
           props.onClick();
+          if (ref.current) {
+            ref.current.style.animation = "0.4s shake 0s";
+          }
         }
       }}
     >
-      {/* <div
-        style={{
-          ...lineStyle,
-          transform: props.open ? "rotate(45deg)" : "rotate(0)",
-        }}
-      />
-      <div
-        style={{
-          ...lineStyle,
-          opacity: props.open ? 0 : 1,
-          transform: props.open ? "translateX(1em)" : "translateX(0)",
-        }}
-      />
-      <div
-        style={{
-          ...lineStyle,
-          transform: props.open ? "rotate(-45deg)" : "rotate(0)",
-        }}
-      /> */}
       <div style={lineStyle} />
       <div style={lineStyle} />
       <div style={lineStyle} />

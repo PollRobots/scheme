@@ -113,9 +113,10 @@ const App: React.FunctionComponent<{}> = (props) => {
           <div
             style={{
               display: "grid",
-              height: "95vh",
-              width: "90vw",
-              margin: "0 auto",
+              height: "calc(100vh - 5rem)",
+              width: "calc(95vw - 7rem)",
+              margin: "1rem auto 4rem",
+              boxSizing: "border-box",
               boxShadow: "#444 0 0.5em 1em",
               overflowY: "scroll",
             }}

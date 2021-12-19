@@ -21,4 +21,6 @@ export interface Theme extends BaseColors {
   name: string;
   foreground: string;
   background: string;
+  boldForeground: string;
+  boldBackground: string;
 }
