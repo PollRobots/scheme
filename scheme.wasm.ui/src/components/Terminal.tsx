@@ -6,6 +6,8 @@ import { editor, KeyMod, KeyCode } from "monaco-editor";
 import { kLanguageId, registerLanguage } from "../monaco/scheme";
 import { defineThemes } from "../monaco/solarized";
 import { EditorThemeContext, ThemeContext } from "./ThemeProvider";
+import { Copy, Cut, Paste, Save } from "../icons/copy";
+import { IconButton } from "./IconButton";
 
 interface TerminalProps {
   welcomeMessage?: React.ReactNode;
@@ -24,6 +26,7 @@ interface TerminalState {
   cached: string;
   editing: boolean;
   line: string;
+  canPaste: boolean;
 }
 
 const kDefaultState: TerminalState = {
@@ -34,6 +37,7 @@ const kDefaultState: TerminalState = {
   cached: "",
   editing: false,
   line: "",
+  canPaste: false,
 };
 
 export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
@@ -114,6 +118,15 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
     defineThemes(monaco);
   };
 
+  const clipboardChange = async () => {
+    try {
+      const content = await navigator.clipboard.readText();
+      setState({ ...state, canPaste: !!content && content.length > 0 });
+    } catch (err) {
+      setState({ ...state, canPaste: false });
+    }
+  };
+
   const onEditorMount = (editor: editor.IStandaloneCodeEditor) => {
     editorRef.current = editor;
     // editor.updateOptions({ minimap: { enabled: false } });
@@ -139,6 +152,7 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
       },
     });
     editor.updateOptions({ fontSize: props.fontSize });
+    editor.focus();
   };
 
   React.useEffect(() => {
@@ -147,6 +161,22 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
       editor.updateOptions({ fontSize: props.fontSize });
     }
   }, [props.fontSize]);
+
+  React.useEffect(() => {
+    if (state.editing) {
+      navigator.clipboard.addEventListener("clipboardchange", clipboardChange);
+      navigator.clipboard
+        .readText()
+        .then((content) =>
+          setState({ ...state, canPaste: !!content && content.length > 0 })
+        );
+    } else {
+      navigator.clipboard.removeEventListener(
+        "clipboardchange",
+        clipboardChange
+      );
+    }
+  }, [state.editing]);
 
   const onDoneEditing = () => {
     setState({
@@ -170,16 +200,105 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
             display: "grid",
             background: editorTheme.boldBackground,
             padding: "0.25em",
-            gridTemplateColumns: "1fr auto",
+            gridTemplateColumns: "auto auto 1fr auto",
           }}
         >
           <span
             style={{
               margin: "auto 1em",
+              fontWeight: 500,
             }}
           >
-            Edit current line
+            Editing current line
           </span>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "3fr 3fr 3fr 1fr 3fr",
+              columnGap: "0.25em",
+              alignSelf: "center",
+            }}
+          >
+            <IconButton
+              size={props.fontSize * 2}
+              title="Cut"
+              onClick={() => {
+                const editor = editorRef.current;
+                if (!editor) {
+                  return;
+                }
+                editor.focus();
+                const selection = editor.getSelection();
+                if (!selection || selection.isEmpty()) {
+                  navigator.clipboard.writeText("");
+                  return;
+                }
+                const data = editor.getModel()?.getValueInRange(selection);
+                navigator.clipboard.writeText(data || "");
+                editor.executeEdits("clipboard", [
+                  {
+                    range: selection,
+                    text: "",
+                    forceMoveMarkers: true,
+                  },
+                ]);
+              }}
+            >
+              <Cut />
+            </IconButton>
+            <IconButton
+              size={props.fontSize * 2}
+              title="Copy"
+              onClick={() => {
+                const editor = editorRef.current;
+                if (!editor) {
+                  return;
+                }
+                editor.focus();
+                const selection = editor.getSelection();
+                if (!selection || selection.isEmpty()) {
+                  navigator.clipboard.writeText("");
+                  return;
+                }
+                const data = editor.getModel()?.getValueInRange(selection);
+                navigator.clipboard.writeText(data || "");
+              }}
+            >
+              <Copy />
+            </IconButton>
+            <IconButton
+              size={props.fontSize * 2}
+              title="Paste"
+              disabled={!state.canPaste}
+              onClick={() => {
+                const editor = editorRef.current;
+                if (!editor) {
+                  return;
+                }
+                editor.focus();
+                navigator.clipboard.readText().then((v) => {
+                  const selection = editor.getSelection();
+                  if (!selection) {
+                    return;
+                  }
+                  editor.executeEdits("clipboard", [
+                    {
+                      range: selection,
+                      text: v,
+                      forceMoveMarkers: true,
+                    },
+                  ]);
+                });
+              }}
+            >
+              <Paste />
+            </IconButton>
+            <div />
+            <IconButton disabled size={props.fontSize * 2} title="Save">
+              <Save />
+            </IconButton>
+          </div>
+          <div />
           <button
             style={{
               minWidth: "6em",

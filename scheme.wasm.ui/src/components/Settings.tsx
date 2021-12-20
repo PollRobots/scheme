@@ -1,4 +1,5 @@
 import React from "react";
+import { Copy, Cut, Paste, Save } from "../icons/copy";
 import { Theme } from "../monaco/theme";
 import { ThemeContext } from "./ThemeProvider";
 import { ToggleSwitch } from "./ToggleSwitch";
@@ -139,6 +140,12 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
         }}
       >
         About
+      </div>
+      <div>
+        <Cut width={props.fontSize * 2} />
+        <Copy width={props.fontSize * 2} />
+        <Paste width={props.fontSize * 2} />
+        <Save width={props.fontSize * 2} />
       </div>
     </div>
   );
