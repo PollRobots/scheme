@@ -6,7 +6,7 @@ import { editor, KeyMod, KeyCode } from "monaco-editor";
 import { kLanguageId, registerLanguage } from "../monaco/scheme";
 import { defineThemes } from "../monaco/solarized";
 import { EditorThemeContext, ThemeContext } from "./ThemeProvider";
-import { Copy, Cut, Paste, Save } from "../icons/copy";
+import { Copy, Cut, Open, Paste, Save } from "../icons/copy";
 import { IconButton } from "./IconButton";
 
 interface TerminalProps {
@@ -214,7 +214,7 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "3fr 3fr 3fr 1fr 3fr",
+              gridTemplateColumns: "3fr 3fr 3fr 1fr 3fr 3fr",
               columnGap: "0.25em",
               alignSelf: "center",
             }}
@@ -294,7 +294,62 @@ export const Terminal: React.FunctionComponent<TerminalProps> = (props) => {
               <Paste />
             </IconButton>
             <div />
-            <IconButton disabled size={props.fontSize * 2} title="Save">
+            <IconButton
+              size={props.fontSize * 2}
+              title="Open"
+              onClick={() => {
+                const editor = editorRef.current;
+                if (!editor) {
+                  return;
+                }
+                const input = document.createElement("input");
+                input.type = "file";
+                input.multiple = false;
+                input.accept =
+                  ".scm,text/plain,text/x-script.scheme,text/x-scheme";
+                input.addEventListener("change", async () => {
+                  const files = input.files;
+                  if (!files || files.length == 0) {
+                    return;
+                  }
+                  const file = files.item(0);
+                  if (!file) {
+                    return;
+                  }
+                  const text = await file.text();
+                  editor.focus();
+                  const selection = editor.getSelection();
+                  if (!selection) {
+                    editor.setValue(text);
+                    return;
+                  } else {
+                    editor.executeEdits("file-open", [
+                      { range: selection, text: text, forceMoveMarkers: true },
+                    ]);
+                  }
+                });
+                input.click();
+              }}
+            >
+              <Open />
+            </IconButton>
+            <IconButton
+              size={props.fontSize * 2}
+              title="Save"
+              onClick={() => {
+                const editor = editorRef.current;
+                if (!editor) {
+                  return;
+                }
+
+                const content = editor.getValue();
+                const blob = new Blob([content], { type: "text/plain" });
+                const anchor = document.createElement("a");
+                anchor.href = window.URL.createObjectURL(blob);
+                anchor.download = "untitled.scm";
+                anchor.click();
+              }}
+            >
               <Save />
             </IconButton>
           </div>
