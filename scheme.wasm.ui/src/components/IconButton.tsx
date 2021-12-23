@@ -39,7 +39,11 @@ export const IconButton: React.FunctionComponent<IconButtonProps> = (props) => {
         boxShadow: isDown ? "#0004 0 2px 4px inset" : undefined,
       }}
       title={props.disabled ? undefined : props.title}
-      onClick={props.onClick}
+      onClick={() => {
+        if (!props.disabled && props.onClick) {
+          props.onClick();
+        }
+      }}
       onMouseDown={() => setState({ ...state, down: true })}
       onMouseUp={() => setState({ ...state, down: false })}
       onMouseEnter={() => setState({ ...state, in: true })}

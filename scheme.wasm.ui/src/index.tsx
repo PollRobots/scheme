@@ -56,6 +56,7 @@ function storeSettings(settings: SettingsBase) {
     editorTheme: settings.editorTheme,
     fontSize: settings.fontSize,
     inspector: settings.inspector,
+    persist: true,
   };
 
   localStorage.setItem(kSettingsKey, JSON.stringify(data));
@@ -63,7 +64,7 @@ function storeSettings(settings: SettingsBase) {
 
 function loadSettings(): Partial<SettingsBase> {
   const value = localStorage.getItem(kSettingsKey);
-  const settings: Partial<SettingsBase> = {};
+  const settings: Partial<SettingsBase> = { persist: false };
   if (value) {
     const data = JSON.parse(value);
     if (data && typeof data === "object") {
@@ -97,6 +98,7 @@ function loadSettings(): Partial<SettingsBase> {
       ) {
         settings.inspector = data.inspector;
       }
+      settings.persist = true;
     }
   }
   return settings;

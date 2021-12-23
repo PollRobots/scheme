@@ -7,7 +7,7 @@
    viewBox="0 0 64 64"
    version="1.1"
    id="svg5"
-   inkscape:version="1.1.1 (3bf5ae0d25, 2021-09-20)"
+   inkscape:version="1.1 (c4e8f9e, 2021-05-24)"
    sodipodi:docname="icons.svg"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
@@ -24,13 +24,13 @@
      inkscape:document-units="pt"
      showgrid="true"
      units="in"
-     inkscape:zoom="1.2404384"
-     inkscape:cx="43.936078"
-     inkscape:cy="197.91389"
-     inkscape:window-width="2560"
-     inkscape:window-height="1369"
-     inkscape:window-x="-8"
-     inkscape:window-y="-8"
+     inkscape:zoom="10.730898"
+     inkscape:cx="472.65383"
+     inkscape:cy="42.633898"
+     inkscape:window-width="2400"
+     inkscape:window-height="1520"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
      inkscape:window-maximized="1"
      inkscape:current-layer="layer1"
      inkscape:snap-grids="true"
@@ -45,7 +45,7 @@
        spacingx="1"
        spacingy="1"
        dotted="true"
-       visible="false"
+       visible="true"
        originx="0"
        originy="0" />
     <sodipodi:guide
@@ -242,6 +242,20 @@
            d="m 370.66602,10.666016 c -1.47734,0 -2.66602,1.869882 -2.66602,4.191406 v 6.285156 c 0,0.106181 0.005,0.210301 0.01,0.314453 -0.002,0.07138 -0.01,0.140838 -0.01,0.212891 v 45.974609 l 10.94531,-30.310547 c 1.83193,-5.073016 7.73492,-9.529296 13.23438,-9.529296 h 34.48633 V 21.669922 C 426.66602,18.528509 424.28865,16 421.33398,16 H 384 v -1.142578 c 0,-2.321524 -1.18868,-4.191406 -2.66602,-4.191406 z"
            transform="scale(0.75)" />
       </g>
+    </g>
+    <g
+       id="g13765">
+      <rect
+         id="rect71"
+         width="64"
+         height="64"
+         x="344"
+         y="0"
+         style="stroke-width:0.005625;fill:none;stroke:#ff2200;stroke-opacity:1;vector-effect:non-scaling-stroke;-inkscape-stroke:hairline;stroke-miterlimit:4;stroke-dasharray:none" />
+      <path
+         id="path1073"
+         style="vector-effect:non-scaling-stroke;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.005625;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;-inkscape-stroke:hairline"
+         d="M 371.99903,15.999512 356,32 371.99903,48.000488 V 36.976074 C 382.52612,36.888454 391.99999,36.893324 391.99999,44 l 3.99903,-0.06006 C 395.99885,28.826519 383.26757,27.19953 371.99903,27.023925 Z m 20.00096,32.000976 v 3.999024 h 3.99903 v -3.999024 z" />
     </g>
   </g>
 </svg>
