@@ -98,7 +98,7 @@ while the working set is non-empty:
     ;; if (i == 0) {
     (if (i32.eqz (local.get $i))
       ;; return
-      (then return)
+      (then (return))
       ;; }
     )
 
@@ -307,8 +307,7 @@ while the working set is non-empty:
     )
 
     (if (i32.eqz (local.get $next))
-      (then return)
-    )
+      (then (return)))
 
     (local.set $heap (local.get $next))
     (br $tail-call)
@@ -411,11 +410,11 @@ while the working set is non-empty:
   (local $type i32)
 
   ;; if (!is-white(item)) {
-  (if (i32.eqz (call $gc-is-white (local.get $item)))
+  (if (i32.eqz (call $gc-is-white (local.get $item))) (then
+    (if (call $gc-is-gray (local.get $item)) (then
+      (%assert (call $in-gray-queue? (local.get $item)))))
     ;; return
-    (then return)
-  ;; }
-  )
+    (return)))
 
   ;; type = get-type(item)
   (local.set $type (%get-type $item))
@@ -685,3 +684,53 @@ while the working set is non-empty:
     ;; }
   )
 )
+
+(func $in-gray-queue? (param $val i32) (result i32)
+  (local $ptr i32)
+  (local $array i32)
+  (local $idx i32)
+  (local $tail-array i32)
+  (local $tail-idx i32)
+  (local $array-count i32)
+
+  ;; ptr = g-gc-state
+  (local.set $ptr (global.get $g-gc-state))
+  ;; array = ptr.head-ptr
+  ;; tail-array = ptr[0]
+  (local.set $array (i32.load offset=0 (local.get $ptr)))
+  ;; idx = ptr.head-idx
+  ;; idx = ptr[4]
+  (local.set $idx (i32.load offset=4 (local.get $ptr)))
+  ;; array = ptr.head-ptr
+  ;; tail-array = ptr[0]
+  (local.set $tail-array (i32.load offset=8 (local.get $ptr)))
+  ;; idx = ptr.head-idx
+  ;; idx = ptr[4]
+  (local.set $tail-idx (i32.load offset=12 (local.get $ptr)))
+
+  (block $end (loop $start
+      (local.set $array-count (i32.load offset=4 (local.get $array)))
+
+      (block $inner_end (loop $inner_start
+          (br_if $inner_end (i32.eqz (local.get $array-count)))
+          (%assert (i32.le_u (local.get $idx) (i32.const 256)))
+
+          (if (i32.eq
+              (local.get $val) 
+              (i32.load offset=8 (i32.add 
+                  (local.get $array)
+                  (%word-size-l $idx)))) (then
+              (return (i32.const 1))))
+
+          (%dec $array-count)
+          (%inc $idx)
+          (br $inner_start)))
+
+
+      (local.set $array (i32.load (local.get $array)))
+      (br_if $end (i32.eqz (local.get $array)))
+      (local.set $idx (i32.const 0))
+
+      (br $start)))
+
+  (return (i32.const 0)))

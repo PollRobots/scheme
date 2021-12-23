@@ -910,11 +910,11 @@
   (local $handler i32)
 
   (local.set $cont-stack (call $cont-alloc
-    (i32.const 0)
+    (%eval-fn)
     (local.get $env)
     (local.get $args)
     (i32.const 0)))
-  (local.set $fn (i32.const 0))
+  (local.set $fn (%eval-fn))
 
   (loop $forever
     (block $b_eval_cont
@@ -1387,7 +1387,7 @@
     ;; if (get-type(formals) == nil-type) {
     (if (i32.eq (%get-type $formals) (%nil-type))
       ;; return g-nil
-      (then return)
+      (then (return))
     ;; }
     )
     ;; if (get-type(formals) == symbol-type) {
