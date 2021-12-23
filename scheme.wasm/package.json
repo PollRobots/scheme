@@ -4,17 +4,18 @@
   "description": "",
   "main": "./dist/src/index.js",
   "bin": {
-    "scheme.wasm": "./dist/src/index.js"
+    "scheme.wasm": "./dist/src/index.js",
+    "buildwat": "./dist/src/scripts/buildwat.js",
+    "unicodedata": "./dist/src/scripts/unicodedata.js"
   },
   "scripts": {
     "start-dev": "nodemon --watch src -e ts --exec \"npm run start\"",
     "start": "node .",
     "prestart": "npm run build",
-    "prebuild": "npm run unicode",
-    "build": "tsc -p . && npm run assemble",
-    "assemble": "ts-node src/scripts/buildwat.ts ./buildwat.json --macros --output dist/scheme.wasm --tempfile dist/scheme.wat",
-    "pretest": "ts-node src/scripts/buildwat.ts tests/buildwat.json --macros --output dist/test.wasm --tempfile dist/test.wat",
-    "unicode": "ts-node src/scripts/unicodedata.ts",
+    "build": "tsc --incremental -p . && npm run unicode && npm run assemble",
+    "assemble": "node dist/src/scripts/buildwat.js ./buildwat.json --macros --output dist/scheme.wasm --tempfile dist/scheme.wat",
+    "pretest": "tsc -p . && node src/scripts/buildwat.js tests/buildwat.json --macros --output dist/test.wasm --tempfile dist/test.wat",
+    "unicode": "node dist/src/scripts/unicodedata.js",
     "test": "node node_modules/mocha/bin/_mocha -r ts-node/register --no-timeouts tests/**/*.spec.ts"
   },
   "keywords": [],
