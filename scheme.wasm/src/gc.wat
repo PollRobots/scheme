@@ -403,7 +403,7 @@ while the working set is non-empty:
 )
 
 (func $gc-mark-white (param $item i32) (param $type i32)
-  (i32.store (local.get $item) (i32.and (local.get $type) (i32.const 0xF)))
+  (i32.store (local.get $item) (i32.and (local.get $type) (i32.const 0x01F)))
 )
 
 (func $gc-maybe-gray-enqueue (param $item i32)
