@@ -3,6 +3,7 @@ import { ThemeContext } from "./ThemeProvider";
 
 interface FlyoutProps {
   label?: string;
+  fontSize?: number;
 }
 
 interface FlyoutState {
@@ -31,6 +32,7 @@ export const Flyout: React.FunctionComponent<FlyoutProps> = (props) => {
       style={{
         ...kFlyoutStyle,
         pointerEvents: state.expanded ? undefined : "none",
+        fontSize: props.fontSize,
       }}
     >
       <div

@@ -187,8 +187,8 @@ const App: React.FunctionComponent<{}> = (props) => {
             />
           </div>
           {state.inspector ? (
-            <Flyout label="Inspector">
-              <HeapInspector />
+            <Flyout label="Inspector" fontSize={state.fontSize}>
+              <HeapInspector scale={state.fontSize / 12} />
             </Flyout>
           ) : null}
 

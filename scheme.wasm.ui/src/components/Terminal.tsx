@@ -439,6 +439,7 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
                       <div />
                       <button
                         style={{
+                          fontSize: "inherit",
                           minWidth: "6em",
                           minHeight: "2em",
                           margin: "0.25em",

@@ -43,7 +43,7 @@ function selectStyle(theme: Theme): React.CSSProperties {
 export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
   const theme = React.useContext(ThemeContext);
   return (
-    <div>
+    <div style={{ fontSize: `${props.fontSize}pt` }}>
       <div
         style={{
           fontWeight: 700,

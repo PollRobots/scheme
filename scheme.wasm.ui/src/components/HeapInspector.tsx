@@ -4,7 +4,9 @@ import { SchemeRuntimeContext } from "./SchemeRuntimeProvider";
 import { ThemeContext } from "./ThemeProvider";
 import { ToggleSwitch } from "./ToggleSwitch";
 
-interface HeapInspectorProps {}
+interface HeapInspectorProps {
+  scale?: number;
+}
 interface HeapInspectorState {
   ptr: string;
   lookupRes: string;
@@ -109,6 +111,7 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
           key={`cvs${ptr}`}
           ptr={ptr}
           size={size}
+          scale={props.scale || 1}
           width={512}
           onLookup={(ptr) => onLookup(ptr)}
         />
@@ -123,7 +126,12 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
   };
 
   return (
-    <div style={{ padding: "0.5em", maxWidth: 514 }}>
+    <div
+      style={{
+        padding: "0.5em",
+        maxWidth: 64 * Math.round(8 * (props.scale || 1) + 2),
+      }}
+    >
       <div
         style={{
           display: "grid",
@@ -342,6 +350,7 @@ const Percentage: React.FunctionComponent<{
 interface HeapViewProps {
   ptr: number;
   size: number;
+  scale: number;
   width: number;
   onLookup?: (ptr: number) => void;
 }
@@ -350,6 +359,8 @@ const HeapView: React.FunctionComponent<HeapViewProps> = (props) => {
   const runtime = React.useContext(SchemeRuntimeContext);
   const theme = React.useContext(ThemeContext);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
+
+  const cellSize = Math.round(8 * props.scale);
 
   useEffect(() => {
     if (!canvasRef.current || !runtime) {
@@ -443,11 +454,11 @@ const HeapView: React.FunctionComponent<HeapViewProps> = (props) => {
       }
       if (fill) {
         ctx.fillStyle = color;
-        ctx.fillRect(x * 8, y * 8, 7, 7);
+        ctx.fillRect(x * cellSize, y * cellSize, cellSize - 1, cellSize - 1);
       } else {
         ctx.strokeStyle = color;
         ctx.lineWidth = 1;
-        ctx.strokeRect(x * 8, y * 8, 6, 6);
+        ctx.strokeRect(x * cellSize, y * cellSize, cellSize - 2, cellSize - 2);
       }
     }
   });
@@ -459,7 +470,7 @@ const HeapView: React.FunctionComponent<HeapViewProps> = (props) => {
     const rect = canvasRef.current.getBoundingClientRect();
     const x = evt.clientX - rect.x;
     const y = evt.clientY - rect.y;
-    const index = (x >> 3) + (y >> 3) * 64;
+    const index = Math.floor(x / cellSize) + Math.floor(y / cellSize) * 64;
     const ptr = props.ptr + 12 + index * 12;
     if (props.onLookup) {
       props.onLookup(ptr);
@@ -478,8 +489,8 @@ const HeapView: React.FunctionComponent<HeapViewProps> = (props) => {
         borderColor: theme.base00,
       }}
       key={`cvs${props.ptr}`}
-      width="512"
-      height={8 * ((props.size + 63) >> 6)}
+      width={cellSize * 64}
+      height={cellSize * ((props.size + 63) >> 6)}
     />
   );
 };
