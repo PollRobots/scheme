@@ -24,7 +24,7 @@
 
     (local.set $alternate (global.get $g-nil)))
 
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%eval-fn) ;; eval
         (local.get $env)
         (local.get $test)
@@ -32,7 +32,7 @@
           (%cont-if)
           (local.get $env)
           (%cdr-l $args)
-          (i32.const 0))))))
+          (i32.const 0)))))
 
 ;; (cont-if test consequent [alternate])
 (func $cont-if (param $env i32) (param $args i32) (result i32)
@@ -48,11 +48,11 @@
         (then (%pop-l $expr $args))
         (else (return (global.get $g-nil))))))
 
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%eval-fn) ;; eval
         (local.get $env)
         (local.get $expr)
-        (i32.const 0)))))
+        (i32.const 0))))
 
 ;; (cond <clause_1> <clause_2> ...)
 ;;    clause::=
@@ -85,7 +85,7 @@
         (return (call $eval-body (local.get $env) (local.get $clause)))))
 
     (%push-l $clause $clauses)
-    (return (%alloc-cont (call $cont-alloc
+    (return (call $cont-alloc
           (%eval-fn)
           (local.get $env)
           (local.get $test)
@@ -93,7 +93,7 @@
             (%cont-cond)
             (local.get $env)
             (local.get $clauses)
-            (i32.const 0))))))
+            (i32.const 0)))))
 
   (return (call $argument-error (local.get $args))))
 
@@ -130,11 +130,11 @@
             (%alloc-quote (local.get $test-res))
             (global.get $g-nil))))
       ;; evaluate re-written clause
-      (return (%alloc-cont (call $cont-alloc
+      (return (call $cont-alloc
             (%eval-fn)
             (local.get $env)
             (local.get $clause)
-            (i32.const 0))))))
+            (i32.const 0)))))
 
   (return (call $eval-body (local.get $env) (local.get $clause))))
       
@@ -156,7 +156,7 @@
   (if (i32.eqz (call $list-len (local.get $args)))
     (then (return (call $argument-error (local.get $args)))))
 
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%eval-fn) ;; eval
         (local.get $env)
         (%car-l $args)
@@ -164,7 +164,7 @@
           (%cont-case)
           (local.get $env)
           (%cdr-l $args)
-          (i32.const 0))))))
+          (i32.const 0)))))
 
 ;; (cont-case <key> <clause_1> <clause_2> ...)
 (func $cont-case (param $env i32) (param $args i32) (result i32)
@@ -213,11 +213,11 @@
               (%push (%alloc-quote (local.get $key)) $fn)
               (%push (%car (%cdr-l $tail)) $fn)
 
-              (return (%alloc-cont (call $cont-alloc
+              (return (call $cont-alloc
                     (%eval-fn) ;; eval
                     (local.get $env)
                     (local.get $fn)
-                    (i32.const 0)))))
+                    (i32.const 0))))
 
             (else
               ;; this is an ordinary else
@@ -246,11 +246,11 @@
                   (%push (%alloc-quote (local.get $key)) $fn)
                   (%push (%car (%cdr-l $tail)) $fn)
 
-                  (return (%alloc-cont (call $cont-alloc
+                  (return (call $cont-alloc
                         (%eval-fn) ;; eval
                         (local.get $env) 
                         (local.get $fn) 
-                        (i32.const 0)))))
+                        (i32.const 0))))
                 (else
                   ;; this is a regular clause
                   (return (call $eval-body (local.get $env) (local.get $tail)))))))
@@ -271,7 +271,7 @@
 
   (%pop-l $head $args)
 
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%eval-fn) ;; eval
         (local.get $env)
         (local.get $head)
@@ -279,7 +279,7 @@
           (%cont-and)
           (local.get $env)
           (local.get $args)
-          (i32.const 0))))))
+          (i32.const 0)))))
 
 ;; (cont-and <test-res> <test> ...)
 (func $cont-and (param $env i32) (param $args i32) (result i32)
@@ -302,7 +302,7 @@
 
   (%pop-l $head $args)
 
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%eval-fn) ;; eval
         (local.get $env)
         (local.get $head)
@@ -310,7 +310,7 @@
           (%cont-or)
           (local.get $env)
           (local.get $args)
-          (i32.const 0))))))
+          (i32.const 0)))))
 
 ;; (cont-or <test-res> <test> ...)
 (func $cont-or (param $env i32) (param $args i32) (result i32)
@@ -334,7 +334,7 @@
 
   (%pop-l $test $args)
 
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%eval-fn)
         (local.get $env)
         (local.get $test)
@@ -342,7 +342,7 @@
           (%cont-when)
           (local.get $env)
           (local.get $args)
-          (i32.const 0))))))
+          (i32.const 0)))))
 
 ;; (cont-when test-res <expr> ...)
 (func $cont-when (param $env i32) (param $args i32) (result i32)
@@ -363,7 +363,7 @@
 
   (%pop-l $test $args)
 
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%eval-fn)
         (local.get $env)
         (local.get $test)
@@ -371,7 +371,7 @@
           (%cont-unless)
           (local.get $env)
           (local.get $args)
-          (i32.const 0))))))
+          (i32.const 0)))))
 
 ;; (cont-unless test-res <expr> ...)
 (func $cont-unless (param $env i32) (param $args i32) (result i32)

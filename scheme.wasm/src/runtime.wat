@@ -905,6 +905,7 @@
   (local $prev-cont i32)
   (local $temp-cont i32)
   (local $next-cont i32)
+  (local $curr-cont i32)
 
   (local $res-mode i32)
   (local $handler i32)
@@ -929,7 +930,7 @@
               (local.set $gray (%alloc-list-3 
                   (local.get $env) 
                   (local.get $args)
-                  (%alloc-cont (local.get $cont-stack))))
+                  (local.get $cont-stack)))
 
               ;; (call $print-symbol (global.get $g-gc-run))
               (call $gc-run (local.get $gray))
@@ -963,31 +964,26 @@
       (local.set $result))
 
     ;; done with this item, so pop it off the cont-stack
-    (local.set $prev-cont (local.get $cont-stack))
-    (local.set $cont-stack (i32.load offset=12 (local.get $prev-cont)))
-    ;; free the old continuation
-    (call $cont-free (local.get $prev-cont))
+    (local.set $cont-stack (%cdr-l $cont-stack))
 
-    (if (i32.eq (%get-type $result) (%cont-type))
-      (then 
-        (block $b_done
+    (block $b_done
+      (if (i32.eq (%get-type $result) (%cont-type)) (then 
+          ;; result is a continuation (or list of), place them on the top of the 
+          ;; continuation stack
+          (local.set $temp-cont (local.get $result))
+          (block $t_end
+            (loop $t_start
+              (local.set $next-cont (%cdr-l $temp-cont))
+              (br_if $t_end (i32.eqz (local.get $next-cont)))
+              (local.set $temp-cont (local.get $next-cont))
+              (br $t_start)))
+          (%set-cdr!-l $temp-cont $cont-stack)
+          (local.set $cont-stack (local.get $result))
+          (local.set $result (i32.const 0))
+          (br $b_done)))
+
+      (if (i32.eq (%get-type $result) (%except-type)) (then
           (local.set $res-mode (%cdr-l $result))
-
-          (if (i32.eqz (local.get $res-mode)) (then
-              ;; result is a continuation (or list of), place them on the top of the 
-              ;; continuation stack
-              (local.set $temp-cont (%car-l $result))
-              (block $t_end
-                (loop $t_start
-                  (local.set $next-cont (i32.load offset=12 (local.get $temp-cont)))
-                  (br_if $t_end (i32.eqz (local.get $next-cont)))
-                  (local.set $temp-cont (local.get $next-cont))
-                  (br $t_start)))
-              (i32.store offset=12 (local.get $temp-cont) (local.get $cont-stack))
-              (local.set $cont-stack (%car-l $result))
-              (call $heap-free (global.get $g-heap) (local.get $result))
-              (local.set $result (i32.const 0))
-              (br $b_done)))
 
           (if (i32.eq (local.get $res-mode) (i32.const 1)) (then
               ;; result is an raised exception
@@ -998,26 +994,23 @@
                       ;; no guard frame, return the exception as the result
                       (return (%car-l $result))))
 
+                  (local.set $curr-cont (%car-l $cont-stack))
+
                   ;; if this stack frame is a guard function, then stop here
                   (br_if $b_raise_end (i32.eq 
-                      (i32.load (local.get $cont-stack)) 
+                      (i32.load (local.get $curr-cont)) 
                       (%guard-fn)))
 
-                  (local.set $prev-cont (local.get $cont-stack))
-                  (local.set $cont-stack (i32.load offset=12 (local.get $prev-cont)))
+                  (local.set $cont-stack (%cdr-l $cont-stack))
                   ;; free the old continuation
-                  (call $cont-free (local.get $prev-cont))
 
                   (br $b_raise_start)))
 
               ;; extract the env and the handler from the top of the cont stack
-              (local.set $env (i32.load offset=4 (local.get $cont-stack)))
-              (local.set $handler (i32.load offset=8 (local.get $cont-stack)))
+              (local.set $env (i32.load offset=4 (local.get $curr-cont)))
+              (local.set $handler (i32.load offset=8 (local.get $curr-cont)))
               ;; remove the guard frame from the stack
-              (local.set $prev-cont (local.get $cont-stack))
-              (local.set $cont-stack (i32.load offset=12 (local.get $prev-cont)))
-              ;; free the old continuation
-              (call $cont-free (local.get $prev-cont))
+              (local.set $cont-stack (%cdr-l $cont-stack))
 
               (local.set $temp-cont (call $cont-alloc
                   ;; add an eval frame for the handler
@@ -1045,29 +1038,23 @@
               (block $b_raise_end (loop $b_raise_start
                   (br_if $b_raise_end (i32.eqz (local.get $temp-cont)))
 
+                  (local.set $curr-cont (%car-l $cont-stack))
+
                   ;; if this stack frame is a guard function, then stop here
                   (br_if $b_raise_end (i32.eq 
-                      (i32.load (local.get $temp-cont)) 
+                      (i32.load (local.get $curr-cont)) 
                       (%guard-fn)))
 
-                  (local.set $temp-cont (i32.load offset=12 (local.get $temp-cont)))
+                  (local.set $temp-cont (%cdr-l $temp-cont))
                   (br $b_raise_start)))
 
               (if (i32.eqz (local.get $temp-cont)) (then
-                  ;; no guard frame, free the cont stack and return the 
-                  ;; exception as the result
-                  (block $b_free_end (loop $b_free_start
-                      (br_if $b_free_end (i32.eqz (local.get $cont-stack)))
-                      (local.set $prev-cont (local.get $cont-stack))
-                      (local.set $cont-stack 
-                        (i32.load offset=12 (local.get $prev-cont)))
-                      (call $cont-free (local.get $prev-cont))
-                      (br $b_free_start)))
+                  ;; no guard frame, return the exception as the result
                   (return (%car-l $result))))
 
               ;; extract the env and the handler from the top of the cont stack
-              (local.set $env (i32.load offset=4 (local.get $temp-cont)))
-              (local.set $handler (i32.load offset=8 (local.get $temp-cont)))
+              (local.set $env (i32.load offset=4 (local.get $curr-cont)))
+              (local.set $handler (i32.load offset=8 (local.get $curr-cont)))
 
               (local.set $temp-cont (call $cont-alloc
                   ;; add an eval frame for the handler, the result from this
@@ -1084,24 +1071,26 @@
 
           ;; unexpected result mode
           (unreachable)))
-      (else
-        ;; not a continuation
-        (if (i32.eqz (local.get $cont-stack))
-          (then
-            ;; nothing on the cont stack, simply return this result
-            (return (local.get $result))
-          ))))
+
+        ;; not a continuation and not an exception
+      (if (i32.eqz (local.get $cont-stack))
+        (then
+          ;; nothing on the cont stack, simply return this result
+          (return (local.get $result))
+        )))
+
+    (local.set $curr-cont (%car-l $cont-stack))
     
-    (local.set $fn (i32.load offset=0 (local.get $cont-stack)))
-    (local.set $env (i32.load offset=4 (local.get $cont-stack)))
+    (local.set $fn (i32.load offset=0 (local.get $curr-cont)))
+    (local.set $env (i32.load offset=4 (local.get $curr-cont)))
     (if (local.get $result)
       (then
         ;; there is a useful result value pass it to the continuation
         (local.set $args (%alloc-cons
             (local.get $result)
-            (i32.load offset=8 (local.get $cont-stack)))))
+            (i32.load offset=8 (local.get $curr-cont)))))
       (else
-        (local.set $args (i32.load offset=8 (local.get $cont-stack)))))
+        (local.set $args (i32.load offset=8 (local.get $curr-cont)))))
 
     (br $forever))
 
@@ -1139,8 +1128,7 @@
       ;; return apply(env, eval(env, car(args)), cdr(args))
       ;; this is represented in continuation passing as...
       ;;  eval(env, car(args)) => cont-apply(env, args)
-      (return (%alloc-cont
-        (call $cont-alloc
+      (return (call $cont-alloc
           (%eval-fn) ;; eval
           (local.get $env)
           (%car-l $args)
@@ -1148,7 +1136,7 @@
             (%cont-apply)
             (local.get $env)
             (%cdr-l $args)
-            (i32.const 0)))))))
+            (i32.const 0))))))
 
   ;; default:
   ;; return args
@@ -1183,41 +1171,35 @@
   ;; op-type = *op & 0xF
   (local.set $op-type (%get-type $op))
 
-  (if (i32.eq (local.get $op-type) (%special-type))
-    (then
+  (if (i32.eq (local.get $op-type) (%special-type)) (then
       (local.get $env)
       (local.get $args)
       (i32.load offset=4 (local.get $op))
       call_indirect $table-builtin (type $builtin-type)
       (return)))
 
-  (if (i32.eq (%get-type $args) (%nil-type))
-    (then
-      (return 
-        (%alloc-cont
-          (call $cont-alloc
-            (%cont-apply-form)
-            (local.get $env)
-            (%alloc-cons 
-              (global.get $g-nil) 
-              (%alloc-cons (local.get $op) (global.get $g-nil)))
-            (i32.const 0))))))
-
-  (return
-    (%alloc-cont
-      (call $cont-alloc
-        (%eval-fn)
-        (local.get $env)
-        (%car-l $args)
-        (call $cont-alloc
-          (%cont-expr-list)
+  (if (i32.eq (%get-type $args) (%nil-type)) (then
+      (return (call $cont-alloc
+          (%cont-apply-form)
           (local.get $env)
-          (%alloc-cons (global.get $g-nil) (%cdr-l $args))
-          (call $cont-alloc
-            (%cont-apply-form)
-            (local.get $env)
-            (%alloc-cons (local.get $op) (global.get $g-nil))
-            (i32.const 0)))))))
+          (%alloc-cons 
+            (global.get $g-nil) 
+            (%alloc-cons (local.get $op) (global.get $g-nil)))
+          (i32.const 0)))))
+
+  (return (call $cont-alloc
+      (%eval-fn)
+      (local.get $env)
+      (%car-l $args)
+      (call $cont-alloc
+        (%cont-expr-list)
+        (local.get $env)
+        (%alloc-cons (global.get $g-nil) (%cdr-l $args))
+        (call $cont-alloc
+          (%cont-apply-form)
+          (local.get $env)
+          (%alloc-cons (local.get $op) (global.get $g-nil))
+          (i32.const 0))))))
 
 (func $cont-apply-form (param $env i32) (param $args i32) (result i32)
   (local $temp i32)
@@ -1262,16 +1244,15 @@
   (if (i32.eq (%get-type $args) (%nil-type))
     (return (local.get $stack)))
 
-  (return (%alloc-cont
+  (return (call $cont-alloc
+      (%eval-fn) ;; eval
+      (local.get $env)
+      (%car-l $args)
       (call $cont-alloc
-        (%eval-fn) ;; eval
+        (%cont-expr-list)
         (local.get $env)
-        (%car-l $args)
-        (call $cont-alloc
-          (%cont-expr-list)
-          (local.get $env)
-          (%alloc-cons (local.get $stack) (%cdr-l $args))
-          (i32.const 0))))))
+        (%alloc-cons (local.get $stack) (%cdr-l $args))
+        (i32.const 0)))))
 
 (func $apply-internal (param $env i32) (param $op i32) (param $args i32) (result i32)
   (local $op-type i32)
@@ -1336,27 +1317,26 @@
   (local $body-len i32)
   (local.set $body-len (call $list-len (local.get $args)))
 
-  (if (i32.eqz (local.get $body-len))
-    (then (return (global.get $g-nil))))
-  (if (i32.eq (local.get $body-len) (i32.const 1))
-    (then 
-      ;; single body element, simply return its evaluation
-      (return (%alloc-cont (call $cont-alloc 
-            (%eval-fn) 
-            (local.get $env) 
-            (%car-l $args) 
-            (i32.const 0))))))
+  (if (i32.eqz (local.get $body-len)) (then 
+      (return (global.get $g-nil))))
 
-  (return (%alloc-cont
+  (if (i32.eq (local.get $body-len) (i32.const 1)) (then 
+      ;; single body element, simply return its evaluation
+      (return (call $cont-alloc 
+          (%eval-fn) 
+          (local.get $env) 
+          (%car-l $args) 
+          (i32.const 0)))))
+
+  (return (call $cont-alloc
+      (%eval-fn) ;; eval
+      (local.get $env)
+      (%car-l $args)
       (call $cont-alloc
-        (%eval-fn) ;; eval
+        (%cont-body-list)
         (local.get $env)
-        (%car-l $args)
-        (call $cont-alloc
-          (%cont-body-list)
-          (local.get $env)
-          (%cdr-l $args)
-          (i32.const 0))))))
+        (%cdr-l $args)
+        (i32.const 0)))))
 
 ;; (cont-body-list val args ...)
 (func $cont-body-list (param $env i32) (param $args i32) (result i32)
@@ -1370,16 +1350,15 @@
     ;; return the last thing that was evaluated.
     (then (return (local.get $val))))
 
-  (return (%alloc-cont
+  (return (call $cont-alloc
+      (%eval-fn) ;; eval
+      (local.get $env)
+      (%car-l $args)
       (call $cont-alloc
-        (%eval-fn) ;; eval
+        (%cont-body-list)
         (local.get $env)
-        (%car-l $args)
-        (call $cont-alloc
-          (%cont-body-list)
-          (local.get $env)
-          (%cdr-l $args)
-          (i32.const 0))))))
+        (%cdr-l $args)
+        (i32.const 0)))))
 
 (func $zip-lambda-args (param $env i32) (param $formals i32) (param $args i32)
   (loop $forever

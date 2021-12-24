@@ -55,7 +55,7 @@
     ;; there are no bindings, so simply eval body in child environment
     (then (return (call $eval-body (local.get $child-env) (local.get $body)))))
 
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%eval-fn) ;; eval
         (local.get $env)
         (%car-l $inits)
@@ -67,7 +67,7 @@
             (%cont-let) ;; finish the let
             (local.get $child-env)
             (%alloc-cons (local.get $vars) (local.get $body))
-            (i32.const 0)))))))
+            (i32.const 0))))))
 
 ;; (cont-let inits vars body ...)
 (func $cont-let (param $env i32) (param $args i32) (result i32)
@@ -175,7 +175,7 @@
   (%push-l $var-init-pairs $body)
   (%push-l $var $body)
 
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%eval-fn) ;; eval
         (local.get $env)
         (local.get $init)
@@ -183,7 +183,7 @@
           (%cont-let*)
           (local.get $env)
           (local.get $body)
-          (i32.const 0))))))
+          (i32.const 0)))))
 
 ;; (cont-let* value name var-init-pairs body ...)
 (func $cont-let* (param $env i32) (param $args i32) (result i32)
@@ -260,7 +260,7 @@
     ;; there are no bindings, so simply eval body in child environment
     (then (return (call $eval-body (local.get $child-env) (local.get $body)))))
 
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%eval-fn) ;; eval
         (local.get $child-env)
         (%car-l $inits)
@@ -272,7 +272,7 @@
             (%cont-letrec) ;; finish the letrec
             (local.get $child-env)
             (%alloc-cons (local.get $vars) (local.get $body))
-            (i32.const 0)))))))
+            (i32.const 0))))))
 
 ;; (cont-letrec inits vars body ...)
 ;; set! the initialized variables into the environment 
@@ -361,7 +361,7 @@
     (then (return (call $eval-body (local.get $child-env) (local.get $body)))))
 
   (%push-l $formals-list $body)
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%eval-fn) ;; eval
         (local.get $env)
         (%car-l $init-list)
@@ -373,7 +373,7 @@
             (%cont-let-values)
             (local.get $child-env)
             (local.get $body)
-            (i32.const 0)))))))
+            (i32.const 0))))))
 
 ;; (cont-let-values (values...) (formals...) body ...)
 (func $cont-let-values (param $env i32) (param $args i32) (result i32)
@@ -512,7 +512,7 @@
   (%push-l $init-list $body)
   (%push-l $formals-list $body)
 
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%eval-fn) ;; eval
         (local.get $env)
         (local.get $init)
@@ -520,7 +520,7 @@
           (%cont-let*-values)
           (call $environment-init (global.get $g-heap) (local.get $env))
           (local.get $body)
-          (i32.const 0))))))
+          (i32.const 0)))))
 
 ;; (cont-let*-values values (formals...) (init...) body ...)
 (func $cont-let*-values (param $env i32) (param $args i32) (result i32)

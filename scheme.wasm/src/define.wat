@@ -45,7 +45,7 @@
   (if (call $environment-has (local.get $env) (local.get $var)) (then
       (return (call $argument-error (local.get $args)))))
 
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%eval-fn) ;; eval
         (local.get $env)
         (local.get $expr)
@@ -53,7 +53,7 @@
           (%cont-env-add)
           (local.get $env)
           (%alloc-cons (local.get $var) (global.get $g-nil))
-          (i32.const 0))))))
+          (i32.const 0)))))
 
 ;; (cont-env-add value name)
 (func $cont-env-add (param $env i32) (param $args i32) (result i32)
@@ -80,7 +80,7 @@
 
     (return (call $argument-error (local.get $args))))
 
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%eval-fn) ;; eval
         (local.get $env)
         (local.get $value)
@@ -88,7 +88,7 @@
           (%cont-env-set!)
           (local.get $env)
           (%alloc-cons (local.get $name) (global.get $g-nil))
-          (i32.const 0))))))
+          (i32.const 0)))))
 
 ;; (cont-env-set! value name)
 (func $cont-env-set! (param $env i32) (param $args i32) (result i32)

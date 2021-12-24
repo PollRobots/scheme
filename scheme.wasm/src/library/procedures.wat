@@ -161,7 +161,7 @@
 
   (%pop-l $args $zipped)
 
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%cont-apply-internal)
         (local.get $env)
         (%alloc-cons (local.get $proc) (local.get $args))
@@ -172,7 +172,7 @@
             (local.get $all-res) 
             (local.get $proc) 
             (local.get $zipped))
-            (i32.const 0))))))
+            (i32.const 0)))))
 
 ;; (cont-apply-internal proc args ...)
 (func $cont-apply-internal (param $env i32) (param $args i32) (result i32)

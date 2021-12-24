@@ -94,7 +94,7 @@
 
     (return (call $argument-error (local.get $args))))
 
-  (return (%alloc-cont (call $cont-alloc
+  (return (call $cont-alloc
         (%eval-fn)
         (local.get $env)
         (%alloc-cons (local.get $thunk) (global.get $g-nil))
@@ -102,6 +102,6 @@
           (%guard-fn)
           (local.get $env)
           (local.get $handler) 
-          (i32.const 0))))))
+          (i32.const 0)))))
 
   

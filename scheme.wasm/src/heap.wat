@@ -79,6 +79,10 @@
 ;;  BigInt
 ;;    car; i32 ptr
 
+;;  Exception
+;;    car; i32 ptr - error object
+;;    cdr: i32 enum - (raise 1, continuable 2)
+
 ;; Heap
 ;;   Size:      i32
 ;;   Free:      i32 ptr -- pointer to an empty cell
@@ -212,6 +216,10 @@
             (call $malloc-free (i32.load offset=4 (local.get $entry-ptr)))
             (br $b_switch))))
         ;; }
+
+        (if (i32.eq (local.get $type) (%cont-type)) (then
+            ;; delete the continuation
+            (call $cont-free (%car-l $entry-ptr))))
 
 
       ;; entry-ptr += 12

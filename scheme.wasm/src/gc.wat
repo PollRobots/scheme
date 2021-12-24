@@ -166,6 +166,11 @@ while the working set is non-empty:
 
       (if (i32.eq (local.get $type) (%cont-type)) (then
           (call $gc-gray-continuation (%car-l $curr))
+          (call $gc-maybe-gray-enqueue (%cdr-l $curr))
+          (br $b_switch)))
+
+      (if (i32.eq (local.get $type) (%except-type)) (then
+          (call $gc-maybe-gray-enqueue (%car-l $curr))
           (br $b_switch)))
           
       ;; }
@@ -204,10 +209,7 @@ while the working set is non-empty:
     ;; continuation env is gray
     (call $gc-maybe-gray-enqueue (i32.load offset=4 (local.get $cont)))
     ;; continuation args are gray
-    (call $gc-maybe-gray-enqueue (i32.load offset=8 (local.get $cont)))
-
-    ;; if there is a next continuation, process it also 
-    (br_if $forever (local.tee $cont (i32.load offset=12 (local.get $cont))))))
+    (call $gc-maybe-gray-enqueue (i32.load offset=8 (local.get $cont)))))
 
 (func $gc-finalize (param $heap i32)
   (local $size i32)
@@ -287,6 +289,9 @@ while the working set is non-empty:
               (then (call $malloc-free (%car-l $ptr)))
             )
             ;; }
+            (if (i32.eq (local.get $type) (%cont-type)) (then
+                (call $cont-free (%car-l $ptr))))
+
             ;; heap-free(ptr)
             (call $heap-free (local.get $heap) (local.get $ptr))
             (%ginc $g-gc-collected-count)
@@ -429,6 +434,7 @@ while the working set is non-empty:
         (br_if $b_then (i32.eq (local.get $type) (%values-type)))
         (br_if $b_then (i32.eq (local.get $type) (%vector-type)))
         (br_if $b_then (i32.eq (local.get $type) (%cont-type)))
+        (br_if $b_then (i32.eq (local.get $type) (%except-type)))
         (br $b_else)
       )
       ;; mark-gray(item)

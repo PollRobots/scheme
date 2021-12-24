@@ -58,7 +58,8 @@
 (%define %bytevector-type () (i32.const 16))
 (%define %cont-type () (i32.const 17))
 (%define %big-int-type () (i32.const 18))
-(%define %max-heap-type () (i32.const 18))
+(%define %except-type () (i32.const 19))
+(%define %max-heap-type () (i32.const 19))
 
 (%define %get-type (%arg) (i32.and (i32.load (local.get %arg)) (i32.const 0x1F)))
 
@@ -114,9 +115,8 @@
 (%define %alloc-error (%sym %args) (call $heap-alloc (global.get $g-heap) (%error-type) %sym (%alloc-cons %args (global.get $g-nil))))
 (%define %alloc-values (%car %cdr) (call $heap-alloc (global.get $g-heap) (%values-type) %car %cdr))
 (%define %alloc-quote (%val) (%alloc-cons (global.get $quote-sym) (%alloc-cons %val (global.get $g-nil))))
-(%define %alloc-cont (%cont) (call $heap-alloc (global.get $g-heap) (%cont-type) %cont (i32.const 0)))
-(%define %alloc-raise (%error) (call $heap-alloc (global.get $g-heap) (%cont-type) %error (i32.const 1)))
-(%define %alloc-raise-continuable (%error) (call $heap-alloc (global.get $g-heap) (%cont-type) %error (i32.const 2)))
+(%define %alloc-raise (%error) (call $heap-alloc (global.get $g-heap) (%except-type) %error (i32.const 1)))
+(%define %alloc-raise-continuable (%error) (call $heap-alloc (global.get $g-heap) (%except-type) %error (i32.const 2)))
 
 (%define %pack-64 (%hi %lo) (i64.or (i64.shl (i64.extend_i32_u %hi) (i64.const 32)) (i64.extend_i32_u %lo)))
 (%define %pack-64-l (%hi %lo) (%pack-64 (local.get %hi) (local.get %lo)))

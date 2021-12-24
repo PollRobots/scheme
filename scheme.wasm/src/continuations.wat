@@ -14,11 +14,9 @@ Continuation:
   fn: i32         -- function index in the builtins-table, 
   env: i32 env    -- environment
   args: i32 list  -- arguments to the continuation
-  next: i32 ptr   -- the following continuation (if any)
 
   if cont.fn is 0 then it is an eval
 
-TODO add continuations to gray set when gc is started
 ;)
 
 (%define %continuation-block-count () (i32.const 32))
@@ -53,7 +51,7 @@ TODO add continuations to gray set when gc is started
   (local.set $block (call $malloc 
       (i32.add 
         (i32.const 16) ;; header
-        (i32.shl (local.get $count) (i32.const 4))))) ;; number of continuations * 16
+        (i32.mul (local.get $count) (i32.const 12))))) ;; number of continuations * 12
 
   (local.set $ptr (i32.add (local.get $block) (i32.const 16))) 
 
@@ -66,7 +64,7 @@ TODO add continuations to gray set when gc is started
     (loop $b_start
       (br_if $b_end (i32.eqz (local.get $count)))
 
-      (local.set $next-ptr (i32.add (local.get $ptr) (i32.const 16)))
+      (local.set $next-ptr (i32.add (local.get $ptr) (i32.const 12)))
       (i32.store 
         (local.get $ptr)
         (select
@@ -81,6 +79,16 @@ TODO add continuations to gray set when gc is started
   (return (local.get $block)))
 
 (func $cont-alloc (param $fn i32) (param $env i32) (param $args i32) (param $next i32) (result i32)
+  (return (call $heap-alloc
+      (global.get $g-heap)
+      (%cont-type)
+      (call $cont-alloc-inner 
+        (local.get $fn) 
+        (local.get $env) 
+        (local.get $args))
+      (local.get $next))))
+
+(func $cont-alloc-inner (param $fn i32) (param $env i32) (param $args i32) (result i32)
   (local $block i32)
   (local $next-block i32)
   (local $ptr i32)
@@ -104,9 +112,7 @@ TODO add continuations to gray set when gc is started
           (i32.store offset=0 (local.get $ptr) (local.get $fn))
           (i32.store offset=4 (local.get $ptr) (local.get $env))
           (i32.store offset=8 (local.get $ptr) (local.get $args))
-          (i32.store offset=12 (local.get $ptr) (local.get $next))
 
-          ;; TODO if gc is active, then add params to gray set
           (return (local.get $ptr))
         ))
 
@@ -139,7 +145,7 @@ TODO add continuations to gray set when gc is started
         (then
           (local.set $end (i32.add 
               (local.get $start) 
-              (i32.shl (local.get $size) (i32.const 4))))
+              (i32.mul (local.get $size) (i32.const 12))))
           (if (i32.lt_u (local.get $ptr) (local.get $end))
             (then
               ;; ptr is within the block
