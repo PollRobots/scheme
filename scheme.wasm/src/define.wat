@@ -46,7 +46,7 @@
       (return (call $argument-error (local.get $args)))))
 
   (return (%alloc-cont (call $cont-alloc
-        (i32.const 0) ;; eval
+        (%eval-fn) ;; eval
         (local.get $env)
         (local.get $expr)
         (call $cont-alloc
@@ -81,7 +81,7 @@
     (return (call $argument-error (local.get $args))))
 
   (return (%alloc-cont (call $cont-alloc
-        (i32.const 0) ;; eval
+        (%eval-fn) ;; eval
         (local.get $env)
         (local.get $value)
         (call $cont-alloc

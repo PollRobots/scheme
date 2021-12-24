@@ -25,7 +25,7 @@
     (local.set $alternate (global.get $g-nil)))
 
   (return (%alloc-cont (call $cont-alloc
-        (i32.const 0) ;; eval
+        (%eval-fn) ;; eval
         (local.get $env)
         (local.get $test)
         (call $cont-alloc 
@@ -49,7 +49,7 @@
         (else (return (global.get $g-nil))))))
 
   (return (%alloc-cont (call $cont-alloc
-        (i32.const 0) ;; eval
+        (%eval-fn) ;; eval
         (local.get $env)
         (local.get $expr)
         (i32.const 0)))))
@@ -86,7 +86,7 @@
 
     (%push-l $clause $clauses)
     (return (%alloc-cont (call $cont-alloc
-          (i32.const 0)
+          (%eval-fn)
           (local.get $env)
           (local.get $test)
           (call $cont-alloc
@@ -131,7 +131,7 @@
             (global.get $g-nil))))
       ;; evaluate re-written clause
       (return (%alloc-cont (call $cont-alloc
-            (i32.const 0)
+            (%eval-fn)
             (local.get $env)
             (local.get $clause)
             (i32.const 0))))))
@@ -157,7 +157,7 @@
     (then (return (call $argument-error (local.get $args)))))
 
   (return (%alloc-cont (call $cont-alloc
-        (i32.const 0) ;; eval
+        (%eval-fn) ;; eval
         (local.get $env)
         (%car-l $args)
         (call $cont-alloc
@@ -214,7 +214,7 @@
               (%push (%car (%cdr-l $tail)) $fn)
 
               (return (%alloc-cont (call $cont-alloc
-                    (i32.const 0) ;; eval
+                    (%eval-fn) ;; eval
                     (local.get $env)
                     (local.get $fn)
                     (i32.const 0)))))
@@ -247,7 +247,7 @@
                   (%push (%car (%cdr-l $tail)) $fn)
 
                   (return (%alloc-cont (call $cont-alloc
-                        (i32.const 0) ;; eval
+                        (%eval-fn) ;; eval
                         (local.get $env) 
                         (local.get $fn) 
                         (i32.const 0)))))
@@ -272,7 +272,7 @@
   (%pop-l $head $args)
 
   (return (%alloc-cont (call $cont-alloc
-        (i32.const 0) ;; eval
+        (%eval-fn) ;; eval
         (local.get $env)
         (local.get $head)
         (call $cont-alloc
@@ -303,7 +303,7 @@
   (%pop-l $head $args)
 
   (return (%alloc-cont (call $cont-alloc
-        (i32.const 0) ;; eval
+        (%eval-fn) ;; eval
         (local.get $env)
         (local.get $head)
         (call $cont-alloc
@@ -335,7 +335,7 @@
   (%pop-l $test $args)
 
   (return (%alloc-cont (call $cont-alloc
-        (i32.const 0)
+        (%eval-fn)
         (local.get $env)
         (local.get $test)
         (call $cont-alloc
@@ -364,7 +364,7 @@
   (%pop-l $test $args)
 
   (return (%alloc-cont (call $cont-alloc
-        (i32.const 0)
+        (%eval-fn)
         (local.get $env)
         (local.get $test)
         (call $cont-alloc

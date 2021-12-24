@@ -190,7 +190,7 @@ while the working set is non-empty:
   (local.set $count (%cdr-l $vec))
 
   (loop $forever
-    (if $b_end (i32.eqz (local.get $count))
+    (if (i32.eqz (local.get $count))
       (then (return)))
     
     (call $gc-maybe-gray-enqueue (i32.load (local.get $ptr)))

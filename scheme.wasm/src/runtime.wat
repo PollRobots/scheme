@@ -926,11 +926,10 @@
               ;; a collection, simply allocating these will add them to the gray set
               ;; otherwise they are passed into the call to gc-run (and thence to 
               ;; gc-init)
-              (local.set $gray (%alloc-cons 
+              (local.set $gray (%alloc-list-3 
                   (local.get $env) 
-                  (%alloc-cons 
-                    (local.get $args)
-                    (%alloc-cont (local.get $cont-stack)))))
+                  (local.get $args)
+                  (%alloc-cont (local.get $cont-stack))))
 
               ;; (call $print-symbol (global.get $g-gc-run))
               (call $gc-run (local.get $gray))
@@ -1142,7 +1141,7 @@
       ;;  eval(env, car(args)) => cont-apply(env, args)
       (return (%alloc-cont
         (call $cont-alloc
-          (i32.const 0) ;; eval
+          (%eval-fn) ;; eval
           (local.get $env)
           (%car-l $args)
           (call $cont-alloc
@@ -1207,7 +1206,7 @@
   (return
     (%alloc-cont
       (call $cont-alloc
-        (i32.const 0)
+        (%eval-fn)
         (local.get $env)
         (%car-l $args)
         (call $cont-alloc
@@ -1265,7 +1264,7 @@
 
   (return (%alloc-cont
       (call $cont-alloc
-        (i32.const 0) ;; eval
+        (%eval-fn) ;; eval
         (local.get $env)
         (%car-l $args)
         (call $cont-alloc
@@ -1343,14 +1342,14 @@
     (then 
       ;; single body element, simply return its evaluation
       (return (%alloc-cont (call $cont-alloc 
-            (i32.const 0) 
+            (%eval-fn) 
             (local.get $env) 
             (%car-l $args) 
             (i32.const 0))))))
 
   (return (%alloc-cont
       (call $cont-alloc
-        (i32.const 0) ;; eval
+        (%eval-fn) ;; eval
         (local.get $env)
         (%car-l $args)
         (call $cont-alloc
@@ -1373,7 +1372,7 @@
 
   (return (%alloc-cont
       (call $cont-alloc
-        (i32.const 0) ;; eval
+        (%eval-fn) ;; eval
         (local.get $env)
         (%car-l $args)
         (call $cont-alloc

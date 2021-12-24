@@ -56,7 +56,7 @@
     (then (return (call $eval-body (local.get $child-env) (local.get $body)))))
 
   (return (%alloc-cont (call $cont-alloc
-        (i32.const 0) ;; eval
+        (%eval-fn) ;; eval
         (local.get $env)
         (%car-l $inits)
         (call $cont-alloc
@@ -176,7 +176,7 @@
   (%push-l $var $body)
 
   (return (%alloc-cont (call $cont-alloc
-        (i32.const 0) ;; eval
+        (%eval-fn) ;; eval
         (local.get $env)
         (local.get $init)
         (call $cont-alloc
@@ -261,7 +261,7 @@
     (then (return (call $eval-body (local.get $child-env) (local.get $body)))))
 
   (return (%alloc-cont (call $cont-alloc
-        (i32.const 0) ;; eval
+        (%eval-fn) ;; eval
         (local.get $child-env)
         (%car-l $inits)
         (call $cont-alloc
@@ -362,7 +362,7 @@
 
   (%push-l $formals-list $body)
   (return (%alloc-cont (call $cont-alloc
-        (i32.const 0) ;; eval
+        (%eval-fn) ;; eval
         (local.get $env)
         (%car-l $init-list)
         (call $cont-alloc
@@ -513,7 +513,7 @@
   (%push-l $formals-list $body)
 
   (return (%alloc-cont (call $cont-alloc
-        (i32.const 0) ;; eval
+        (%eval-fn) ;; eval
         (local.get $env)
         (local.get $init)
         (call $cont-alloc
