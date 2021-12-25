@@ -195,9 +195,12 @@
 (%define %builtin-map ()                      (i32.const 191))
 (%define %cont-map ()                         (i32.const 192))
 (%define %cont-apply-internal ()              (i32.const 193))
+(%define %builtin-string-map ()               (i32.const 194))
+(%define %cont-string-map ()                  (i32.const 195))
 
 
-(table $table-builtin 194 anyfunc)
+
+(table $table-builtin 196 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -377,6 +380,7 @@
   (%add-builtin (%sym-128 0x72756465636f7270 0x3F65 10) (%builtin-procedure?)) ;; 'procedure?'
   (%add-builtin (%sym-64  0x796c707061 5) (%builtin-apply)) ;; 'apply'
   (%add-builtin (%sym-32  0x70616d 3) (%builtin-map)) ;; 'map'
+  (%add-builtin (%sym-128 0x6d2D676e69727473 0x7061 10) (%builtin-string-map)) ;; 'string-map'
 
   (global.set $lambda-sym (%sym-64 0x6164626d616c 6)) ;; 'lambda'
   (global.set $quote-sym (%sym-64 0x65746f7571 5)) ;; 'quote'
@@ -441,6 +445,7 @@
 (elem $table-builtin (%cont-raise) $cont-raise)
 (elem $table-builtin (%cont-map) $cont-map)
 (elem $table-builtin (%cont-apply-internal) $cont-apply-internal)
+(elem $table-builtin (%cont-string-map) $cont-string-map)
 
 (elem $table-builtin (%builtin-add) $num-add)
 (elem $table-builtin (%builtin-sub) $num-sub)
@@ -596,3 +601,4 @@
 (elem $table-builtin (%builtin-procedure?) $procedure?)
 (elem $table-builtin (%builtin-apply) $proc-apply)
 (elem $table-builtin (%builtin-map) $map)
+(elem $table-builtin (%builtin-string-map) $string-map)

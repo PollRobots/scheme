@@ -147,6 +147,8 @@
   (if (i32.eq (call $list-len (local.get $args)) (i32.const 4))
     (then
       (%pop-l $map-res $args)
+      (if (i32.eq (%get-type $map-res) (%error-type)) (then
+          (return (local.get $map-res))))
       (%pop-l $all-res $args)
       (local.set $all-res (%alloc-cons
           (local.get $map-res)
@@ -180,3 +182,104 @@
       (local.get $env) 
       (%car-l $args) 
       (%cdr-l $args))))
+
+;; (string-map <proc> <string_1> <string_2> ...)
+(func $string-map (param $env i32) (param $args i32) (result i32)
+  (local $temp i32)
+  (local $proc i32)
+  (local $num-args i32)
+
+  (block $check (block $fail
+      (local.set $num-args (call $list-len (local.get $args)))
+      (br_if $fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
+      (local.set $temp (local.get $args))
+
+      (%pop-l $proc $temp)
+      (br_if $fail (i32.eqz (call $procedure?-impl (local.get $proc))))
+
+      (br_if $fail (i32.eqz (call $all-string (local.get $temp))))
+      (br $check))
+
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $cont-alloc
+      (%cont-string-map)
+      (local.get $env)
+      (local.get $args)
+      (i32.const 0))))
+
+
+;; (cont-string-map <proc> <string_1> <string_2> ...) 
+;; (cont-string-map <map-res> <idx> <all-res> <proc> <string_1> <string_2> ...)
+(func $cont-string-map (param $env i32) (param $args i32) (result i32)
+  (local $strings i32)
+  (local $proc i32)
+  (local $all-res i32)
+  (local $map-res i32)
+  (local $idx i32)
+  (local $chars i32)
+  (local $curr i32)
+  (local $char i32)
+  (local $temp64 i64)
+  (local $tail i32)
+
+  (local.set $idx (%car (%cdr-l $args)))
+
+  (if (i32.eq (%get-type $idx) (%i64-type))
+    (then
+      (%pop-l $map-res $args)
+      (if (i32.ne (%get-type $map-res) (%char-type)) (then
+          (return (%alloc-error (%sym-32 0x65707974 4) (local.get $map-res)))))
+
+      (%pop-l $idx $args)
+      (local.set $temp64 (i64.load offset=4 (local.get $idx)))
+      (local.set $idx (i32.wrap_i64 (local.get $temp64)))
+    
+      (%pop-l $all-res $args)
+      (%pop-l $proc $args)
+      (local.set $strings (local.get $args))
+      (local.set $all-res (%alloc-cons (local.get $map-res) (local.get $all-res)))
+    )
+    (else 
+      (%pop-l $proc $args)
+      (local.set $strings (local.get $args))
+      (local.set $all-res (global.get $g-nil))
+      (local.set $idx (i32.const 0))))
+
+
+  (local.set $tail (local.tee $chars (%alloc-list-1 (local.get $proc))))
+
+  (block $end (loop $start
+      (br_if $end (i32.ne (%get-type $strings) (%cons-type)))  
+      (%pop-l $curr $strings)
+
+      (local.set $char (call $str-code-point-at (%car-l $curr) (local.get $idx)))
+      (if (i32.eq (local.get $char) (i32.const -1)) (then
+          (local.set $all-res (call $reverse-impl (local.get $all-res)))
+          (return (call $list->string 
+              (local.get $env) 
+              (%alloc-list-1 (local.get $all-res))))))
+
+      (local.set $char (%alloc-list-1 (%alloc-char (local.get $char))))
+      (%set-cdr!-l $tail $char)
+      (local.set $tail (local.get $char))
+
+      (br $start)))
+
+  (%inc $idx)
+
+  (return (call $cont-alloc
+      (%cont-apply-internal)
+      (local.get $env)
+      (local.get $chars)
+      (call $cont-alloc
+        (%cont-string-map)
+        (local.get $env)
+        (%alloc-cons
+          (%alloc-i32 (local.get $idx))
+          (%alloc-cons
+            (local.get $all-res)
+            (%alloc-cons
+              (local.get $proc)
+              (local.get $args))))
+        (i32.const 0)))))
