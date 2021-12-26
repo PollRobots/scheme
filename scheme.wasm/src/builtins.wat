@@ -199,8 +199,10 @@
 (%define %cont-string-map ()                  (i32.const 195))
 (%define %builtin-vector-map ()               (i32.const 196))
 (%define %cont-vector-map ()                  (i32.const 197))
+(%define %builtin-for-each ()                 (i32.const 198))
+(%define %cont-for-each ()                    (i32.const 199))
 
-(table $table-builtin 198 anyfunc)
+(table $table-builtin 200 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -382,6 +384,7 @@
   (%add-builtin (%sym-32  0x70616d 3) (%builtin-map)) ;; 'map'
   (%add-builtin (%sym-128 0x6d2D676e69727473 0x7061 10) (%builtin-string-map)) ;; 'string-map'
   (%add-builtin (%sym-128 0x6d2D726f74636576 0x7061 10) (%builtin-vector-map)) ;; 'vector-map'
+  (%add-builtin (%sym-64  0x686361652D726f66 8) (%builtin-for-each)) ;; 'for-each'
 
   (global.set $lambda-sym (%sym-64 0x6164626d616c 6)) ;; 'lambda'
   (global.set $quote-sym (%sym-64 0x65746f7571 5)) ;; 'quote'
@@ -448,6 +451,7 @@
 (elem $table-builtin (%cont-apply-internal) $cont-apply-internal)
 (elem $table-builtin (%cont-string-map) $cont-string-map)
 (elem $table-builtin (%cont-vector-map) $cont-vector-map)
+(elem $table-builtin (%cont-for-each) $cont-for-each)
 
 (elem $table-builtin (%builtin-add) $num-add)
 (elem $table-builtin (%builtin-sub) $num-sub)
@@ -605,3 +609,4 @@
 (elem $table-builtin (%builtin-map) $map)
 (elem $table-builtin (%builtin-string-map) $string-map)
 (elem $table-builtin (%builtin-vector-map) $vector-map)
+(elem $table-builtin (%builtin-for-each) $for-each)
