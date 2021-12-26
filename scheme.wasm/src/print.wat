@@ -140,12 +140,9 @@
 
   (local.set $code-point (%car-l $ptr))
 
-  (%define %named-char (%name %val) (if (i32.eq (i32.const %val) (local.get $code-point))
-    (then
+  (%define %named-char (%name %val) (if (i32.eq (i32.const %val) (local.get $code-point)) (then
       (call $print-symbol (global.get %name))
-      (return)
-    )
-  ))
+      (return))))
 
   (%named-char $g-char-alarm 0x7)
   (%named-char $g-char-backspace 0x8)
@@ -161,23 +158,20 @@
 
   (local.set $props (call $char-get-code-point-props (local.get $code-point)))
 
-  (if (i32.and (local.get $props) (i32.const 0x10))
-    (then
+  (if (i32.and (local.get $props) (i32.const 0x10)) (then
       (local.set $str
         (call $str-from-32
           (call $utf8-code-point-size (local.get $code-point))
-          (call $utf8-from-code-point (local.get $code-point))
-        )
-      )
+          (call $utf8-from-code-point (local.get $code-point))))
+      (call $io-write (local.get $str))
+      (call $malloc-free (local.get $str)))
+    (else
+      (local.set $str (call $str-from-32 (i32.const 1) (i32.const 0x78)))
       (call $io-write (local.get $str))
       (call $malloc-free (local.get $str))
-    )
-    (else
-      (call $print-integer (i64.extend_i32_u (local.get $code-point)) (i32.const 16))
-    )
-  )
-
-)
+      (call $print-integer 
+        (i64.extend_i32_u (local.get $code-point)) 
+        (i32.const 16)))))
 
 (func $print-error (param $ptr i32)
   (local $data i32)
