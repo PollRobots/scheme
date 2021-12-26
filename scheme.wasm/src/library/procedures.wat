@@ -216,6 +216,7 @@
   (local $proc i32)
   (local $all-res i32)
   (local $map-res i32)
+  (local $map-res-type i32)
   (local $idx i32)
   (local $chars i32)
   (local $curr i32)
@@ -228,7 +229,10 @@
   (if (i32.eq (%get-type $idx) (%i64-type))
     (then
       (%pop-l $map-res $args)
-      (if (i32.ne (%get-type $map-res) (%char-type)) (then
+      (local.set $map-res-type (%get-type $map-res))
+      (if (i32.eq (local.get $map-res-type) (%error-type)) (then
+          (return (local.get $map-res))))
+      (if (i32.ne (local.get $map-res-type) (%char-type)) (then
           (return (%alloc-error (%sym-32 0x65707974 4) (local.get $map-res)))))
 
       (%pop-l $idx $args)
@@ -274,6 +278,107 @@
       (local.get $chars)
       (call $cont-alloc
         (%cont-string-map)
+        (local.get $env)
+        (%alloc-cons
+          (%alloc-i32 (local.get $idx))
+          (%alloc-cons
+            (local.get $all-res)
+            (%alloc-cons
+              (local.get $proc)
+              (local.get $args))))
+        (i32.const 0)))))
+        
+;; (vector-map <proc> <vector_1> <vector_2> ...)
+(func $vector-map (param $env i32) (param $args i32) (result i32)
+  (local $temp i32)
+  (local $proc i32)
+  (local $num-args i32)
+
+  (block $check (block $fail
+      (local.set $num-args (call $list-len (local.get $args)))
+      (br_if $fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
+      (local.set $temp (local.get $args))
+
+      (%pop-l $proc $temp)
+      (br_if $fail (i32.eqz (call $procedure?-impl (local.get $proc))))
+
+      (br_if $fail (i32.eqz (call $all-vector (local.get $temp))))
+      (br $check))
+
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $cont-alloc
+      (%cont-vector-map)
+      (local.get $env)
+      (local.get $args)
+      (i32.const 0))))
+
+
+;; (cont-vector-map <proc> <vector_1> <vector_2> ...) 
+;; (cont-vector-map <map-res> <idx> <all-res> <proc> <vetor_1> <vector_2> ...)
+(func $cont-vector-map (param $env i32) (param $args i32) (result i32)
+  (local $vectors i32)
+  (local $proc i32)
+  (local $all-res i32)
+  (local $map-res i32)
+  (local $idx i32)
+  (local $els i32)
+  (local $el i32)
+  (local $curr i32)
+  (local $temp64 i64)
+  (local $tail i32)
+
+  (local.set $idx (%car (%cdr-l $args)))
+
+  (if (i32.eq (%get-type $idx) (%i64-type))
+    (then
+      (%pop-l $map-res $args)
+      (if (i32.eq (%get-type $map-res) (%error-type)) (then
+          (return (local.get $map-res))))
+      (%pop-l $idx $args)
+      (local.set $temp64 (i64.load offset=4 (local.get $idx)))
+      (local.set $idx (i32.wrap_i64 (local.get $temp64)))
+    
+      (%pop-l $all-res $args)
+      (%pop-l $proc $args)
+      (local.set $vectors (local.get $args))
+      (local.set $all-res (%alloc-cons (local.get $map-res) (local.get $all-res)))
+    )
+    (else 
+      (%pop-l $proc $args)
+      (local.set $vectors (local.get $args))
+      (local.set $all-res (global.get $g-nil))
+      (local.set $idx (i32.const 0))))
+
+
+  (local.set $tail (local.tee $els (%alloc-list-1 (local.get $proc))))
+
+  (block $end (loop $start
+      (br_if $end (i32.ne (%get-type $vectors) (%cons-type)))  
+      (%pop-l $curr $vectors)
+
+      (if (i32.eq (local.get $idx) (%cdr-l $curr)) (then
+          (local.set $all-res (call $reverse-impl (local.get $all-res)))
+          (return (call $vector
+              (local.get $env) 
+              (local.get $all-res)))))
+
+      (local.set $el (i32.load (i32.add (%car-l $curr) (%word-size-l $idx))))
+
+      (local.set $el (%alloc-list-1 (local.get $el)))
+      (%set-cdr!-l $tail $el)
+      (local.set $tail (local.get $el))
+
+      (br $start)))
+
+  (%inc $idx)
+
+  (return (call $cont-alloc
+      (%cont-apply-internal)
+      (local.get $env)
+      (local.get $els)
+      (call $cont-alloc
+        (%cont-vector-map)
         (local.get $env)
         (%alloc-cons
           (%alloc-i32 (local.get $idx))
