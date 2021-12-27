@@ -495,3 +495,30 @@
             (local.get $zipped))
             (i32.const 0)))))
 
+;; (call-with-current-continuation <proc>)
+;; (call/cc <proc>)
+(func $call/cc (param $env i32) (param $args i32) (result i32)
+  (local $proc i32)
+  (local $cont-proc i32)
+
+  (block $check (block $fail
+      (br_if $fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
+      (local.set $proc (%car-l $args))
+      (br_if $fail (i32.eqz (call $procedure?-impl (local.get $proc))))
+      (br $check))
+
+    (return (call $argument-error (local.get $args))))
+
+  (local.set $cont-proc (call $heap-alloc
+      (global.get $g-heap)
+      (%cont-proc-type)
+      (%cdr (local.get $env)) ;; env is actually the continuation
+      (i32.const 0)))
+
+  ;; extract env from continuation
+  (local.set $env (i32.load offset=4 (%car-l $env)))
+
+  (return (call $apply-internal 
+      (local.get $env) 
+      (local.get $proc) 
+      (%alloc-list-1 (local.get $cont-proc)))))

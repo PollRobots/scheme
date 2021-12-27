@@ -164,12 +164,19 @@ while the working set is non-empty:
           (call $gc-gray-vector (local.get $curr))
           (br $b_switch)))
 
+      ;; case cont-type
       (if (i32.eq (local.get $type) (%cont-type)) (then
           (call $gc-gray-continuation (%car-l $curr))
           (call $gc-maybe-gray-enqueue (%cdr-l $curr))
           (br $b_switch)))
 
+      ;; case except-type
       (if (i32.eq (local.get $type) (%except-type)) (then
+          (call $gc-maybe-gray-enqueue (%car-l $curr))
+          (br $b_switch)))
+
+      ;; case cont-proc-type
+      (if (i32.eq (local.get $type) (%cont-proc-type)) (then
           (call $gc-maybe-gray-enqueue (%car-l $curr))
           (br $b_switch)))
           

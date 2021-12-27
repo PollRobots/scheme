@@ -59,7 +59,8 @@
 (%define %cont-type () (i32.const 17))
 (%define %big-int-type () (i32.const 18))
 (%define %except-type () (i32.const 19))
-(%define %max-heap-type () (i32.const 19))
+(%define %cont-proc-type () (i32.const 20))
+(%define %max-heap-type () (i32.const 20))
 
 (%define %get-type (%arg) (i32.and (i32.load (local.get %arg)) (i32.const 0x1F)))
 

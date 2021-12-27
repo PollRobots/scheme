@@ -898,6 +898,7 @@
 
 (func $eval (param $env i32) (param $args i32) (result i32)
   (local $result i32)
+  (local $result-type i32)
   (local $fn i32)
   (local $gray i32)
 
@@ -956,6 +957,10 @@
           
           (br $b_eval_cont)))
 
+      (if (i32.eq (local.get $fn) (%builtin-call/cc)) (then
+          ;; Calling call/cc, replace the env with the continuation stack 
+          (local.set $env (local.get $cont-stack))))
+
       ;; some other function is the continuation
       (local.get $env)
       (local.get $args)
@@ -967,7 +972,16 @@
     (local.set $cont-stack (%cdr-l $cont-stack))
 
     (block $b_done
-      (if (i32.eq (%get-type $result) (%cont-type)) (then 
+      (local.set $result-type (%get-type $result))
+      (if (i32.eq (local.get $result-type) (%cont-proc-type)) (then
+          ;; Result is a continuation proc,  check if it is populated 
+          ;; (i.e. it has been "called")
+          (if (%cdr-l $result) (then
+              ;; result is populated, so set contintuation stack, and the result
+              (local.set $cont-stack (%car-l $result))
+              (local.set $result (%car (%cdr-l $result)))))))
+
+      (if (i32.eq (local.get $result-type) (%cont-type)) (then 
           ;; result is a continuation (or list of), place them on the top of the 
           ;; continuation stack
           (local.set $temp-cont (local.get $result))
@@ -982,7 +996,7 @@
           (local.set $result (i32.const 0))
           (br $b_done)))
 
-      (if (i32.eq (%get-type $result) (%except-type)) (then
+      (if (i32.eq (local.get $result-type) (%except-type)) (then
           (local.set $res-mode (%cdr-l $result))
 
           (if (i32.eq (local.get $res-mode) (i32.const 1)) (then
@@ -1212,20 +1226,23 @@
 
   (local.set $args (call $reverse-impl (local.get $temp)))
 
-  (if (i32.eq (local.get $op-type) (%builtin-type))
-    (then
+  (if (i32.eq (local.get $op-type) (%builtin-type)) (then
       (local.get $env)
       (local.get $args)
       (i32.load offset=4 (local.get $op))
       call_indirect $table-builtin (type $builtin-type)
       (return)))
 
-  (if (i32.eq (local.get $op-type (%lambda-type)))
-    (then
+  (if (i32.eq (local.get $op-type (%lambda-type))) (then
       (return (call $apply-lambda 
         (local.get $env) 
         (local.get $op) 
         (local.get $args)))))
+
+  (if (i32.eq (local.get $op-type) (%cont-proc-type)) (then
+      (return (call $apply-cont-proc
+          (local.get $op)
+          (local.get $args)))))
 
   ;;   any other type:
   (return (%alloc-error-cons 
@@ -1270,10 +1287,18 @@
     (br_if $b_check (i32.eq (local.get $op-type) (%builtin-type)))
 
     ;; case %lambda-type:
-    (if (i32.eq (local.get $op-type) (%lambda-type))
-      (then
-        (return 
-          (call $apply-lambda (local.get $env) (local.get $op) (local.get $args)))))
+    (if (i32.eq (local.get $op-type) (%lambda-type)) (then
+        (return (call $apply-lambda 
+            (local.get $env) 
+            (local.get $op) 
+            (local.get $args)))))
+
+    ;; case %cont-proc-type:
+    (if (i32.eq (local.get $op-type) (%cont-proc-type)) (then
+        (return (call $apply-cont-proc
+            (local.get $op)
+            (local.get $args)))))
+
     ;; default:
     ;;   any other type:
     (return
@@ -1312,6 +1337,15 @@
   (call $zip-lambda-args (local.get $child-env) (local.get $formals) (local.get $args))
 
   (return (call $eval-body (local.get $child-env) (local.get $body))))
+
+(func $apply-cont-proc (param $cont-proc i32) (param $args i32) (result i32)
+  (if (i32.ne (call $list-len (local.get $args)) (i32.const 1)) (then
+      (return (call $argument-error (local.get $args)))))
+  (return (call $heap-alloc
+      (global.get $g-heap)
+      (%cont-proc-type)
+      (%car-l $cont-proc)
+      (local.get $args))))
 
 (func $eval-body (param $env i32) (param $args i32) (result i32)
   (local $body-len i32)

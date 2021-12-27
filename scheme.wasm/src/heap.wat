@@ -31,7 +31,9 @@
 ;;   bytevector = 16
 ;;   cont(inuation) = 17 
 ;;   big-int = 18
-;; kMaxType = 18
+;;   exception = 19
+;;   cont-proc = 20
+;; kMaxType = 20
 
 ;;  Empty cell
 ;;    next-empty: i32 ptr
@@ -77,11 +79,14 @@
 ;;    car: i32 ptr
 
 ;;  BigInt
-;;    car; i32 ptr
+;;    car: i32 ptr
 
 ;;  Exception
-;;    car; i32 ptr - error object
+;;    car: i32 ptr - error object
 ;;    cdr: i32 enum - (raise 1, continuable 2)
+
+;;  ContinuationProc
+;;    car: i32 ptr - Continuation
 
 ;; Heap
 ;;   Size:      i32
