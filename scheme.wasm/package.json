@@ -19,8 +19,8 @@
     "test": "node node_modules/mocha/bin/_mocha -r ts-node/register --no-timeouts tests/**/*.spec.ts"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Paul C Roberts <pacaro@gmail.com>",
+  "license": "MIT",
   "devDependencies": {
     "@types/chai": "^4.2.22",
     "@types/mocha": "^9.0.0",

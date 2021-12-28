@@ -10,5 +10,8 @@
     "build-dev": "npm run build -w scheme.wasm && npm run build-dev -w scheme.wasm.ui",
     "start": "npm run build -w scheme.wasm && npm run start -w scheme.wasm.ui",
     "test": "npm run test -w scheme.wasm"
-  }
+  },
+  "author": "Paul C Roberts <pacaro@gmail.com>",
+  "homepage": "https://github.com/PollRobots/scheme#readme",
+  "license": "MIT"
 }

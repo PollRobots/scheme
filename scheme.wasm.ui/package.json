@@ -10,8 +10,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Paul C Roberts <pacaro@gmail.com>",
+  "license": "MIT",
   "devDependencies": {
     "@types/pako": "^1.0.2",
     "@types/react": "^17.0.37",
