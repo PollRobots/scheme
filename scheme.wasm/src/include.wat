@@ -10,12 +10,16 @@
   (return (call $cont-include
       (%cont-include)
       (local.get $env)
-      (local.get $args))))
+      (%alloc-cons (global.get $g-nil) (local.get $args)))))
 
-;; (cont-include <string_1> <string_2> ...)
+;; (cont-include <ingore> <string_1> <string_2> ...)
 (func $cont-include (param $env i32) (param $args i32) (result i32)
+  (local $temp i32)
   (local $filename i32)
   (local $promise i32)
+
+  ;; discard (either a nil, or the result of the eval of an included file)
+  (%pop-l $temp $args)
 
   (if (i32.ne (%get-type $args) (%cons-type)) (then
       ;; all args have been processed
@@ -36,8 +40,38 @@
         (i32.const 0)))))
 
 ;; (cont-include-read <contents> <string_1> ...)
-(func $cont-include_read (param $env i32) (param $args i32) (result i32)
+(func $cont-include-read (param $env i32) (param $args i32) (result i32)
   (local $contents i32)
+  (local $reader i32)
+  (local $datum i32)
 
   (%pop-l $contents $args)
-  
+
+  ;; Crease a string reader.
+  (local.set $reader (call $reader-init (i32.const -1)))
+  ;; Push the contents onto the read-cache.
+  (i32.store offset=16
+    (local.get $reader)
+    (%alloc-list-3
+      ;; "(begin "
+      (%alloc-str (call $str-64 (i32.const 7) (i64.const 0x206e6967656228)))
+      (local.get $contents)
+      ;; ")"
+      (%alloc-str (call $str-32 (i32.const 1) (i32.const 0x29)))))
+
+  (local.set $datum (call $read-with-reader (local.get $reader)))
+  (call $reader-free (local.get $reader))
+  (if (i32.eq (%get-type $datum) (%error-type)) (then
+      (return (local.get $datum))))
+
+  (return (call $cont-alloc
+      (%eval-fn)
+      (local.get $env)
+      (local.get $datum)
+      (call $cont-alloc
+        (%cont-include)
+        (local.get $env)
+        (local.get $args)
+        (i32.const 0)))))
+
+
