@@ -46,7 +46,6 @@
 (%define %gc-threshold () (i32.const 256))
 
 (func $runtime-init
-  (global.set $g-reader (call $reader-init))
   (global.set $g-heap (call $heap-create (i32.const 1024)))
   (global.set $g-interned (call $hashtable-init (i32.const 1024)))
   (global.set $g-true (call $heap-alloc (global.get $g-heap) (%boolean-type) (i32.const 1) (i32.const 0x7423)))
@@ -90,6 +89,7 @@
   (global.set $g-exp (%sym-32 0x65 1)) ;; 'e'
   (global.set $g-neg (%sym-32 0x2d 1)) ;; '-'
 
+  (global.set $g-reader (call $reader-init))
   (call $char-init)
   (call $cont-init)
   (call $grisu-init)
@@ -120,30 +120,40 @@
 )
 
 (func $read (result i32)
+  (return (call $read-with-reader (global.get $g-reader))))
+
+(func $read-with-reader (param $reader i32) (result i32)
   (local $token-str i32)
   (local $result i32)
 
   ;; token-str = reader-read-token(g-reader)
-  (local.set $token-str (call $reader-read-token (global.get $g-reader)))
+  (local.set $token-str (call $reader-read-token (local.get $reader)))
 
   ;; return string->datum(token-str)
-  (local.set $result (call $string->datum (local.get $token-str)))
+  (local.set $result (call $string->datum-with-reader 
+      (local.get $token-str) 
+      (local.get $reader)))
   (if (i32.eq (%get-type $result) (%error-type))
     (then 
       (if (i32.eq (global.get $g-eof) (%car-l $result))
         (then 
-          (call $reader-rollback (global.get $g-reader))
+          (call $reader-rollback (local.get $reader))
           (return (local.get $result))
         )
       )
     )
   )
 
-  (call $reader-commit (global.get $g-reader))
+  (call $reader-commit (local.get $reader))
   (return (local.get $result))
 )
 
 (func $string->datum (param $token-str i32) (result i32)
+  (return (call $string->datum-with-reader 
+      (local.get $token-str)
+      (global.get $g-reader))))
+
+(func $string->datum-with-reader (param $token-str i32) (param $reader i32) (result i32)
   (local $car-str i32)
   (local $car i32)
   (local $cdr-str i32)
@@ -182,7 +192,7 @@
       (call $malloc-free (local.get $token-str))
 
       ;; car-str = reader-read-token(g-reader)
-      (local.set $car-str (call $reader-read-token (global.get $g-reader)))
+      (local.set $car-str (call $reader-read-token (local.get $reader)))
       (%check-str $car-str)
       ;; if (car-str == ')') {
       (if (call $short-str-eq (local.get $car-str) (i32.const 0x29) (i32.const 1))
@@ -197,7 +207,9 @@
             (else (return (call $make-byte-vector-internal (global.get $g-nil)))))))
 
       ;; car = string->datum(car-str)
-      (local.set $car (call $string->datum (local.get $car-str)))
+      (local.set $car (call $string->datum-with-reader
+          (local.get $car-str) 
+          (local.get $reader)))
       ;; curr = head = heap-alloc(3, car, g-nil)
       (local.set $curr (local.tee $head (%alloc-cons 
             (local.get $car) 
@@ -206,7 +218,7 @@
       ;; while (true) {
       (loop $forever
         ;; cdr-str = reader-read-token(g-reader)
-        (local.set $cdr-str (call $reader-read-token (global.get $g-reader)))
+        (local.set $cdr-str (call $reader-read-token (local.get $reader)))
         (%check-str $cdr-str)
         ;; if (cdr-str == ')') {
         (if (call $short-str-eq (local.get $cdr-str) (i32.const 0x29) (i32.const 1))
@@ -229,14 +241,16 @@
             ;; malloc-free(cdr-str)
             (call $malloc-free (local.get $cdr-str))
             ;; cdr-str = reader-read-token(g-reader)
-            (local.set $cdr-str (call $reader-read-token (global.get $g-reader)))
+            (local.set $cdr-str (call $reader-read-token (local.get $reader)))
             (%check-str $cdr-str)
             ;; cdr = string->datum(cdr-str)
-            (local.set $cdr (call $string->datum (local.get $cdr-str)))
+            (local.set $cdr (call $string->datum-with-reader
+                (local.get $cdr-str) 
+                (local.get $reader)))
             ;; curr[8] = cdr
             (i32.store offset=8 (local.get $curr) (local.get $cdr))
             ;; cdr-str = reader-read-token(g-reader)
-            (local.set $cdr-str (call $reader-read-token (global.get $g-reader)))
+            (local.set $cdr-str (call $reader-read-token (local.get $reader)))
             (%check-str $cdr-str)
             ;; if (cdr-str == ')') {
             (if (call $short-str-eq (local.get $cdr-str) (i32.const 0x29) (i32.const 1))
@@ -251,7 +265,9 @@
               (else (unreachable)))))
 
         ;; cdr = string->datum(cdr-str)
-        (local.set $cdr (call $string->datum (local.get $cdr-str)))
+        (local.set $cdr (call $string->datum-with-reader
+            (local.get $cdr-str) 
+            (local.get $reader)))
 
         ;; curr[8] = heap-alloc(3, cdr, g-nil)
         (i32.store offset=8
@@ -282,7 +298,9 @@
       ;; return cons('quote', cons(read(), nil))
       (return (%alloc-cons 
           (global.get $quote-sym) 
-          (%alloc-cons (call $read) (global.get $g-nil))))))
+          (%alloc-cons 
+            (call $read-with-reader (local.get $reader)) 
+            (global.get $g-nil))))))
 
   ;; return atom(token);
   (return (call $atom (%alloc-str (local.get $token-str)))))

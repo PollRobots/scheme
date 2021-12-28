@@ -21,7 +21,6 @@
     "src/malloc.wat",
     "src/print.wat",
     "src/quote.wat",
-    "src/quote.wat",
     "src/reader.wat",
     "src/runtime.wat",
     "src/start.wat",

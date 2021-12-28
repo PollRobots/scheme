@@ -14,7 +14,7 @@
     "prestart": "npm run build",
     "build": "tsc --incremental -p . && npm run unicode && npm run assemble",
     "assemble": "node dist/src/scripts/buildwat.js ./buildwat.json --macros --output dist/scheme.wasm --tempfile dist/scheme.wat",
-    "pretest": "tsc -p . && node src/scripts/buildwat.js tests/buildwat.json --macros --output dist/test.wasm --tempfile dist/test.wat",
+    "pretest": "tsc --incremental -p . && npm run unicode && node dist/src/scripts/buildwat.js tests/buildwat.json --macros --output dist/test.wasm --tempfile dist/test.wat",
     "unicode": "node dist/src/scripts/unicodedata.js",
     "test": "node node_modules/mocha/bin/_mocha -r ts-node/register --no-timeouts tests/**/*.spec.ts"
   },

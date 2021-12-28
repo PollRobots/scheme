@@ -572,32 +572,13 @@
   (local $tail i32)
   (local $head i32)
 
-  ;; reversed = g-nil
-  (local.set $reversed (global.get $g-nil))
 
   ;; head = reader.cache-write 
   (local.set $head (i32.load offset=20 (local.get $reader)))
-  ;; while (get-type(head) != nil-type) {
-  (block $w_end
-    (loop $w_start
-      (br_if $w_end (i32.eq (%get-type $head) (%nil-type)))
-      ;; temp = head
-      (local.set $temp (local.get $head))
-      ;; assert(temp is cons)
-      (%assert-cons $temp)
-      ;; head = cdr(temp)
-      (local.set $head (%cdr-l $temp))
-      ;; set-cdr!(temp, reversed)
-      (%set-cdr!-l $temp $reversed)
-      ;; reversed = temp
-      (local.set $reversed (local.get $temp))
-
-      (br $w_start)
-    )
-    ;; }
-  )
+  ;; reversed = reverse-impl(head)
+  (local.set $reversed (call $reverse-impl (local.get $head)))
   ;; reader.cache-write = g-nil
-  (i32.store offset=16 (local.get $reader) (global.get $g-nil))
+  (i32.store offset=20 (local.get $reader) (global.get $g-nil))
 
   ;; tail = reader.cache-read
   (local.set $tail (i32.load offset=16 (local.get $reader)))
@@ -605,12 +586,9 @@
   (if (i32.eq (%get-type $tail) (%nil-type))
     (then
       ;; reader.cache-read = reversed
-      (i32.store offset=16 (local.get $reader) (local.get $reversed))
-    )
+      (i32.store offset=16 (local.get $reader) (local.get $reversed)))
     ;; } else {
-    (else
-      ;; while (true) {
-      (loop $forever
+    (else (loop $forever
         ;; assert(tail is cons)
         (%assert-cons $tail)
         ;; temp = cdr(tail)
@@ -621,23 +599,13 @@
             ;; set-cdr!(tail, reversed)
             (%set-cdr!-l $tail $reversed)
             ;; return;
-            (return)
-          )
+            (return))
           ;; } else {
           (else
             ;; tail = temp
-            (local.set $tail (local.get $temp))
-          )
-          ;; }
-        )
+            (local.set $tail (local.get $temp))))
 
-        (br $forever)
-      )
-      ;; }
-    )
-    ;; }
-  )
-)
+        (br $forever)))))
 
 (func $is-whitespace (param $char i32) (result i32)
   ;; char == ' ' 0x20
