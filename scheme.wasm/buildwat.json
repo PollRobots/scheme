@@ -15,6 +15,7 @@
     "src/gc.wat",
     "src/hashtable.wat",
     "src/heap.wat",
+    "src/include.wat",
     "src/lambda.wat",
     "src/let.wat",
     "src/string.wat",
@@ -55,26 +56,19 @@
       "module": "io",
       "name": "write",
       "index": "$io-write",
-      "params": [
-        "i32"
-      ]
+      "params": ["i32"]
     },
     {
       "module": "process",
       "name": "exit",
       "index": "$process-exit",
-      "params": [
-        "i32"
-      ]
+      "params": ["i32"]
     },
     {
       "module": "unicode",
       "name": "loadData",
       "index": "$unicode-load-data",
-      "params": [
-        "i32",
-        "i32"
-      ]
+      "params": ["i32", "i32"]
     }
   ],
   "exports": [

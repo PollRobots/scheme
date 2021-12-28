@@ -17,12 +17,13 @@
 ;;   i32  size        12      The size of the accumulation buffer
 ;;   i32  cache-read  16      The head of the read cache
 ;;   i32  cache-write 20      The tail of the write cache
+;;   i32  external    24      External source of data
 ;;
-;;   SIZE             24
+;;   SIZE             28
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Create a new reader
-(func $reader-init (result i32)
+(func $reader-init (param $external i32) (result i32)
   (local $reader i32) ;; the reader pointer
   (local $accum i32)  ;; the accumulation buffer ptr
 
@@ -30,8 +31,8 @@
   ;; accum = malloc(16 * 4)
   (local.set $accum (call $malloc (i32.const 64))) 
 
-  ;; reader = malloc(24)
-  (local.set $reader (call $malloc (i32.const 24))) 
+  ;; reader = malloc(28)
+  (local.set $reader (call $malloc (i32.const 28))) 
 
   ;; clear input and in-off to 0
   ;; reader[0] = 0
@@ -45,6 +46,9 @@
   ;; clear read and write caches
   (i32.store offset=16 (local.get $reader) (global.get $g-nil))
   (i32.store offset=20 (local.get $reader) (global.get $g-nil))
+
+  ;; set external source
+  (i32.store offset=24 (local.get $reader) (local.get $external))
   
   ;; return reader
   (return (local.get $reader))
@@ -501,15 +505,11 @@
   ;; input = reader.input
   (local.set $input (i32.load (local.get $reader)))
   ;; if (input) {
-  (if (local.get $input)
-    (then
+  (if (local.get $input) (then
       ;; malloc-free(input)
       (call $malloc-free (local.get $input))
       ;; reader.input = 0
-      (i32.store (local.get $reader) (i32.const 0))
-    )
-  ;; }
-  )
+      (i32.store (local.get $reader) (i32.const 0))))
 
   ;; reader.in-off = 0
   (i32.store offset=4 (local.get $reader) (i32.const 0))
@@ -529,15 +529,13 @@
       ;; input = car(cache-head)
       (local.set $input (%car-l $cache-head))
       ;; heap-free(g-heap, cache-head)
-      (call $heap-free (global.get $g-heap) (local.get $cache-head))
-    )
+      (call $heap-free (global.get $g-heap) (local.get $cache-head)))
     ;; } else {
     (else
-      ;; input = io-read()
-      (local.set $input (call $io-read))
-    )
-    ;; }
-  )
+      ;; if (reader.external)
+      (if (i32.ne (i32.load offset=24 (local.get $reader)) (i32.const -1)) (then
+          ;; input = io-read()
+          (local.set $input (call $io-read))))))
 
   (if (local.get $input)
     (then
@@ -549,17 +547,12 @@
         (local.get $reader)
         (%alloc-cons
           (%alloc-str (call $str-dup (local.get $input)))
-          (local.get $cache-write)
-        )
-      )
-    )
-  )
+          (local.get $cache-write)))))
 
   ;; reader.input = input 
   (i32.store (local.get $reader) (local.get $input))
   ;; return input
-  (return (local.get $input))
-)
+  (return (local.get $input)))
 
 (func $reader-commit (param $reader i32)
   ;; reader.cache-write = g-nil

@@ -89,7 +89,8 @@
   (global.set $g-exp (%sym-32 0x65 1)) ;; 'e'
   (global.set $g-neg (%sym-32 0x2d 1)) ;; '-'
 
-  (global.set $g-reader (call $reader-init))
+  ;; global reader is attached to stdin
+  (global.set $g-reader (call $reader-init (i32.const 0)))
   (call $char-init)
   (call $cont-init)
   (call $grisu-init)

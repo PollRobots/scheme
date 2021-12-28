@@ -202,8 +202,11 @@
 (%define %builtin-for-each ()                 (i32.const 198))
 (%define %cont-for-each ()                    (i32.const 199))
 (%define %builtin-call/cc ()                  (i32.const 200))
+(%define %builtin-include ()                  (i32.const 201))
+(%define %cont-include ()                     (i32.const 202))
+(%define %cont-include-read ()                (i32.const 203))
 
-(table $table-builtin 201 anyfunc)
+(table $table-builtin 204 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -387,6 +390,7 @@
   (%add-builtin (%sym-128 0x6d2D726f74636576 0x7061 10) (%builtin-vector-map)) ;; 'vector-map'
   (%add-builtin (%sym-64  0x686361652D726f66 8) (%builtin-for-each)) ;; 'for-each'
   (%add-builtin (%sym-64  0x63632F6c6c6163 7) (%builtin-call/cc)) ;; 'call/cc'
+  (%add-builtin (%sym-64  0x6564756c636e69 7) (%builtin-include)) ;; 'include'
 
   (global.set $lambda-sym (%sym-64 0x6164626d616c 6)) ;; 'lambda'
   (global.set $quote-sym (%sym-64 0x65746f7571 5)) ;; 'quote'
@@ -454,6 +458,8 @@
 (elem $table-builtin (%cont-string-map) $cont-string-map)
 (elem $table-builtin (%cont-vector-map) $cont-vector-map)
 (elem $table-builtin (%cont-for-each) $cont-for-each)
+(elem $table-builtin (%cont-include) $cont-include)
+(elem $table-builtin (%cont-include-read) $cont-include-read)
 
 (elem $table-builtin (%builtin-add) $num-add)
 (elem $table-builtin (%builtin-sub) $num-sub)
@@ -613,3 +619,4 @@
 (elem $table-builtin (%builtin-vector-map) $vector-map)
 (elem $table-builtin (%builtin-for-each) $for-each)
 (elem $table-builtin (%builtin-call/cc) $call/cc)
+(elem $table-builtin (%builtin-include) $include)
