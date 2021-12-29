@@ -109,8 +109,14 @@ export async function loadWasm(
     };
     imports["dbg"] = {
       data: (a: number, b: number, c: number) => {
-        console.log(`${a}: ${b} #x${c.toString(16).padStart(5, '0')} `);
-      }
+        console.log(`${a}: ${b} #x${c.toString(16).padStart(5, "0")} `);
+      },
+    };
+    imports["file"] = {
+      read: (filenamePtr: number) => {
+        console.log(`file-read ${filenamePtr.toString(16)}`);
+        return filenamePtr;
+      },
     };
 
     const module = await WebAssembly.instantiate(wasm, imports);
@@ -268,7 +274,7 @@ export function checkMemory(
   if (allocations.length) {
     for (const { ptr, size } of allocations) {
       const hdr = words.slice((ptr - 8) / 4, ptr / 4);
-      if (hdr[0] != ptr-8 || hdr[1] != ((size + 7) & ~7)) {
+      if (hdr[0] != ptr - 8 || hdr[1] != ((size + 7) & ~7)) {
         dumpAlloc(hdr, size, ptr);
         expect(hdr[0]).to.equal(
           ptr - 8,
@@ -295,14 +301,17 @@ export function checkMemory(
 
   function dumpAlloc(hdr: Uint32Array, size: number, ptr: number) {
     const slice = view.slice(ptr, ptr + size);
-    console.log(`ptr: #x${hdr[0].toString(16).padStart(5, "0")}, size: ${hdr[1]}`);
+    console.log(
+      `ptr: #x${hdr[0].toString(16).padStart(5, "0")}, size: ${hdr[1]}`
+    );
     for (let ii = 0; ii < size; ii += 16) {
       const line = Array.from(slice.slice(ii, Math.min(ii + 16, size)));
       const hexes = line.map((el) => el.toString(16).padStart(2, "0"));
       while (hexes.length < 16) {
         hexes.push("--");
       }
-      const chars = line.map((el) => el >= 0x20 && el < 0x80 ? String.fromCodePoint(el) : "."
+      const chars = line.map((el) =>
+        el >= 0x20 && el < 0x80 ? String.fromCodePoint(el) : "."
       );
       console.log(
         `${(ii + ptr).toString(16).padStart(5, "0")}  ${hexes.join(
