@@ -483,7 +483,7 @@
           (global.get $g-div0)
           (global.get $g-nil)))))
 
-  (return (i32.wrap_i64 (i64.shr_u (local.get $res-64) (i64.const 32)))))
+  (return (%unpack-64-hi-l $res-64)))
 
 (func $num-truncate-remainder (param $env i32) (param $args i32) (result i32)
   (local $dividend i32)
@@ -512,7 +512,7 @@
           (global.get $g-div0)
           (global.get $g-nil)))))
 
-  (return (i32.wrap_i64 (local.get $res-64) (i64.const 32))))
+  (return (%unpack-64-lo-l $res-64)))
  
 (func $num-truncate/ (param $env i32) (param $args i32) (result i32)
   (local $dividend i32)
@@ -543,8 +543,8 @@
 
   (return
     (%alloc-values
-      (i32.wrap_i64 (i64.shr_u (local.get $res-64) (i64.const 32)))
-      (i32.wrap_i64 (local.get $res-64)))))
+      (%unpack-64-hi-l $res-64)
+      (%alloc-list-1 (%unpack-64-lo-l $res-64)))))
 
 (func $num-floor-quotient (param $env i32) (param $args i32) (result i32)
   (local $dividend i32)
@@ -573,7 +573,7 @@
           (global.get $g-div0)
           (global.get $g-nil)))))
 
-  (return (i32.wrap_i64 (i64.shr_u (local.get $res-64) (i64.const 32)))))
+  (return (%unpack-64-hi-l $res-64)))
 
 (func $num-floor-remainder (param $env i32) (param $args i32) (result i32)
   (local $dividend i32)
@@ -602,7 +602,7 @@
           (global.get $g-div0)
           (global.get $g-nil)))))
 
-  (return (i32.wrap_i64 (local.get $res-64) (i64.const 32))))
+  (return (%unpack-64-lo-l $res-64)))
  
 (func $num-floor/ (param $env i32) (param $args i32) (result i32)
   (local $dividend i32)
@@ -633,8 +633,8 @@
 
   (return
     (%alloc-values
-      (i32.wrap_i64 (i64.shr_u (local.get $res-64) (i64.const 32)))
-      (i32.wrap_i64 (local.get $res-64)))))
+      (%unpack-64-hi-l $res-64)
+      (%alloc-list-1 (%unpack-64-lo-l $res-64)))))
  
 (func $num-exact-integer-sqrt (param $env i32) (param $args i32) (result i32)
   (local $num i32)

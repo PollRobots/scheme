@@ -5,7 +5,7 @@
       (br_if $fail (i32.eqz (call $all-string (local.get $args))))
       (br $check))
 
-    (return (Call $argument-error (local.get $args))))
+    (return (call $argument-error (local.get $args))))
 
   (return (call $cont-include
       (%cont-include)
@@ -27,7 +27,7 @@
 
   (%pop-l $filename $args)
 
-  (local.set $promise (call $file-read (local.get $filename)))
+  (local.set $promise (call $file-read (%car-l $filename)))
 
   (return (call $cont-alloc
       (%cont-import-promise)
@@ -54,10 +54,10 @@
     (local.get $reader)
     (%alloc-list-3
       ;; "(begin "
-      (%alloc-str (call $str-64 (i32.const 7) (i64.const 0x206e6967656228)))
+      (%alloc-str (call $str-from-64 (i32.const 7) (i64.const 0x206e6967656228)))
       (local.get $contents)
       ;; ")"
-      (%alloc-str (call $str-32 (i32.const 1) (i32.const 0x29)))))
+      (%alloc-str (call $str-from-32 (i32.const 1) (i32.const 0x29)))))
 
   (local.set $datum (call $read-with-reader (local.get $reader)))
   (call $reader-free (local.get $reader))

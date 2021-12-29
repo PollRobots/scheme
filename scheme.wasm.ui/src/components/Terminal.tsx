@@ -148,7 +148,7 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
       ],
       contextMenuGroupId: "navigation",
       contextMenuOrder: 1.5,
-      run: (ed) => {
+      run: (ed: editor.IStandaloneCodeEditor) => {
         this.setState({
           editing: false,
           line: "",
@@ -167,7 +167,7 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
         highVersion: ver,
       });
     }
-    editor.onDidChangeModelContent((e) => {
+    editor.onDidChangeModelContent(() => {
       const model = editor.getModel();
       if (!model) {
         return;

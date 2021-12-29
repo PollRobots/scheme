@@ -22,6 +22,7 @@ reference(fonts, css);
 interface AppState {
   theme: string;
   editorTheme: string;
+  prompt: string;
   fontSize: number;
   open: boolean;
   stopped: boolean;
@@ -31,9 +32,13 @@ interface AppState {
   persist: boolean;
 }
 
+const kPartialPrompt = "~    ";
+const kRegularPrompt = "> ";
+
 const kDefaultState: AppState = {
   theme: "Dark",
   editorTheme: "Same",
+  prompt: kRegularPrompt,
   open: false,
   about: false,
   stopped: true,
@@ -137,6 +142,10 @@ const App: React.FunctionComponent<{}> = (props) => {
       const result = runtime.current.processLine(str);
       if (runtime.current.stopped) {
         setTimeout(() => setState({ ...state, stopped: true }), 100);
+      } else if (runtime.current.partial && state.prompt != kPartialPrompt) {
+        setState({ ...state, prompt: kPartialPrompt });
+      } else if (!runtime.current.partial && state.prompt != kRegularPrompt) {
+        setState({ ...state, prompt: kRegularPrompt });
       }
       return result;
     } catch (err) {
@@ -177,7 +186,11 @@ const App: React.FunctionComponent<{}> = (props) => {
           >
             <Terminal
               prompt={
-                state.first ? "start:" : state.stopped ? "stopped:" : "> "
+                state.first
+                  ? "start:"
+                  : state.stopped
+                  ? "stopped:"
+                  : state.prompt
               }
               pause={state.stopped}
               welcomeMessage="Welcome to scheme.wasm"

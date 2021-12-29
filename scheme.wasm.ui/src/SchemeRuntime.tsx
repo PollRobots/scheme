@@ -2,6 +2,32 @@ import pako from "pako";
 
 type WriteCallback = (str: string) => void;
 
+const enum SchemeType {
+  Empty = 0,
+  Nil = 1,
+  Boolean = 2,
+  Cons = 3,
+  I64 = 4,
+  F64 = 5,
+  Symbol = 6,
+  Str = 7,
+  Char = 8,
+  Env = 9,
+  Special = 10,
+  Builtin = 11,
+  Lambda = 12,
+  Error = 13,
+  Values = 14,
+  Vector = 15,
+  Bytevector = 16,
+  Cont = 17,
+  BigInt = 18,
+  Except = 19,
+  ContProc = 20,
+  MaxHeap = 20,
+  Mask = 0x1f,
+}
+
 export class SchemeRuntime {
   private readonly module_: WebAssembly.Module;
   private instance_: WebAssembly.Instance | undefined;
@@ -11,6 +37,10 @@ export class SchemeRuntime {
   private readonly writeCallbacks_: WriteCallback[] = [];
   private initialized_: boolean = false;
   private env_: number = 0;
+  private partial_: boolean = false;
+  private waiting_: boolean = false;
+  private readonly promises_: number[] = [];
+  private readonly pendingOutput_: string[] = [];
 
   constructor(module: WebAssembly.Module) {
     this.module_ = module;
@@ -47,6 +77,10 @@ export class SchemeRuntime {
 
   get stopped(): boolean {
     return this.instance_ === undefined;
+  }
+
+  get partial(): boolean {
+    return this.partial_;
   }
 
   get memory(): WebAssembly.Memory {
@@ -109,6 +143,12 @@ export class SchemeRuntime {
     )(ptr, len);
   }
 
+  heapAllocString(str: string) : number {
+    return (this.exports.heapAllocString as (ptr: number) => number)(
+      this.createString(str)
+    );
+  }
+
   readerRollback(reader: number) {
     (this.exports.readerRollback as (reader: number) => void)(reader);
   }
@@ -157,20 +197,100 @@ export class SchemeRuntime {
     return new Uint32Array(this.memory.buffer.slice(ptr, ptr + 12));
   }
 
+  pokeMemory(ptr: number, data: ArrayBuffer) {
+    const byteArray = new Uint8Array(data);
+    const view = new Uint8Array(this.memory.buffer);
+    for (let i = 0; i < byteArray.length; i++) {
+      view[i + ptr] = byteArray[i];
+    }
+  }
+
   isError(ptr: number) {
-    return (this.heapItem(ptr)[0] & 0xf) == 13;
+    return (this.heapItem(ptr)[0] & SchemeType.Mask) == SchemeType.Error;
   }
 
   isEofError(ptr: number) {
     const heapWords = this.heapItem(ptr);
-    if ((heapWords[0] & 0xf) != 13) {
+    if ((heapWords[0] & SchemeType.Mask) != SchemeType.Error) {
       return false;
     }
-    return this.getString(heapWords[1]) == "eof";
+    const symbol = this.heapItem(heapWords[1]);
+    return this.getString(symbol[1]) == "eof";
+  }
+
+  isImportPromise(ptr: number) {
+    const heapWords = this.heapItem(ptr);
+    if ((heapWords[0] & SchemeType.Mask) != SchemeType.Cont) {
+      return false;
+    }
+    // continuation is conveniently the same size as a heap item
+    const continuation = this.heapItem(heapWords[1]);
+    // check the continuation function
+    // %cont-import-promise is defined as 204 in builtins.wat
+    return continuation[0] == 204;
+  }
+
+  addImportPromise(ptr: number) {
+    this.promises_.push(ptr);
+  }
+
+  resolveImportPromise(promise: number, text: string): boolean {
+    for (let index = 0; index != this.promises_.length; index++) {
+      const ptr = this.promises_[index];
+      const heapWords = this.heapItem(ptr);
+      if ((heapWords[0] & SchemeType.Mask) != SchemeType.Cont) {
+        console.error(
+          "Unexpected object in import promise list: ",
+          ptr,
+          heapWords
+        );
+        continue;
+      }
+
+      const continuation = this.heapItem(heapWords[1]);
+      if (continuation[0] != 204) {
+        console.error("Unexpected function in continuation", ptr, continuation);
+        continue;
+      }
+
+      if (continuation[2] == promise) {
+        // this is the promise.
+        continuation[0] = 0;
+        continuation[2] = this.heapAllocString(text);
+        this.pokeMemory(heapWords[1], continuation.buffer);
+        this.promises_.splice(index, 1);
+
+        const writeBuffer: string[] = [];
+        const onWrite = (str: string) => writeBuffer.push(str);
+        this.addEventListener("write", onWrite);
+
+        try {
+          this.evalInput(ptr, writeBuffer);
+        } catch (err) {
+          console.error(err);
+          this.instance_ = undefined;
+          this.exports_ = undefined;
+          this.initialized_ = false;
+          writeBuffer.push(`\x1B[0;31m${err}
+
+\x1B[0;94mPress <Enter> to restart scheme runtime.\x1B[0m
+`);
+        }
+
+        this.removeEventListener("write", onWrite);
+        this.pendingOutput_.push(...writeBuffer);
+
+        if (this.promises_.length == 0) {
+          this.waiting_ = false;
+        }
+        return true;
+      }
+    }
+    return false;
   }
 
   isNil(ptr: number) {
-    return (this.heapItem(ptr)[0] & 0xf) == 1;
+    return (this.heapItem(ptr)[0] & SchemeType.Mask) == SchemeType.Nil;
   }
 
   createString(str: string): number {
@@ -220,12 +340,43 @@ export class SchemeRuntime {
     dst.set(src, ptr);
   }
 
+  waitFor(timeoutMs: number): Promise<void> {
+    return new Promise<void>((resolve) => {
+      window.setTimeout(() => resolve(), timeoutMs);
+    });
+  }
+
+  async doFileRead(filenamePtr: number): Promise<void> {
+    try {
+      const filename = this.getString(filenamePtr);
+      const response = await fetch(`./scheme/${filename}`);
+      const text = await response.text();
+      while (!this.resolveImportPromise(filenamePtr, text)) {
+        await this.waitFor(100);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  fileRead(filenamePtr: number) {
+    this.doFileRead(filenamePtr);
+    return filenamePtr;
+  }
+
   processLine(str: string): string {
     if (this.stopped) {
       return "";
     }
+    if (this.waiting_) {
+      return "";
+    }
     try {
-      const written: string[] = [];
+      const written: string[] = [...this.pendingOutput_];
+      if (this.pendingOutput_.length) {
+        this.pendingOutput_.splice(0, this.pendingOutput_.length);
+      }
+
       const onWrite = (str: string) => {
         written.push(str);
       };
@@ -236,15 +387,13 @@ export class SchemeRuntime {
         this.registerBuiltins(this.gHeap, this.env_);
         this.initialized_ = true;
       }
-
       const input = this.read();
       if (this.isEofError(input)) {
         this.readerRollback(this.gReader);
+        this.partial_ = true;
       } else {
-        const result = this.eval(this.env_, input);
-        if (!this.isNil(result)) {
-          this.print(result);
-        }
+        this.evalInput(input, written);
+        this.partial_ = false;
       }
       this.removeEventListener("write", onWrite);
       return written.join("");
@@ -257,6 +406,17 @@ export class SchemeRuntime {
 
 \x1B[0;94mPress <Enter> to restart scheme runtime.\x1B[0m
 `;
+    }
+  }
+
+  evalInput(input: number, writeBuffer: string[]) {
+    const result = this.eval(this.env_, input);
+    if (this.isImportPromise(result)) {
+      this.waiting_ = true;
+      writeBuffer.push("Waiting...");
+      this.addImportPromise(result);
+    } else if (!this.isNil(result)) {
+      this.print(result);
     }
   }
 
@@ -292,6 +452,9 @@ export class SchemeRuntime {
       unicode: {
         loadData: (block: number, ptr: number) =>
           this.unicodeLoadData(block, ptr),
+      },
+      file: {
+        read: (filenamePtr: number) => this.fileRead(filenamePtr),
       },
     };
 

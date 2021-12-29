@@ -512,11 +512,8 @@
   (local.set $cont-proc (call $heap-alloc
       (global.get $g-heap)
       (%cont-proc-type)
-      (%cdr (local.get $env)) ;; env is actually the continuation
+      (%cdr (global.get $g-curr-cont))
       (i32.const 0)))
-
-  ;; extract env from continuation
-  (local.set $env (i32.load offset=4 (%car-l $env)))
 
   (return (call $apply-internal 
       (local.get $env) 

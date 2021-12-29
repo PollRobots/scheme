@@ -149,44 +149,40 @@
   (return (global.get $g-nil))
 )
 
-(func $environment-set! (param $env i32) (param $key i32) (param $value i32)
+(func $environment-set! (param $env i32) (param $key i32) (param $value i32) (result i32)
   (local $key-str i32)
   (local $hashtable i32)
   (local $new-hashtable i32)
 
   ;; check that key is a string
   ;; if (*key & 0xF != symbol) {
-  (if (i32.ne (%get-type $key) (%symbol-type))
-    (then
-      ;; trap
-      (unreachable)
-    )
-  ;; }
-  )
+  (if (i32.ne (%get-type $key) (%symbol-type)) (then 
+      (return (call $argument-error (%alloc-list-2 
+            (local.get $key) 
+            (local.get $value))))))
+
   ;; key-str = key[4]
-  (local.set $key-str (i32.load offset=4 (local.get $key)))
+  (local.set $key-str (%car-l $key))
 
   ;; while (true) {
   (loop $forever
-    ;; hashtable = env[4]
-    (local.set $hashtable (i32.load offset=4 (local.get $env)))
+    ;; hashtable = car(env)
+    (local.set $hashtable (%car-l $env))
 
     ;; Note: cannot remove then add, because the duplicated key-string in the hashtable will leak.
     ;; if (hashtable-replace(hashtable, key-str, value)) {
-    (if (call $hashtable-replace (local.get $hashtable) (local.get $key-str) (local.get $value))
+    (if (call $hashtable-replace 
+        (local.get $hashtable) 
+        (local.get $key-str) 
+        (local.get $value))
       ;; return
-      (then return)
-    ;; }
-    )
+      (then (return (global.get $g-nil))))
 
-    ;; env = env[8]
-    (local.set $env (i32.load offset=8 (local.get $env)))
 
-    ;; if (env) continue;
-    (br_if $forever (local.get $env))
-  )
+    ;; if (env = cdr(env)) continue;
+    (br_if $forever (local.tee $env (%cdr-l $env))))
   ;; }
 
-  ;; trap
-  (unreachable) 
-)
+  (return (call $argument-error (%alloc-list-2 
+        (local.get $key) 
+        (local.get $value)))))

@@ -295,10 +295,10 @@
       (%pop-l $var $vars)
       (%pop-l $init $inits)
 
-      (call $environment-set!
-        (local.get $env) 
-          (local.get $var)
-          (local.get $init))
+      (drop (call $environment-set!
+          (local.get $env) 
+            (local.get $var)
+            (local.get $init)))
 
       (br $b_start)))
 

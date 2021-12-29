@@ -38,6 +38,8 @@
 ;;   bytevector = 16
 ;;   cont(inuation) = 17
 ;;   big-int = 18
+;;   except = 19
+;;   cont-proc = 20
 ;; kMaxType = 18
 (%define %empty-type () (i32.const 0))
 (%define %nil-type () (i32.const 1))

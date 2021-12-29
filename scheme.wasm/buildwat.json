@@ -69,6 +69,13 @@
       "name": "loadData",
       "index": "$unicode-load-data",
       "params": ["i32", "i32"]
+    },
+    {
+      "module":"file",
+      "name": "read",
+      "index": "$file-read",
+      "params": ["i32"],
+      "result": "i32"
     }
   ],
   "exports": [
@@ -121,6 +128,11 @@
       "name": "strFromCodePoints",
       "type": "func",
       "index": "$str-from-code-points"
+    },
+    {
+      "name": "heapAllocString",
+      "type": "func",
+      "index": "$heap-alloc-string"
     },
     {
       "name": "readerRollback",

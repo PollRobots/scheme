@@ -98,5 +98,7 @@
   (%pop-l $value $args)
   (%pop-l $name $args)
 
-  (call $environment-set! (local.get $env) (local.get $name) (local.get $value))
-  (return (global.get $g-nil)))
+  (return (call $environment-set! 
+      (local.get $env) 
+      (local.get $name) 
+      (local.get $value))))

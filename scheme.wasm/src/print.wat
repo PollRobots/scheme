@@ -121,6 +121,14 @@
         (call $print-big-int (local.get $ptr) (i32.const 10))
         (br $b_switch)))
 
+    ;; case Continuation
+    (if (i32.eq (local.get $type) (%cont-type)) (then
+        (call $print-other 
+          (global.get $g-cont-type) 
+          (local.get $type) 
+          (local.get $ptr))
+        (br $b_switch)))
+
     ;; default:
     (call $print-other (global.get $g-unknown) (local.get $type) (local.get $ptr))
       ;; print-error();

@@ -205,8 +205,9 @@
 (%define %builtin-include ()                  (i32.const 201))
 (%define %cont-include ()                     (i32.const 202))
 (%define %cont-include-read ()                (i32.const 203))
+(%define %cont-import-promise ()              (i32.const 204))
 
-(table $table-builtin 204 anyfunc)
+(table $table-builtin 205 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))

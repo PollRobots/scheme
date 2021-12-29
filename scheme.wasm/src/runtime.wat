@@ -41,6 +41,8 @@
 (global $g-fzero      (mut i32) (i32.const 0))
 (global $g-exp        (mut i32) (i32.const 0))
 (global $g-neg        (mut i32) (i32.const 0))
+(global $g-cont-type  (mut i32) (i32.const 0))
+(global $g-curr-cont  (mut i32) (i32.const 0))
 
 (global $g-eval-count (mut i32) (i32.const 0))
 (%define %gc-threshold () (i32.const 256))
@@ -88,6 +90,7 @@
   (global.set $g-fzero (%sym-32 0x302e30 3)) ;; '0.0'
   (global.set $g-exp (%sym-32 0x65 1)) ;; 'e'
   (global.set $g-neg (%sym-32 0x2d 1)) ;; '-'
+  (global.set $g-cont-type (%sym-32 0x746e6f63 4)) ;; 'cont'
 
   ;; global reader is attached to stdin
   (global.set $g-reader (call $reader-init (i32.const 0)))
@@ -930,14 +933,27 @@
   (local $res-mode i32)
   (local $handler i32)
 
-  (local.set $cont-stack (call $cont-alloc
-    (%eval-fn)
-    (local.get $env)
-    (local.get $args)
-    (i32.const 0)))
-  (local.set $fn (%eval-fn))
+  (if (i32.eq (%get-type $args) (%cont-type))
+    (then
+      (local.set $cont-stack (local.get $args))
+      (local.set $curr-cont (%car-l $cont-stack))
+      
+      (local.set $fn (i32.load offset=0 (local.get $curr-cont)))
+      (local.set $env (i32.load offset=4 (local.get $curr-cont)))
+      (local.set $args (i32.load offset=8 (local.get $curr-cont))))
+    (else
+      (local.set $cont-stack (call $cont-alloc
+        (%eval-fn)
+        (local.get $env)
+        (local.get $args)
+        (i32.const 0)))
+      (local.set $fn (%eval-fn))))
 
   (loop $forever
+    ;; set the current continuation (so that call/cc can get it)
+    ;; TODO solve this without globals?
+    (global.set $g-curr-cont (local.get $cont-stack))
+
     (block $b_eval_cont
       (if (i32.eqz (local.get $fn)) (then
           ;; check if a gc has been indicated
@@ -976,9 +992,11 @@
           
           (br $b_eval_cont)))
 
-      (if (i32.eq (local.get $fn) (%builtin-call/cc)) (then
-          ;; Calling call/cc, replace the env with the continuation stack 
-          (local.set $env (local.get $cont-stack))))
+      ;; this is a promise from the "other-side" (the host), so we will return 
+      ;; this, and resume when the host sends it back to us.
+      (if (i32.eq (local.get $fn) (%cont-import-promise)) (then
+          (global.set $g-curr-cont (i32.const 0))
+          (return (local.get $cont-stack))))
 
       ;; some other function is the continuation
       (local.get $env)
@@ -998,7 +1016,8 @@
           (if (%cdr-l $result) (then
               ;; result is populated, so set contintuation stack, and the result
               (local.set $cont-stack (%car-l $result))
-              (local.set $result (%car (%cdr-l $result)))))))
+              (local.set $result (%car (%cdr-l $result)))
+              (local.set $result-type (%get-type $result))))))
 
       (if (i32.eq (local.get $result-type) (%cont-type)) (then 
           ;; result is a continuation (or list of), place them on the top of the 
@@ -1024,6 +1043,7 @@
               ;; is empty
               (block $b_raise_end (loop $b_raise_start
                   (if (i32.eqz (local.get $cont-stack)) (then
+                      (global.set $g-curr-cont (i32.const 0))
                       ;; no guard frame, return the exception as the result
                       (return (%car-l $result))))
 
@@ -1082,6 +1102,7 @@
                   (br $b_raise_start)))
 
               (if (i32.eqz (local.get $temp-cont)) (then
+                  (global.set $g-curr-cont (i32.const 0))
                   ;; no guard frame, return the exception as the result
                   (return (%car-l $result))))
 
@@ -1108,6 +1129,7 @@
         ;; not a continuation and not an exception
       (if (i32.eqz (local.get $cont-stack))
         (then
+          (global.set $g-curr-cont (i32.const 0))
           ;; nothing on the cont stack, simply return this result
           (return (local.get $result))
         )))
