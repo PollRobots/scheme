@@ -8,7 +8,7 @@ export interface SettingsBase {
   editorTheme: string;
   inspector: boolean;
   fontSize: number;
-  persist?: boolean;
+  persist: boolean;
 }
 
 interface SettingsProps extends SettingsBase {

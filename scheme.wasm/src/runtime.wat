@@ -132,25 +132,21 @@
 
   ;; token-str = reader-read-token(g-reader)
   (local.set $token-str (call $reader-read-token (local.get $reader)))
+  (if (i32.eqz (local.get $token-str)) (then
+      (call $reader-commit (local.get $reader))
+      (return (i32.const 0))))
 
   ;; return string->datum(token-str)
   (local.set $result (call $string->datum-with-reader 
       (local.get $token-str) 
       (local.get $reader)))
-  (if (i32.eq (%get-type $result) (%error-type))
-    (then 
-      (if (i32.eq (global.get $g-eof) (%car-l $result))
-        (then 
+  (if (i32.eq (%get-type $result) (%error-type)) (then 
+      (if (i32.eq (global.get $g-eof) (%car-l $result)) (then 
           (call $reader-rollback (local.get $reader))
-          (return (local.get $result))
-        )
-      )
-    )
-  )
+          (return (local.get $result))))))
 
   (call $reader-commit (local.get $reader))
-  (return (local.get $result))
-)
+  (return (local.get $result)))
 
 (func $string->datum (param $token-str i32) (result i32)
   (return (call $string->datum-with-reader 

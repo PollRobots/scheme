@@ -61,6 +61,7 @@ function AnsiEscaper(str: string): React.ReactNode {
   const nodes: React.ReactNode[] = [];
   const chars = Array.from(str);
   let start = 0;
+  let escapeCount = 0;
   let foreground: string | undefined;
   let background: string | undefined;
 
@@ -69,6 +70,7 @@ function AnsiEscaper(str: string): React.ReactNode {
     if (cp !== 0x1b) {
       continue;
     }
+    escapeCount++;
 
     // this is an escape sequence
     // add string so far (if any)
@@ -133,10 +135,17 @@ function AnsiEscaper(str: string): React.ReactNode {
 
   if (start > 0 && start < chars.length) {
     const partial = chars.slice(start).join("");
-    nodes.push(partial);
+    nodes.push(
+      <span
+        style={{ color: foreground, background: background }}
+        key={chars.length}
+      >
+        {partial}
+      </span>
+    );
   }
 
-  if (nodes.length <= 1) {
+  if (escapeCount == 0) {
     return str;
   } else {
     return nodes;

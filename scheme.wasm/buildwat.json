@@ -135,6 +135,11 @@
       "index": "$heap-alloc-string"
     },
     {
+      "name": "heapAllocError",
+      "type": "func",
+      "index": "$heap-alloc-error"
+    },
+    {
       "name": "readerRollback",
       "type": "func",
       "index": "$reader-rollback"

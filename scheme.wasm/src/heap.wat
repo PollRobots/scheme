@@ -329,6 +329,11 @@
 (func $heap-alloc-string (param $str i32) (result i32)
   (return (%alloc-str (local.get $str))))
 
+(func $heap-alloc-error (param $sym i32) (param $str i32) (result i32)
+  (return (%alloc-error 
+      (%alloc-symbol (local.get $sym)) 
+      (%alloc-str (local.get $str)))))
+
 (func $get-interned-symbol (param $str i32) (result i32)
   (return
     (call $hashtable-get

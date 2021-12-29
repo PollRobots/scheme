@@ -40,7 +40,6 @@ export class SchemeRuntime {
   private partial_: boolean = false;
   private waiting_: boolean = false;
   private readonly promises_: number[] = [];
-  private readonly pendingOutput_: string[] = [];
 
   constructor(module: WebAssembly.Module) {
     this.module_ = module;
@@ -143,10 +142,16 @@ export class SchemeRuntime {
     )(ptr, len);
   }
 
-  heapAllocString(str: string) : number {
+  heapAllocString(str: string): number {
     return (this.exports.heapAllocString as (ptr: number) => number)(
       this.createString(str)
     );
+  }
+
+  heapAllocError(symbol: string, message: string): number {
+    return (
+      this.exports.heapAllocError as (symbol: number, message: number) => number
+    )(this.createString(symbol), this.createString(message));
   }
 
   readerRollback(reader: number) {
@@ -235,6 +240,20 @@ export class SchemeRuntime {
   }
 
   resolveImportPromise(promise: number, text: string): boolean {
+    return this.settleImportPromise(promise, this.heapAllocString(text));
+  }
+
+  rejectImportPromise(
+    promise: number,
+    symbol: string,
+    message: string
+  ): boolean {
+    const value = this.heapAllocError(symbol, message);
+
+    return this.settleImportPromise(promise, value);
+  }
+
+  settleImportPromise(promise: number, value: number): boolean {
     for (let index = 0; index != this.promises_.length; index++) {
       const ptr = this.promises_[index];
       const heapWords = this.heapItem(ptr);
@@ -256,29 +275,22 @@ export class SchemeRuntime {
       if (continuation[2] == promise) {
         // this is the promise.
         continuation[0] = 0;
-        continuation[2] = this.heapAllocString(text);
+        continuation[2] = value;
         this.pokeMemory(heapWords[1], continuation.buffer);
         this.promises_.splice(index, 1);
 
-        const writeBuffer: string[] = [];
-        const onWrite = (str: string) => writeBuffer.push(str);
-        this.addEventListener("write", onWrite);
-
         try {
-          this.evalInput(ptr, writeBuffer);
+          this.evalInput(ptr);
         } catch (err) {
           console.error(err);
           this.instance_ = undefined;
           this.exports_ = undefined;
           this.initialized_ = false;
-          writeBuffer.push(`\x1B[0;31m${err}
+          this.onWrite(`\x1B[0;31m${err}
 
 \x1B[0;94mPress <Enter> to restart scheme runtime.\x1B[0m
 `);
         }
-
-        this.removeEventListener("write", onWrite);
-        this.pendingOutput_.push(...writeBuffer);
 
         if (this.promises_.length == 0) {
           this.waiting_ = false;
@@ -327,6 +339,10 @@ export class SchemeRuntime {
 
   writer(ptr: number) {
     const str = this.getString(ptr);
+    this.onWrite(str);
+  }
+
+  onWrite(str: string) {
     this.writeCallbacks_.forEach((el) => el(str));
   }
 
@@ -350,11 +366,19 @@ export class SchemeRuntime {
     try {
       const filename = this.getString(filenamePtr);
       const response = await fetch(`./scheme/${filename}`);
+      if (!response.ok) {
+        throw new Error(response.statusText);
+      }
       const text = await response.text();
       while (!this.resolveImportPromise(filenamePtr, text)) {
         await this.waitFor(100);
       }
     } catch (err) {
+      this.rejectImportPromise(
+        filenamePtr,
+        "file-read",
+        err instanceof Error ? err.message : "unknown"
+      );
       console.error(err);
     }
   }
@@ -364,23 +388,14 @@ export class SchemeRuntime {
     return filenamePtr;
   }
 
-  processLine(str: string): string {
+  processLine(str: string): void {
     if (this.stopped) {
-      return "";
+      return;
     }
     if (this.waiting_) {
-      return "";
+      return;
     }
     try {
-      const written: string[] = [...this.pendingOutput_];
-      if (this.pendingOutput_.length) {
-        this.pendingOutput_.splice(0, this.pendingOutput_.length);
-      }
-
-      const onWrite = (str: string) => {
-        written.push(str);
-      };
-      this.addEventListener("write", onWrite);
       this.lines_.push(str);
       if (!this.initialized_) {
         this.env_ = this.environmentInit(this.gHeap, 0);
@@ -389,31 +404,28 @@ export class SchemeRuntime {
       }
       const input = this.read();
       if (this.isEofError(input)) {
-        this.readerRollback(this.gReader);
         this.partial_ = true;
-      } else {
-        this.evalInput(input, written);
+      } else if (input != 0) {
+        this.evalInput(input);
         this.partial_ = false;
       }
-      this.removeEventListener("write", onWrite);
-      return written.join("");
     } catch (err) {
       console.error(err);
       this.instance_ = undefined;
       this.exports_ = undefined;
       this.initialized_ = false;
-      return `\x1B[0;31m${err}
+      this.onWrite(`\x1B[0;31m${err}
 
 \x1B[0;94mPress <Enter> to restart scheme runtime.\x1B[0m
-`;
+`);
     }
   }
 
-  evalInput(input: number, writeBuffer: string[]) {
+  evalInput(input: number) {
     const result = this.eval(this.env_, input);
     if (this.isImportPromise(result)) {
       this.waiting_ = true;
-      writeBuffer.push("Waiting...");
+      this.onWrite("\x1B[0;94mWaiting...\x1B[0m\n");
       this.addImportPromise(result);
     } else if (!this.isNil(result)) {
       this.print(result);

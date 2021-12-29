@@ -46,6 +46,8 @@
   (local $datum i32)
 
   (%pop-l $contents $args)
+  (if (i32.eq (%get-type $contents) (%error-type)) (then
+      (return (local.get $contents))))
 
   ;; Crease a string reader.
   (local.set $reader (call $reader-init (i32.const -1)))

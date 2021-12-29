@@ -11,15 +11,15 @@ import { IconButton } from "./IconButton";
 
 interface TerminalProps {
   welcomeMessage?: React.ReactNode;
+  output: string[];
   prompt: string;
   pause: boolean;
   autofocus: boolean;
   fontSize: number;
-  onInput: (str: string) => Promise<string>;
+  onInput: (str: string) => Promise<void>;
 }
 
 interface TerminalState {
-  output: string[];
   history: string[];
   hidx: number;
   input: string;
@@ -34,7 +34,6 @@ interface TerminalState {
 }
 
 const kDefaultState: TerminalState = {
-  output: [],
   history: [],
   hidx: 0,
   input: "",
@@ -67,17 +66,12 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
     }
     history.push(cmd);
 
-    const output = [...this.state.output, prompt + cmd];
-    const result = await this.props.onInput(cmd);
-    if (result.length > 0) {
-      output.push(result);
-    }
+    await this.props.onInput(cmd);
 
     this.setState({
       input: "",
       history: history,
       hidx: history.length,
-      output: output,
       cached: "",
     });
   }
@@ -482,7 +476,7 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
                     }}
                   >
                     {this.props.welcomeMessage}
-                    <TerminalData text={this.state.output} />
+                    <TerminalData text={this.props.output} />
                     <TerminalInput
                       prompt={this.props.prompt}
                       readonly={this.props.pause}

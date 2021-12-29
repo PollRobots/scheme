@@ -30,6 +30,7 @@ interface AppState {
   first: boolean;
   inspector: boolean;
   persist: boolean;
+  output: string[];
 }
 
 const kPartialPrompt = "~    ";
@@ -46,6 +47,7 @@ const kDefaultState: AppState = {
   inspector: false,
   persist: false,
   fontSize: 12,
+  output: [],
 };
 
 const kSettingsSubHeading: React.CSSProperties = {
@@ -113,127 +115,170 @@ function clearSettings() {
   localStorage.removeItem(kSettingsKey);
 }
 
-const App: React.FunctionComponent<{}> = (props) => {
-  const [state, setState] = React.useState<AppState>({
-    ...kDefaultState,
-    ...loadSettings(),
-  });
-  const runtime = React.useRef<SchemeRuntime>();
-  const ref = React.useRef<HTMLDivElement>(null);
+class App extends React.Component<{}, AppState> {
+  private readonly ref = React.createRef<HTMLDivElement>();
+  private runtime?: SchemeRuntime;
+  private readonly pending: string[] = [];
+  private writing: boolean = false;
 
-  useOnClickOutside(ref, () =>
-    setState({ ...state, open: false, about: false })
-  );
+  constructor(props: {}) {
+    super(props);
+    this.state = { ...kDefaultState, ...loadSettings() };
+  }
 
-  const onInput = async (str: string): Promise<string> => {
+  // useOnClickOutside(ref, () =>
+  //   setState({ ...state, open: false, about: false })
+  // );
+
+  onWrite(str: string) {
+    if (this.writing) {
+      this.pending.push(str);
+      return;
+    }
+
+    if (this.pending.length > 0) {
+      this.pending.push(str);
+      str = this.pending.join("");
+      this.pending.splice(0, this.pending.length);
+    }
+
+    const parts = str.split("\n");
+    if (!parts.length) {
+      return;
+    }
+    const output = [...this.state.output];
+    if (output.length == 0) {
+      output.push(parts[0]);
+    } else {
+      output[output.length - 1] += parts[0];
+    }
+    parts.shift();
+    output.push(...parts);
+    this.writing = true;
+    this.setState({ output: output }, () => {
+      this.writing = false;
+      if (this.pending.length) {
+        window.requestAnimationFrame(() => this.onWrite(""));
+      }
+    });
+  }
+
+  async onInput(str: string): Promise<void> {
+    this.onWrite("\n" + this.getPrompt() + str + "\n");
     try {
-      if (!runtime.current) {
-        runtime.current = await SchemeRuntime.load();
-        setTimeout(
-          () => setState({ ...state, first: false, stopped: false }),
-          100
+      if (!this.runtime) {
+        this.runtime = await SchemeRuntime.load();
+        this.runtime.addEventListener("write", (str) => this.onWrite(str));
+        this.setState({ first: false, stopped: false }, () =>
+          this.onWrite("\x1B[0;94mStarted runtime.\x1B[0m ")
         );
-        return "\x1B[0;94mStarted runtime.\x1B[0m ";
-      } else if (!runtime.current || runtime.current.stopped) {
-        await runtime.current?.start();
-        setTimeout(() => setState({ ...state, stopped: false }), 100);
-        return "\x1B[0;94mRestarted.\x1B[0m ";
+        return;
+      } else if (!this.runtime || this.runtime.stopped) {
+        await this.runtime.start();
+        this.setState({ stopped: false }, () =>
+          this.onWrite("\x1B[0;94mRestarted.\x1B[0m ")
+        );
       }
-      const result = runtime.current.processLine(str);
-      if (runtime.current.stopped) {
-        setTimeout(() => setState({ ...state, stopped: true }), 100);
-      } else if (runtime.current.partial && state.prompt != kPartialPrompt) {
-        setState({ ...state, prompt: kPartialPrompt });
-      } else if (!runtime.current.partial && state.prompt != kRegularPrompt) {
-        setState({ ...state, prompt: kRegularPrompt });
+      const result = this.runtime.processLine(str + "\n");
+      if (this.runtime.stopped) {
+        this.setState({ stopped: true });
+      } else if (this.runtime.partial && this.state.prompt != kPartialPrompt) {
+        this.setState({ prompt: kPartialPrompt });
+      } else if (!this.runtime.partial && this.state.prompt != kRegularPrompt) {
+        this.setState({ prompt: kRegularPrompt });
       }
-      return result;
+      return; //result;
     } catch (err) {
-      return `\x1B[0;31m${err}
+      this.onWrite(`\x1B[0;31m${err}
 
 \x1B[0;94mIt's unlikely that trying again will help ‾\\_(シ)_/‾ \x1B[0m
-`;
+`);
     }
-  };
+  }
 
-  const getEditorTheme = () => {
-    if (state.editorTheme == "Same") {
+  getEditorTheme() {
+    if (this.state.editorTheme == "Same") {
       return false;
-    } else if (state.editorTheme == "Dark") {
+    } else if (this.state.editorTheme == "Dark") {
       return kSolarizedDark;
     } else {
       return kSolarizedLight;
     }
-  };
+  }
 
-  return (
-    <ThemeProvider
-      value={state.theme == "Dark" ? kSolarizedDark : kSolarizedLight}
-    >
-      <SchemeRuntimeProvider value={runtime.current}>
-        <EditorThemeProvider value={getEditorTheme()}>
-          <div
-            style={{
-              display: "grid",
-              height: "calc(100vh - 5rem)",
-              width: "calc(95vw - 7rem)",
-              margin: "1rem auto 4rem",
-              boxSizing: "border-box",
-              boxShadow: "#444 0 0.5em 1em",
-              overflowY: "scroll",
-              fontSize: `${state.fontSize}pt`,
-            }}
-          >
-            <Terminal
-              prompt={
-                state.first
-                  ? "start:"
-                  : state.stopped
-                  ? "stopped:"
-                  : state.prompt
-              }
-              pause={state.stopped}
-              welcomeMessage="Welcome to scheme.wasm"
-              autofocus={!state.open && !state.inspector}
-              fontSize={(4 * state.fontSize) / 3}
-              onInput={(str) => onInput(str)}
-            />
-          </div>
-          {state.inspector ? (
-            <Flyout label="Inspector" fontSize={state.fontSize}>
-              <HeapInspector scale={state.fontSize / 12} />
-            </Flyout>
-          ) : null}
+  getPrompt() {
+    return this.state.first
+      ? "start:"
+      : this.state.stopped
+      ? "stopped:"
+      : this.state.prompt;
+  }
 
-          <div ref={ref}>
-            <Burger
-              open={state.open}
-              onClick={() => setState({ ...state, open: !state.open })}
-            />
-            <SettingsMenu open={state.open}>
-              <Settings
-                theme={state.theme}
-                editorTheme={state.editorTheme}
-                inspector={state.inspector}
-                fontSize={state.fontSize}
-                persist={state.persist}
-                onChange={(update) => {
-                  if (update.persist) {
-                    storeSettings(update);
-                  } else if (state.persist) {
-                    clearSettings();
-                  }
-                  setState({ ...state, ...update });
-                }}
-                onAbout={() => setState({ ...state, about: true, open: false })}
+  render() {
+    return (
+      <ThemeProvider
+        value={this.state.theme == "Dark" ? kSolarizedDark : kSolarizedLight}
+      >
+        <SchemeRuntimeProvider value={this.runtime}>
+          <EditorThemeProvider value={this.getEditorTheme()}>
+            <div
+              style={{
+                display: "grid",
+                height: "calc(100vh - 5rem)",
+                width: "calc(95vw - 7rem)",
+                margin: "1rem auto 4rem",
+                boxSizing: "border-box",
+                boxShadow: "#444 0 0.5em 1em",
+                overflowY: "scroll",
+                fontSize: `${this.state.fontSize}pt`,
+              }}
+            >
+              <Terminal
+                prompt={this.getPrompt()}
+                pause={this.state.stopped}
+                welcomeMessage="Welcome to scheme.wasm"
+                autofocus={!this.state.open && !this.state.inspector}
+                fontSize={(4 * this.state.fontSize) / 3}
+                onInput={(str) => this.onInput(str)}
+                output={this.state.output}
               />
-            </SettingsMenu>
-          </div>
-          {state.about ? <About /> : null}
-        </EditorThemeProvider>
-      </SchemeRuntimeProvider>
-    </ThemeProvider>
-  );
-};
+            </div>
+            {this.state.inspector ? (
+              <Flyout label="Inspector" fontSize={this.state.fontSize}>
+                <HeapInspector scale={this.state.fontSize / 12} />
+              </Flyout>
+            ) : null}
+
+            <div ref={this.ref}>
+              <Burger
+                open={this.state.open}
+                onClick={() => this.setState({ open: !this.state.open })}
+              />
+              <SettingsMenu open={this.state.open}>
+                <Settings
+                  theme={this.state.theme}
+                  editorTheme={this.state.editorTheme}
+                  inspector={this.state.inspector}
+                  fontSize={this.state.fontSize}
+                  persist={this.state.persist}
+                  onChange={(update) => {
+                    if (update.persist) {
+                      storeSettings(update);
+                    } else if (this.state.persist) {
+                      clearSettings();
+                    }
+                    this.setState({ ...update });
+                  }}
+                  onAbout={() => this.setState({ about: true, open: false })}
+                />
+              </SettingsMenu>
+            </div>
+            {this.state.about ? <About /> : null}
+          </EditorThemeProvider>
+        </SchemeRuntimeProvider>
+      </ThemeProvider>
+    );
+  }
+}
 
 ReactDOM.render(<App />, document.getElementById("app"));
