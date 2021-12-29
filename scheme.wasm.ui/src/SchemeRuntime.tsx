@@ -28,6 +28,8 @@ const enum SchemeType {
   Mask = 0x1f,
 }
 
+class RuntimeExit extends Error {}
+
 export class SchemeRuntime {
   private readonly module_: WebAssembly.Module;
   private instance_: WebAssembly.Instance | undefined;
@@ -347,7 +349,7 @@ export class SchemeRuntime {
   }
 
   exit(exitCode: number) {
-    throw new Error(`Scheme exited with code: ${exitCode}`);
+    throw new RuntimeExit(`Scheme exited with code: ${exitCode}`);
   }
 
   unicodeLoadData(block: number, ptr: number) {
@@ -396,28 +398,36 @@ export class SchemeRuntime {
       return;
     }
     try {
-      this.lines_.push(str);
       if (!this.initialized_) {
         this.env_ = this.environmentInit(this.gHeap, 0);
         this.registerBuiltins(this.gHeap, this.env_);
         this.initialized_ = true;
+        this.lines_.push('(include "prolog.scm")\n');
       }
-      const input = this.read();
-      if (this.isEofError(input)) {
-        this.partial_ = true;
-      } else if (input != 0) {
-        this.evalInput(input);
-        this.partial_ = false;
+      this.lines_.push(str);
+      while (this.lines_.length) {
+        const input = this.read();
+        if (this.isEofError(input)) {
+          this.partial_ = true;
+          break;
+        } else if (input != 0) {
+          this.evalInput(input);
+          this.partial_ = false;
+        }
       }
     } catch (err) {
       console.error(err);
       this.instance_ = undefined;
       this.exports_ = undefined;
       this.initialized_ = false;
-      this.onWrite(`\x1B[0;31m${err}
-
-\x1B[0;94mPress <Enter> to restart scheme runtime.\x1B[0m
-`);
+      if (err instanceof RuntimeExit) {
+        this.onWrite(`\x1B[0;32m${err.message}\n`);
+      } else {
+        this.onWrite(`\x1B[0;31m${err}\n`);
+      }
+      this.onWrite(
+        "\n\x1B[0;94mPress <Enter> to restart scheme runtime.\x1B[0m\n"
+      );
     }
   }
 
