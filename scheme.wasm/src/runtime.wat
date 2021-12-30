@@ -168,6 +168,10 @@
         (return (%alloc-error-cons 
             (global.get $g-eof) 
             (global.get $g-nil))))))
+  
+  (%define %check-datum (%datum) 
+    (if (i32.eq (%get-type %datum) (%error-type)) (then
+        (return (local.get %datum)))))
 
   (%check-str $token-str)
 
@@ -211,6 +215,7 @@
       (local.set $car (call $string->datum-with-reader
           (local.get $car-str) 
           (local.get $reader)))
+      (%check-datum $car)
       ;; curr = head = heap-alloc(3, car, g-nil)
       (local.set $curr (local.tee $head (%alloc-cons 
             (local.get $car) 
@@ -249,6 +254,7 @@
             (local.set $cdr (call $string->datum-with-reader
                 (local.get $cdr-str) 
                 (local.get $reader)))
+            (%check-datum $cdr)
             ;; curr[8] = cdr
             (i32.store offset=8 (local.get $curr) (local.get $cdr))
             ;; cdr-str = reader-read-token(g-reader)
@@ -270,6 +276,7 @@
         (local.set $cdr (call $string->datum-with-reader
             (local.get $cdr-str) 
             (local.get $reader)))
+        (%check-datum $cdr)
 
         ;; curr[8] = heap-alloc(3, cdr, g-nil)
         (i32.store offset=8
@@ -298,12 +305,22 @@
     (then
       ;; malloc-free(token-str)
       (call $malloc-free (local.get $token-str))
-      ;; return cons('quote', cons(read(), nil))
-      (return (%alloc-cons 
-          (global.get $quote-sym) 
-          (%alloc-cons 
-            (call $read-with-reader (local.get $reader)) 
-            (global.get $g-nil))))))
+      ;; get the datum to quote, if it is an error then return that,
+      (local.set $curr (call $read-with-reader (local.get $reader)))
+      (%check-datum $curr)
+      ;; otherwise quote it
+      ;; return (quote <curr>)
+      (return (%alloc-list-2 (global.get $quote-sym) (local.get $curr)))))
+
+  ;; if (token-str == "#;")
+  (if (call $short-str-eq (local.get $token-str) (i32.const 0x3B23) (i32.const 2))
+    (then
+      ;; this is a single datum comment, so skip the next datum
+      (call $malloc-free (local.get $token-str))
+      ;; read this one to drop it on the floor (unless it is an error)
+      (local.set $curr (call $read-with-reader (local.get $reader)))
+      (%check-datum $curr)
+      (return (call $read-with-reader (local.get $reader)))))
 
   ;; return atom(token);
   (return (call $atom (%alloc-str (local.get $token-str)))))

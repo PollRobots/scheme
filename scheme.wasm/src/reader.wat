@@ -79,6 +79,7 @@
   (local $input i32)      ;; input string
   (local $in-off i32)     ;; code point offset within input string
   (local $char i32)       ;; code point of the current character
+  (local $prev-char i32)  ;; code point of the current character
   (local $first i32)      ;; is this the first character
   (local $is-string i32)  ;; is this a string
   (local $acc-off i32)    ;; accumulator offset
@@ -89,6 +90,8 @@
   (local $hex-value i32)
   (local $ws-escape i32)
   (local $digit i32)
+  (local $is-line-comment i32) ;; is this a comment til the end of line
+  (local $nested-comment i32) ;; the current nested comment depth
 
   ;; input = reader[0];
   (local.set $input (i32.load (local.get $reader)))
@@ -119,6 +122,8 @@
 
   ;; while (true) {
   (loop $forever
+    ;; prev-char = char
+    (local.set $prev-char (local.get $char))
     ;; char = str-code-point-at
     (local.set $char (call $str-code-point-at (local.get $input) (local.get $in-off)))
     ;; if (char == -1)
@@ -173,6 +178,11 @@
         )
         ;; }
 
+        (if (i32.eq (local.get $char) (i32.const 0x3B)) (then ;; semi-colon
+            (local.set $is-line-comment (i32.const 1))
+            (local.set $first (i32.const 0))
+            (br $forever)))
+
         ;; add to accumulator
         ;; assert(acc-off == 0)
         (if (local.get $acc-off) (then unreachable))
@@ -203,6 +213,8 @@
 
         ;; first = 0
         (local.set $first (i32.const 0))
+        (local.set $is-line-comment (i32.const 0))
+        (local.set $nested-comment (i32.const 0))
         (br $forever)
       )
     )
@@ -216,6 +228,35 @@
       )
     ;; }
     )
+
+    (if (local.get $is-line-comment) (then
+        ;; skip everything until we see a newline, then reset
+        (if (i32.eq (local.get $char) (i32.const 0x0A)) (then 
+            ;; newline, reset to first
+            (local.set $first (i32.const 1))
+            (local.set $is-line-comment (i32.const 0))))
+        (br $forever)))
+
+    (if (local.get $nested-comment) (then
+        ;; #| increases nested comment depth
+        (block $inc
+          (br_if $inc (i32.ne (local.get $char) (i32.const 0x7C))) ;; | 0x7C
+          (br_if $inc (i32.ne (local.get $prev-char) (i32.const 0x23))) ;; # 0x23
+          ;; set the current character to stop #|# being interpreted as #||#
+          (local.set $char (i32.const 0))
+          (%inc $nested-comment)
+          (br $forever))
+        ;; |# decreases nested comment depth
+        (block $dec
+          (br_if $dec (i32.ne (local.get $char) (i32.const 0x23))) ;; # 0x23
+          (br_if $dec (i32.ne (local.get $prev-char) (i32.const 0x7C))) ;; | 0x7C
+          ;; set the current character to stop |#| being interpreted as |##|
+          (local.set $char (i32.const 0))
+          (%dec $nested-comment)
+          ;; check for end of comment
+          (if (i32.eqz (local.get $nested-comment)) (then
+              (local.set $first (i32.const 1)))))
+        (br $forever)))
 
     ;; if (is-string)
     (if (local.get $is-string)
@@ -399,7 +440,7 @@
               ;; checking for #()
               (block $b_v
                 (br_if $b_v (i32.ne (local.get $acc-off) (i32.const 1)))
-                (br_if $b_v (i32.ne (i32.load (local.get $accum)) (i32.const 0x23))) ;; # 0x23
+                (br_if $b_v (i32.ne (local.get $prev-char) (i32.const 0x23))) ;; # 0x23
 
                 (return (call $str-from-32 (i32.const 2) (i32.const 0x2823))))
 
@@ -414,18 +455,44 @@
             )
           )
 
-          ;; if (is-delimiter(char)) {
-          (if (call $is-delimiter (local.get $char))
-            (then
+          ;; check for nested comment start #|
+          (block $b_nested
+            (br_if $b_nested (i32.ne (local.get $char) (i32.const 0x7C))) ;; | 0x7C
+            (br_if $b_nested (i32.ne (local.get $acc-off) (i32.const 1)))
+            (br_if $b_nested (i32.ne (local.get $prev-char) (i32.const 0x23))) ;; # 0x23
+
+            ;; this is the start of a nested comment
+            (local.set $nested-comment (i32.const 1))
+            (local.set $acc-off (i32.const 0))
+            (br $forever))
+
+          ;; check for datum comment start #;
+          (block $b_datum
+            (br_if $b_datum (i32.ne (local.get $char) (i32.const 0x3B))) ;; ; 0x3B
+            (br_if $b_datum (i32.ne (local.get $acc-off) (i32.const 1)))
+            (br_if $b_datum (i32.ne (local.get $prev-char) (i32.const 0x23))) ;; # 0x23
+
+            (return (call $str-from-32 (i32.const 2) (i32.const 0x3B23))))
+
+          ;; check for line comment
+          (if (i32.eq (local.get $char) (i32.const 0x3B)) (then
+              ;; we have a comment, back off one character and call it done
               ;; reader.in_off= in-off = in-off - 1
               (i32.store
                 offset=4
                 (local.get $reader)
-                (local.tee $in-off (i32.sub (local.get $in-off) (i32.const 1)))
-              )
-              (br $b_done)
-            )
-          )
+                (local.tee $in-off (i32.sub (local.get $in-off) (i32.const 1))))
+              (br $b_done)))
+          
+
+          ;; if (is-delimiter(char)) {
+          (if (call $is-delimiter (local.get $char)) (then
+              ;; reader.in_off= in-off = in-off - 1
+              (i32.store
+                offset=4
+                (local.get $reader)
+                (local.tee $in-off (i32.sub (local.get $in-off) (i32.const 1))))
+              (br $b_done)))
 
           ;; } else if (!is-whitespace(char)) {
           (if (i32.eqz (call $is-whitespace (local.get $char)))
