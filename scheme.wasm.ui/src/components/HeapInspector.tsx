@@ -63,9 +63,9 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
       const listener = (str: string) => {
         output.push(str);
       };
-      runtime.addEventListener("write", listener);
+      runtime.addEventListener("write-priority", listener);
       runtime.print(ptr);
-      runtime.removeEventListener("write", listener);
+      runtime.removeEventListener("write-priority", listener);
     }
     setState({
       ...state,
@@ -236,9 +236,9 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
             const listener = (str: string) => {
               output.push(str);
             };
-            runtime.addEventListener("write", listener);
+            runtime.addEventListener("write-priority", listener);
             runtime.gcRun(runtime.replEnv);
-            runtime.removeEventListener("write", listener);
+            runtime.removeEventListener("write-priority", listener);
             console.log(output.join(""));
             if (output.length) {
               console.log(output.join(""));
@@ -360,10 +360,14 @@ const HeapView: React.FunctionComponent<HeapViewProps> = (props) => {
   const theme = React.useContext(ThemeContext);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
+  if (!runtime || runtime.stopped) {
+    return null;
+  }
+
   const cellSize = Math.round(8 * props.scale);
 
   useEffect(() => {
-    if (!canvasRef.current || !runtime) {
+    if (!canvasRef.current || !runtime || runtime.stopped) {
       return;
     }
 

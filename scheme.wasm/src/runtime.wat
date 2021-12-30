@@ -46,6 +46,7 @@
 
 (global $g-eval-count (mut i32) (i32.const 0))
 (%define %gc-threshold () (i32.const 256))
+(%define %gc-small-threshold () (i32.const 16))
 
 (func $runtime-init
   (global.set $g-heap (call $heap-create (i32.const 1024)))
@@ -81,7 +82,7 @@
   (global.set $g-apply (%sym-64 0x796c707061 5))  ;; apply
   (global.set $g-interned-str (%sym-128 0x64656e7265746e69 0x203A 10)) ;; 'interned: '
   (global.set $g-eval (%sym-64 0x203A6c617665 6))  ;; 'eval: '
-  (global.set $g-gc-run (%sym-32 0x0A6367 3)) ;; 'gc\n'
+  (global.set $g-gc-run (%sym-32 0x6367 2)) ;; 'gc'
   (global.set $g-div0 (%sym-32 0x30766964 4)) ;; 'div0'
   (global.set $g-inf (%sym-64 0x302e666e692b 6)) ;; '+inf.0'
   (global.set $g-neg-inf (%sym-64 0x302e666e692d 6)) ;; '-inf.0'
@@ -214,6 +215,7 @@
       (local.set $curr (local.tee $head (%alloc-cons 
             (local.get $car) 
             (global.get $g-nil))))
+      (%set-flags $curr (i32.const 2))
 
       ;; while (true) {
       (loop $forever
@@ -275,7 +277,8 @@
           (%alloc-cons (local.get $cdr) (global.get $g-nil)))
 
         ;; curr = curr[8]
-        (local.set $curr (i32.load offset=8 (local.get $curr)))
+        (local.set $curr (%cdr-l $curr))
+        (%set-flags $curr (i32.const 2))
 
         (br $forever))))
 
@@ -914,11 +917,28 @@
 
   (return (%alloc-f64 (local.get $real))))
 
+(func $should-collect (result i32)
+  ;; If there is currently a collection, then incremental collection should be
+  ;; quite frequent
+  (if (global.get $g-gc-collecting?) 
+    (then
+      (if (i32.ge_u (global.get $g-eval-count) (%gc-small-threshold)) (then
+        (return (i32.const 1))))
+      (return (i32.const 0))))
+
+  ;; collect more often while memory is growing
+  (if (i32.ge_u 
+      (global.get $g-eval-count) 
+      (i32.shr_u (%gc-threshold) (global.get $g-gc-heap-slabs))) (then
+        (return (i32.const 1))))
+
+  (return (i32.const 0)))
+
 (func $eval (param $env i32) (param $args i32) (result i32)
   (local $result i32)
   (local $result-type i32)
   (local $fn i32)
-  (local $gray i32)
+  (local $roots i32)
 
   (local $cont-stack i32)
   (local $prev-cont i32)
@@ -953,19 +973,19 @@
     (block $b_eval_cont
       (if (i32.eqz (local.get $fn)) (then
           ;; check if a gc has been indicated
-          (if (i32.ge_u (global.get $g-eval-count) (%gc-threshold))
+          (if (call $should-collect)
             (then
-              ;; gray set must include cont stack, args, and env. If there is already
-              ;; a collection, simply allocating these will add them to the gray set
+              ;; root for gc must include cont stack, args, and env. If there is already
+              ;; a collection, simply allocating these will add them to the touched set
               ;; otherwise they are passed into the call to gc-run (and thence to 
               ;; gc-init)
-              (local.set $gray (%alloc-list-3 
+              (local.set $roots (%alloc-list-3 
                   (local.get $env) 
                   (local.get $args)
                   (local.get $cont-stack)))
 
               ;; (call $print-symbol (global.get $g-gc-run))
-              (call $gc-run (local.get $gray))
+              (call $gc-run (local.get $roots))
               (global.set $g-eval-count (i32.const 0))))
 
           ;; this is a call to eval. So pass to eval inner

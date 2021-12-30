@@ -2,12 +2,16 @@
 
 ;; HeapEntry
 ;;  type: i8        type enum
-;;  gc-flags: i8    gc flags  flag | color | during         | after 
-;;                            -----+-------+----------------+---------------
-;;                            0b00 | white | unvisited      |  can be freed
-;;                            0b01 | gray  | to be checked  |  error
-;;                            0b10 | black | in-use         |  must be kept 
-;;  reserved: i16
+;;  gc-flags: i8    gc flags  flag | color     | during-gc      | after-gc
+;;                            -----+-----------+----------------+---------------
+;;                            0b00 | untouched | unvisited      | can be freed
+;;                            0b01 | touched   | to be checked  | error
+;;                            0b10 | safe      | in-use         | must be kept 
+;;  flags: i8       other flags   flag | meaning 
+;;                                -----+----------------------------------
+;;                                0b01 | visited in list circularity check
+;;                                0b02 | considered immutable
+;;  reserved: i8
 ;;  data: i64       type specific value
 
 
@@ -121,6 +125,9 @@
 
   ;; next = entry-ptr + 12
   (local.set $next (i32.add (local.get $entry-ptr) (i32.const 12)))
+
+  ;; signal to gc that another heap slab has been created
+  (%ginc $g-gc-heap-slabs)
 
   ;; while (true) {
   (loop $forever
@@ -320,8 +327,8 @@
     (then (call $intern-symbol (local.get $data1) (local.get $empty-ptr))))
 
   (if (global.get $g-gc-collecting?)
-    ;; items allocated while gc is collecting are considered gray
-    (then (call $gc-maybe-gray-enqueue (local.get $empty-ptr))))
+    ;; items allocated while gc is collecting are considered touched
+    (then (call $gc-maybe-touched-push (local.get $empty-ptr))))
 
   ;; return empty-ptr
   (return (local.get $empty-ptr)))

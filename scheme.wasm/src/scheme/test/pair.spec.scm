@@ -1,17 +1,60 @@
 (if (not (procedure? assert))
   (include "test/test.scm"))
 
-(run-tests
-  (list "test pair?" (lambda ()
+(run-tests "list and pair"
+  (list "(pair? <obj>)" (lambda ()
     (assert (pair? '(a . b)) "'(a . b) is a pair")
     (assert (pair? '(a b c)) "'(a b c) is a pair")
     (assert (not (pair? '())) "'() is not a pair")
     (assert (not (pair? '#(a b))) "'#(a b) is not a pair")))
 
-  (list "test cons" (lambda ()
+  (list "(cons <obj_1> <obj_2>)" (lambda ()
     (assert (equal? (cons 'a '()) '(a)) "(cons 'a '()) is (a)")
     (assert (equal? (cons 'a '(b c d)) '(a b c d)) "(cons 'a '(b c d)) is (a b c d)")
     (assert (equal? (cons "a" '(b c)) '("a" b c)) "(cons \"a\" '(b c)) is (\"a\" b c)")
     (assert (equal? (cons 'a 3) '(a . 3)) "(cons 'a 3) is (a . 3)")
     (assert (equal? (cons '(a b) 'c) '((a b) . c)) "(cons '(a b) 'c) is ((a b) . c)")))
-  )
+
+  (list "(car <pair>)" (lambda ()
+    (assert (equal? (car '(a b c)) 'a) "(car '(a b c)) is a")
+    (assert (equal? (car '((a) b c d)) '(a)) "(car '((a) b c d)) is (a)")
+    (assert (equal? (car '(1 . 2)) 1) "(car '(1 . 2)) is 1")
+    (assert (error-object? (car '())) "(car '()) is an error")))
+
+  (list "(cdr <pair>)" (lambda ()
+    (assert (equal? (cdr '(a b c)) '(b c)) "(cdr '(a b c)) is (b c)")
+    (assert (equal? (cdr '((a) b c d)) '(b c d)) "(cdr '((a) b c d)) is (b c d)")
+    (assert (equal? (cdr '(1 . 2)) 2) "(cdr '(1 . 2)) is 2")
+    (assert (error-object? (cdr '())) "(cdr '()) is an error")))
+
+  (list "(set-car! <pair> <obj>)" (lambda ()
+    (define f (list 'not-a-constant-list))
+    (define g '(constant-list))
+    (set-car! f 3)
+    (assert (equal? f '(3)) "set-car! sets the first item on the cons")
+    (assert (error-object? (set-car! g 3)) "cannot set-car! on a constant list")))
+
+  (list "(null? <obj>)" (lambda ()
+    (assert (null? ()) "(null? ()) is true")
+    (assert (not (null? '(a b))) "(null? (a b)) is false")))
+
+  (list "(list? <obj>)" (lambda ()
+    (assert (list? '(a b c)) "(list? '(a b c)) is true")
+    (assert (list? '()) "(list? '()) is true")
+    (assert (not (list? '(a . b))) "(list? '(a . b)) is false")
+    (let ((x (list 'a)))
+      (set-cdr! x x)
+      (assert (not (list? x)) "list? on a circular list is false"))))
+
+  (list "(make-list <k> <fill>)" (lambda ()
+    (assert (equal? (make-list 2 3) '(3 3)) "(make-list 2 3) is (3 3)")))
+
+  (list "(list <obj> ...)" (lambda ()
+    (assert (equal? (list 'a (+ 3 4) 'c) '(a 7 c)) "(list 'a (+ 3 4) 'c) is (a 7 c)")
+    (assert (equal? (list) '()) "(list) is ()")))
+
+  (list "(length <list>)" (lambda ()
+    (assert (equal? (length '(a b c)) 3) "(length '(a b c)) is 3")
+    (assert (equal? (length '(a (b) (c d e))) 3) "(length '(a (b) (c d e))) is 3")
+    (assert (equal? (length '()) 0) "(length '()) is 0")))
+)

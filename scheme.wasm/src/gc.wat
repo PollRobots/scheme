@@ -19,7 +19,7 @@ while the working set is non-empty:
 ;; While this is true all new allocations must be added to the working set.
 (global $g-gc-collecting? (mut i32) (i32.const 0))
 ;; The number of items to process from the working set on a single cycle
-(global $g-gc-work-cycle-size (mut i32) (i32.const 1024))
+(global $g-gc-work-cycle-size (mut i32) (i32.const 0x1_0000))
 ;; The number of collections run
 (global $g-gc-collection-count (mut i32) (i32.const 0))
 ;; The number of items collected ever
@@ -31,19 +31,20 @@ while the working set is non-empty:
 ;; The number of items not-collected in the last/current collection
 (global $g-gc-not-collected-count (mut i32) (i32.const 0))
 
+;; The number of heap slabs created, used to guide how large/frequent gc's 
+;; should be.
+(global $g-gc-heap-slabs (mut i32) (i32.const 0))
+
 ;; The state of any ongoing collection, this is essentially the working set
 (global $g-gc-state (mut i32) (i32.const 0))
 (;
   GC state object
 
   head-ptr  i32 ptr
-  head-idx  i32 
-  tail-ptr  i32 ptr
-  tail-idx  i32
   count     i32
 
   The working set is stored as a linked list of sub-arrays
-  items added at the end, removed from the start with marching pointers
+  items used as a stack
 
   Sub array structure
   next    i32 ptr   pointer to the next sub-array or 0 if no prev
@@ -54,18 +55,20 @@ while the working set is non-empty:
 ;)
 
 
-(func $gc-run (param $gray-init i32)
+(func $gc-run (param $touched-init i32)
   (local $ptr i32)
   (local $i i32)
   (local $curr i32)
   (local $type i32)
 
   ;; if (!g-gc-collecting?) {
-  (if (i32.eqz (global.get $g-gc-collecting?))
-    ;; gc-init(gray-init);
-    (then (call $gc-init (local.get $gray-init)))
-  ;; }
-  )
+  (if (i32.eqz (global.get $g-gc-collecting?)) (then
+    (if (global.get $g-gc-heap-slabs) (then
+      ;; Decrement the number of heap-slabs, while memory is growing collections
+      ;; are more frequent.
+      (%gdec $g-gc-heap-slabs)))
+    ;; gc-init(touched-init);
+    (call $gc-init (local.get $touched-init))))
 
   ;; ptr = g-gc-state
   (local.set $ptr (global.get $g-gc-state))
@@ -75,8 +78,8 @@ while the working set is non-empty:
   ;; while (true) {
   (loop $forever
     ;; if (ptr.count == 0) {
-    ;; if (ptr[16] == 0) {
-    (if (i32.eqz (i32.load offset=16 (local.get $ptr)))
+    ;; if (ptr[4] == 0) {
+    (if (i32.eqz (i32.load offset=4 (local.get $ptr)))
       (then
         ;; malloc-free(ptr.head-ptr)
         ;; malloc-free(ptr[0])
@@ -102,16 +105,18 @@ while the working set is non-empty:
       ;; }
     )
 
-    ;; curr = gc-gray-dequeue()
-    (local.set $curr (call $gc-gray-dequeue))
+    ;; curr = gc-touched-pop()
+    (local.set $curr (call $gc-touched-pop))
     ;; assert(curr)
     (if (i32.eqz (local.get $curr)) (then
       (call $print-symbol (global.get $g-gc-run))
+      (call $print-symbol (global.get $g-space))
       (call $print-integer 
         (i64.extend_i32_s (i32.load offset=16 (local.get $ptr)))
         (i32.const 10))
-        (i32.store offset=16 (local.get $ptr) (i32.const 0))
-        (br $forever)))
+      (call $print-symbol (global.get $g-newline))
+      (i32.store offset=16 (local.get $ptr) (i32.const 0))
+      (br $forever)))
     (%assert (local.get $curr))
     ;; type = get-type(curr)
     (local.set $type (%get-type $curr))
@@ -120,71 +125,72 @@ while the working set is non-empty:
       ;; switch (type) {
       ;; case cons-type:
       (if (i32.eq (local.get $type) (%cons-type)) (then
-          ;; gc-maybe-gray-enqueue(car(curr))
-          (call $gc-maybe-gray-enqueue (%car-l $curr))
-          ;; gc-maybe-gray-enqueue(cdr(curr))
-          (call $gc-maybe-gray-enqueue (%cdr-l $curr))
+          ;; gc-maybe-touched-push(car(curr))
+          (call $gc-maybe-touched-push (%car-l $curr))
+          ;; gc-maybe-touched-push(cdr(curr))
+          (call $gc-maybe-touched-push (%cdr-l $curr))
           ;; break
           (br $b_switch)))
 
       ;; case lambda-type
       (if (i32.eq (local.get $type) (%lambda-type)) (then
-          ;; gc-maybe-gray-enqueue(car(curr))
-          (call $gc-maybe-gray-enqueue (%car-l $curr))
-          ;; gc-maybe-gray-enqueue(cdr(curr))
-          (call $gc-maybe-gray-enqueue (%cdr-l $curr))
+          ;; gc-maybe-touched-push(car(curr))
+          (call $gc-maybe-touched-push (%car-l $curr))
+          ;; gc-maybe-touched-push(cdr(curr))
+          (call $gc-maybe-touched-push (%cdr-l $curr))
           ;; break
           (br $b_switch)))
 
       ;; case env-type
       (if (i32.eq (local.get $type) (%env-type)) (then
-          ;; gc-enqueue-env-items(env)
-          (call $gc-enqueue-env-items (local.get $curr))
+          ;; gc-push-env-items(env)
+          (call $gc-push-env-items (local.get $curr))
           ;; break
           (br $b_switch)))
 
       ;; case error-type
       (if (i32.eq (local.get $type) (%error-type)) (then
-          ;; gc-maybe-gray-enqueue(car(curr))
-          (call $gc-maybe-gray-enqueue (%car-l $curr))
-          ;; gc-maybe-gray-enqueue(cdr(curr))
-          (call $gc-maybe-gray-enqueue (%cdr-l $curr))
+          ;; gc-maybe-touched-push(car(curr))
+          (call $gc-maybe-touched-push (%car-l $curr))
+          ;; gc-maybe-touched-push(cdr(curr))
+          (call $gc-maybe-touched-push (%cdr-l $curr))
           (br $b_switch)))
 
       ;; case values-type
       (if (i32.eq (local.get $type) (%values-type)) (then
-          ;; gc-maybe-gray-enqueue(car(curr))
-          (call $gc-maybe-gray-enqueue (%car-l $curr))
-          ;; gc-maybe-gray-enqueue(cdr(curr))
-          (call $gc-maybe-gray-enqueue (%cdr-l $curr))
+          ;; gc-maybe-touched-push(car(curr))
+          (call $gc-maybe-touched-push (%car-l $curr))
+          ;; gc-maybe-touched-push(cdr(curr))
+          (call $gc-maybe-touched-push (%cdr-l $curr))
           (br $b_switch)))
 
       ;; case vector-type
       (if (i32.eq (local.get $type) (%vector-type)) (then
-          (call $gc-gray-vector (local.get $curr))
+          (call $gc-touched-vector (local.get $curr))
           (br $b_switch)))
 
       ;; case cont-type
       (if (i32.eq (local.get $type) (%cont-type)) (then
-          (call $gc-gray-continuation (%car-l $curr))
-          (call $gc-maybe-gray-enqueue (%cdr-l $curr))
+          (call $gc-touched-continuation (%car-l $curr))
+          (call $gc-maybe-touched-push (%cdr-l $curr))
           (br $b_switch)))
 
       ;; case except-type
       (if (i32.eq (local.get $type) (%except-type)) (then
-          (call $gc-maybe-gray-enqueue (%car-l $curr))
+          (call $gc-maybe-touched-push (%car-l $curr))
           (br $b_switch)))
 
       ;; case cont-proc-type
       (if (i32.eq (local.get $type) (%cont-proc-type)) (then
-          (call $gc-maybe-gray-enqueue (%car-l $curr))
+          (call $gc-maybe-touched-push (%car-l $curr))
+          (call $gc-maybe-touched-push (%cdr-l $curr))
           (br $b_switch)))
           
       ;; }
     )
 
-    ;; mark-black(curr)
-    (call $gc-mark-black (local.get $curr) (local.get $type))
+    ;; mark-safe(curr)
+    (call $gc-mark-safe (local.get $curr))
 
     ;; i--
     (%dec $i)
@@ -194,7 +200,7 @@ while the working set is non-empty:
   (unreachable)
 )
 
-(func $gc-gray-vector (param $vec i32)
+(func $gc-touched-vector (param $vec i32)
   (local $ptr i32)
   (local $count i32)
 
@@ -205,18 +211,18 @@ while the working set is non-empty:
     (if (i32.eqz (local.get $count))
       (then (return)))
     
-    (call $gc-maybe-gray-enqueue (i32.load (local.get $ptr)))
+    (call $gc-maybe-touched-push (i32.load (local.get $ptr)))
     
     (%plus-eq $ptr 4)
     (%dec $count)
     (br $forever)))
 
-(func $gc-gray-continuation (param $cont i32)
+(func $gc-touched-continuation (param $cont i32)
   (loop $forever
-    ;; continuation env is gray
-    (call $gc-maybe-gray-enqueue (i32.load offset=4 (local.get $cont)))
-    ;; continuation args are gray
-    (call $gc-maybe-gray-enqueue (i32.load offset=8 (local.get $cont)))))
+    ;; continuation env is touched
+    (call $gc-maybe-touched-push (i32.load offset=4 (local.get $cont)))
+    ;; continuation args are touched
+    (call $gc-maybe-touched-push (i32.load offset=8 (local.get $cont)))))
 
 (func $gc-finalize (param $heap i32)
   (local $size i32)
@@ -247,34 +253,37 @@ while the working set is non-empty:
         (block $if
           ;; if (type != empty) {
           (br_if $if (i32.eqz (local.get $type)))
-          ;; if (gc-is-black(ptr) || type == (%symbol-type)) {
+          ;; if (gc-is-safe(ptr) || type == (%symbol-type)) {
           (block $if_b_or_s_done
             (block $if_b_or_s_else
               (block $if_b_or_s_then
-                ;; if (gc-is-black(ptr) || 
-                (br_if $if_b_or_s_then (call $gc-is-black (local.get $ptr)))
+                ;; if (gc-is-safe(ptr) || 
+                (br_if $if_b_or_s_then (call $gc-is-safe (local.get $ptr)))
                 ;; type == (%symbol-type)) {
                 (br_if $if_b_or_s_then (i32.eq (local.get $type) (%symbol-type)))
                 (br $if_b_or_s_else)
               )
-              ;; gc-mark-white(ptr, type)
-              (call $gc-mark-white (local.get $ptr) (local.get $type))
+              ;; gc-mark-untouched(ptr, type)
+              (call $gc-mark-untouched (local.get $ptr))
               (%ginc $g-gc-not-collected-count)
               (%ginc $g-gc-total-not-collected-count)
               (br $if_b_or_s_done)
             )
             ;; } else {
-            ;; assert(gc-is-white(ptr))
-            (if (i32.eqz (call $gc-is-white (local.get $ptr))) (then
-              (call $print-symbol (global.get $g-newline))
+            ;; assert(gc-is-untouched(ptr))
+            (if (i32.eqz (call $gc-is-untouched (local.get $ptr))) (then
               (call $print-symbol (global.get $g-error))
+              (call $print-symbol (global.get $g-space))
               (call $print-integer (i64.extend_i32_u (local.get $ptr)) (i32.const 10))
               (call $print-symbol (global.get $g-space))
               (call $print-integer (i64.extend_i32_u (local.get $ptr)) (i32.const 16))
-              ;; oops, this should be black or white, but is gray
-              ;; treat as black
+              (call $print-symbol (global.get $g-space))
+              (call $print (local.get $ptr))
+              (call $print-symbol (global.get $g-newline))
+              ;; oops, this should be safe or untouched, but is touched
+              ;; treat as safe
               (br $if_b_or_s_done)))
-            (%assert (call $gc-is-white (local.get $ptr)))
+            (%assert (call $gc-is-untouched (local.get $ptr)))
             ;; if (type == %str-type) {
             ;; (call $print (global.get $g-collect))
             ;; (call $print-integer (i64.extend_i32_u (local.get $type)))
@@ -327,7 +336,7 @@ while the working set is non-empty:
   (unreachable)
 )
 
-(func $gc-enqueue-env-items (param $env i32)
+(func $gc-push-env-items (param $env i32)
   (local $parent i32)
   (local $hashtable i32)
   (local $capacity i32)
@@ -338,8 +347,8 @@ while the working set is non-empty:
   ;; if (parent) {
   (if (local.tee $parent (%cdr-l $env))
     (then
-      ;; gc-maybe-gray-enqueue(parent)
-      (call $gc-maybe-gray-enqueue (local.get $parent))
+      ;; gc-maybe-touched-push(parent)
+      (call $gc-maybe-touched-push (local.get $parent))
     )
   ;; }
   )
@@ -365,9 +374,9 @@ while the working set is non-empty:
           ;; if ( ··· && digest != tombstone (-1)) {
           (if (i64.ne (local.get $digest) (i64.const -1))
             (then
-              ;; gc-maybe-gray-enqueue(slot.data)
-              ;; gc-maybe-gray-enqueue(slot[12])
-              (call $gc-maybe-gray-enqueue 
+              ;; gc-maybe-touched-push(slot.data)
+              ;; gc-maybe-touched-push(slot[12])
+              (call $gc-maybe-touched-push 
                 (i32.load offset=12 (local.get $slot))
               )
             )
@@ -387,44 +396,38 @@ while the working set is non-empty:
   )
 )
 
-(func $gc-mark-gray (param $item i32) (param $type i32)
-  (i32.store (local.get $item) (i32.or (local.get $type) (i32.const 0x100)))
-)
 
-(func $gc-is-white (param $item i32) (result i32)
-  (local $color i32)
-  (local.set $color (i32.and (i32.load (local.get $item)) (i32.const 0xF00)))
-  (return (i32.eqz (local.get $color)))
-)
+(func $gc-is-untouched (param $item i32) (result i32)
+  (return (i32.eqz (%get-gc-flags $item))))
 
-(func $gc-is-gray (param $item i32) (result i32)
-  (local $color i32)
-  (local.set $color (i32.and (i32.load (local.get $item)) (i32.const 0xF00)))
-  (return (i32.eq (local.get $color) (i32.const 0x100)))
-)
+(func $gc-is-touched (param $item i32) (result i32)
+  (return (i32.eq (%get-gc-flags $item) (i32.const 1))))
 
-(func $gc-is-black (param $item i32) (result i32)
-  (local $color i32)
-  (local.set $color (i32.and (i32.load (local.get $item)) (i32.const 0xF00)))
-  (return (i32.eq (local.get $color) (i32.const 0x200)))
-)
+(func $gc-is-safe (param $item i32) (result i32)
+  (return (i32.eq (%get-gc-flags $item) (i32.const 2))))
 
+(func $gc-mark-untouched (param $item i32)
+  (%set-gc-flags $item (i32.const 0)))
 
-(func $gc-mark-black (param $item i32) (param $type i32)
-  (i32.store (local.get $item) (i32.or (local.get $type) (i32.const 0x200)))
-)
+(func $gc-mark-touched (param $item i32)
+  (%set-gc-flags $item (i32.const 1)))
 
-(func $gc-mark-white (param $item i32) (param $type i32)
-  (i32.store (local.get $item) (i32.and (local.get $type) (i32.const 0x01F)))
-)
+(func $gc-mark-safe (param $item i32)
+  (%set-gc-flags $item (i32.const 2)))
 
-(func $gc-maybe-gray-enqueue (param $item i32)
+(func $gc-maybe-touched-push (param $item i32)
   (local $type i32)
 
-  ;; if (!is-white(item)) {
-  (if (i32.eqz (call $gc-is-white (local.get $item))) (then
-    (if (call $gc-is-gray (local.get $item)) (then
-      (%assert (call $in-gray-queue? (local.get $item)))))
+  (if (i32.eqz (local.get $item)) (then (return)))
+
+  ;; if (!is-untouched(item)) {
+  (if (i32.eqz (call $gc-is-untouched (local.get $item))) (then
+    (if (call $gc-is-touched (local.get $item)) (then
+      (if (i32.eqz (call $in-touched-queue? (local.get $item))) (then
+        ;; item is marked as touched, but isn't in the touched queue. This is a 
+        ;; bug, but we'll simply mark it as untouched and try again
+        (call $gc-mark-untouched (local.get $item))
+        (call $gc-maybe-touched-push (local.get $item))))))
     ;; return
     (return)))
 
@@ -444,21 +447,21 @@ while the working set is non-empty:
         (br_if $b_then (i32.eq (local.get $type) (%except-type)))
         (br $b_else)
       )
-      ;; mark-gray(item)
-      (call $gc-mark-gray (local.get $item) (local.get $type))
-      ;; gc-gray-enqueue(item)
-      (call $gc-gray-enqueue (local.get $item))
+      ;; mark-touched(item)
+      (call $gc-mark-touched (local.get $item))
+      ;; gc-touched-push(item)
+      (call $gc-touched-push (local.get $item))
       ;;
       (br $b_if)
     )
     ;; } else {
-    ;; mark-black(item)
-    (call $gc-mark-black (local.get $item) (local.get $type))
+    ;; mark-safe(item)
+    (call $gc-mark-safe (local.get $item))
     ;; }
   )
 )
 
-(func $gc-init (param $gray-init i32)
+(func $gc-init (param $touched-init i32)
   (local $array i32)
 
   ;; array = malloc(0x408)
@@ -466,33 +469,27 @@ while the working set is non-empty:
   ;; array.next = 0
   ;; array[0] = 0
   (i32.store offset=0 (local.get $array) (i32.const 0))
-  ;; array.count = 1
-  ;; array[4] = 1
-  (i32.store offset=4 (local.get $array) (i32.const 1))
-  ;; array.data[0] = env
-  ;; array[8] = env
-  (i32.store offset=8 (local.get $array) (local.get $gray-init))
-  (call $gc-mark-gray (local.get $gray-init) (%get-type $gray-init))
+  ;; array.count = 0
+  ;; array[4] = 0
+  (i32.store offset=4 (local.get $array) (i32.const 0))
 
-  ;; g-gc-state = malloc(16)
-  (global.set $g-gc-state (call $malloc (i32.const 20)))
+  ;; g-gc-state = malloc(8)
+  (global.set $g-gc-state (call $malloc (i32.const 8)))
   ;; g-gc-state.head-ptr = array
   (i32.store offset=0 (global.get $g-gc-state) (local.get $array))
-  ;; g-gc-state.head-idx = 0
+  ;; g-gc-state.count = 0
   (i32.store offset=4 (global.get $g-gc-state) (i32.const 0))
-  ;; g-gc-state.tail-ptr = array
-  (i32.store offset=8 (global.get $g-gc-state) (local.get $array))
-  ;; g-gc-state.tail-idx = 1
-  (i32.store offset=12 (global.get $g-gc-state) (i32.const 1))
-  ;; g-gc-state.count = 1
-  (i32.store offset=16 (global.get $g-gc-state) (i32.const 1))
 
-  (call $gc-mark-black (global.get $g-nil) (%nil-type))
-  (call $gc-mark-black (global.get $g-true) (%boolean-type))
-  (call $gc-mark-black (global.get $g-false) (%boolean-type))
-  (call $gc-maybe-gray-enqueue (i32.load offset=16 (global.get $g-reader)))
-  (call $gc-maybe-gray-enqueue (i32.load offset=20 (global.get $g-reader)))
-  (call $gc-maybe-gray-enqueue (global.get $g-char-env))
+  (call $gc-mark-safe (global.get $g-nil))
+  (call $gc-mark-safe (global.get $g-true))
+  (call $gc-mark-safe (global.get $g-false))
+  ;; Add passed in roots to the touched set
+  (call $gc-maybe-touched-push (local.get $touched-init))
+  ;; Add the read and write caches from the global reader to the touched set
+  (call $gc-maybe-touched-push (i32.load offset=16 (global.get $g-reader)))
+  (call $gc-maybe-touched-push (i32.load offset=20 (global.get $g-reader)))
+  ;; Add the named character set to the touched set
+  (call $gc-maybe-touched-push (global.get $g-char-env))
 
   ;; g-gc-collecting? = true
   (global.set $g-gc-collecting? (i32.const 1))
@@ -501,249 +498,124 @@ while the working set is non-empty:
   (global.set $g-gc-not-collected-count (i32.const 0))
 )
 
-(func $gc-gray-dequeue (result i32)
+(func $gc-touched-pop (result i32)
   (local $ptr i32)
   (local $head-array i32)
-  (local $idx i32)
+  (local $array i32)
   (local $val i32)
   (local $count i32)
   (local $next i32)
+  (local $prev i32)
 
   ;; ptr = g-gc-state
   (local.set $ptr (global.get $g-gc-state))
 
-  ;; head-array = ptr.head-ptr
-  ;; head-array = ptr[0]
-  (local.set $head-array (i32.load offset=0 (local.get $ptr)))
-  ;; idx = ptr.head-idx
-  ;; idx = ptr[4]
-  (local.set $idx (i32.load offset=4 (local.get $ptr)))
+  (local.set $array (local.tee $head-array (i32.load (local.get $ptr))))
+  (local.set $prev (i32.const 0))
+  ;; loop until we find the final array
+  (block $end (loop $start
+      (local.set $next (i32.load (local.get $array)))
+      (br_if $end (i32.eqz (local.get $next)))
+      (local.set $prev (local.get $array))
+      (local.set $array (local.get $next))
+      (br $start)))
 
-  ;; if (idx == -1) {
-  (if (i32.eq (local.get $idx) (i32.const -1))
-    (then
-      ;; // gray set is empty
-      ;; assert(ptr.head-ptr == ptr.tail-ptr)
-      ;; assert(ptr[0] == ptr[8])
-      (%assert (i32.eq (local.get $head-array) (i32.load offset=8 (local.get $ptr))))
-      ;; return 0
-      (return (i32.const 0))
-    )
-    ;; }
-  )
+  (local.set $count (i32.load offset=4 (local.get $array)))
+  ;; there are no items left in the touched set
+  (if (i32.eqz (local.get $count)) (then
+      ;; assert that there is no previous array block
+      (%assert (i32.eqz (local.get $prev)))
+      (return (i32.const 0))))
 
-  ;; val = head-array.data[idx * 4]
-  ;; val = head-array[8 + idx * 4]
-  ;; val = head-array[8 + idx << 2]
-  (local.set $val 
-    (i32.load offset=8 
-      (i32.add 
-        (local.get $head-array)
-        (%word-size-l $idx)
-      )
-    )
-  )
-  ;; count = head-array.count - 1
-  ;; count = head-array[4] - 1
-  (local.set $count 
-    (i32.sub 
-      (i32.load offset=4 (local.get $head-array)) 
-      (i32.const 1)
-    )
-  )
-  ;; if (count == 0) {
-  (if (i32.eqz (local.get $count))
-    (then
-      ;; next = head-array.next
-      ;; next = head-array[0]
-      (local.set $next (i32.load (local.get $head-array)))
-      ;; if (next) {
-      (if (local.get $next)
-        (then
-          ;; ptr.head-ptr = next
-          ;; ptr[0] = next
-          (i32.store (local.get $ptr) (local.get $next))
-          ;; ptr.head-idx = 0
-          ;; ptr[4] = 0
-          (i32.store offset=4 (local.get $ptr) (i32.const 0))
-          ;; malloc-free(head-array)
-          (call $malloc-free (local.get $head-array))
-        )
-        ;; } else {
-        (else
-          ;; assert(ptr.head-ptr == ptr.tail-ptr)
-          ;; assert(ptr[0] == ptr[8])
-          (%assert (i32.eq (i32.load (local.get $ptr)) (i32.load offset=8 (local.get $ptr))))
-          ;; ptr.head-idx = -1
-          ;; ptr[4] = -1
-          (i32.store offset=4 (local.get $ptr) (i32.const -1))
-          ;; ptr.tail-idx
-          ;; ptr[12] = 0
-          (i32.store offset=12 (local.get $ptr) (i32.const 0))
-          ;; head-array.count = 0
-          ;; head-array[4] = 0
-          (i32.store offset=4 (local.get $head-array) (i32.const 0))
-        )
-        ;; }
-      )
-    )
-    ;; } else {
-    (else
-      ;; ptr.head-idx = idx + 1
-      ;; ptr[4] = idx + 1
-      (i32.store offset=4 (local.get $ptr) (i32.add (local.get $idx) (i32.const 1)))
-      ;; head-array.count = count
-      ;; head-array[4] = count
-      (i32.store offset=4 (local.get $head-array) (local.get $count))
-    )
-    ;; }
-  )
+  (local.set $val (i32.load offset=4 (i32.add 
+        (local.get $array) 
+        (%word-size-l $count))))
 
-  ;; ptr.count--
-  ;; ptr[16] = ptr[16] - 1
-  (i32.store
-    offset=16 (local.get $ptr)
-    (i32.sub
-      (i32.load offset=16 (local.get $ptr))
-      (i32.const 1)
-    )
-  )
-  ;; return val
-  (return (local.get $val))
-)
+  (%dec $count)
+  (i32.store offset=4 (local.get $array) (local.get $count))
 
-(func $gc-gray-enqueue (param $val i32)
+  ;; decrement the total count
+  (i32.store offset=4 
+    (local.get $ptr)
+    (i32.sub (i32.load offset=4 (local.get $ptr)) (i32.const 1)))
+
+  ;; If the current array is empty
+  (if (i32.eqz (local.get $count)) (then
+      ;; If there is a previous array (i.e. this isn't the first array)
+      (if (local.get $prev) (then
+        (i32.store (local.get $prev) (i32.const 0))
+        (call $malloc-free (local.get $array))))))
+
+  (return (local.get $val)))
+
+(func $gc-touched-push (param $val i32)
   (local $ptr i32)
-  (local $tail-array i32)
-  (local $idx i32)
+  (local $head-array i32)
+  (local $array i32)
   (local $next i32)
+  (local $count i32)
 
   ;; ptr = g-gc-state
   (local.set $ptr (global.get $g-gc-state))
-  ;; tail-array = ptr.tail-ptr
-  ;; tail-array = ptr[8]
-  (local.set $tail-array (i32.load offset=8 (local.get $ptr)))
-  ;; idx = ptr.tail-ptr
-  ;; idx = ptr[12]
-  (local.set $idx (i32.load offset=12 (local.get $ptr)))
 
-  ;; tail-array.data[idx * 4] = val
-  ;; tail-array[8 + idx * 4] = val
-  ;; tail-array[8 + idx << 2] = val
-  (i32.store offset=8 
-    (i32.add 
-      (local.get $tail-array)
-      (%word-size-l $idx)
-    )
-    (local.get $val)
-  )
-  ;; ptr.count++
-  ;; ptr[16] = ptr[16] + 1
-  (i32.store
-    offset=16 (local.get $ptr)
-    (i32.add
-      (i32.load offset=16 (local.get $ptr))
-      (i32.const 1)
-    )
-  )
-  ;; idx++
-  (%inc $idx)
-  ;; if (idx < 255) {
-  (if (i32.lt_u (local.get $idx) (i32.const 255))
-    (then
-      ;; tail-array.count = tail-array.count + 1
-      ;; tail-array[4] = tail-array[4] + 1;
-      (i32.store offset=4
-        (local.get $tail-array)
-        (i32.add
-          (i32.load offset=4 (local.get $tail-array))
-          (i32.const 1)
-        )
-      )
-      ;; ptr.tail-idx = idx
-      ;; ptr[12] = idx
-      (i32.store offset=12 (local.get $ptr) (local.get $idx))
-      ;; if (ptr.head-idx == -1)
-      (if (i32.eq (i32.load offset=4 (local.get $ptr)) (i32.const -1)) (then
-        ;; grey queue was completely empty, so need to set the head-idx to point
-        ;; here
-        (i32.store offset=4 
-          (local.get $ptr) 
-          (i32.sub (local.get $idx) (i32.const 1)))))
-    )
-    ;; } else {
-    (else
-      ;; assert(tail-array.next == 0)
-      ;; assert(tail-array[0] == 0)
-      (%assert (i32.eqz (i32.load (local.get $tail-array))))
-      ;; next = malloc(0x408)
+  ;; array = head-array = *ptr
+  (local.set $array (local.tee $head-array (i32.load (local.get $ptr))))
+
+  ;; loop until we find the final array
+  (block $end (loop $start
+      (local.set $next (i32.load (local.get $array)))
+      (br_if $end (i32.eqz (local.get $next)))
+      (local.set $array (local.get $next))
+      (br $start)))
+
+  (local.set $count (i32.load offset=4 (local.get $array)))
+  (if (i32.eq (local.get $count) (i32.const 256)) (then
       (local.set $next (call $malloc (i32.const 0x408)))
-      ;; next.next =0
-      ;; next[0] = 0
       (i32.store offset=0 (local.get $next) (i32.const 0))
-      ;; next.count = 0
-      ;; next[4] = 0
       (i32.store offset=4 (local.get $next) (i32.const 0))
-      ;; tail-arry.next = next
-      ;; tail-array[0] = next;
-      (i32.store offset=0 (local.get $tail-array) (local.get $next))
-      ;; ptr.tail-ptr = next
-      ;; ptr[8] = next
-      (i32.store offset=8 (local.get $ptr) (local.get $next))
-      ;; ptr.tail-idx = 0
-      ;; ptr[12] = 0
-      (i32.store offset=12 (local.get $ptr) (i32.const 0))
-    )
-    ;; }
-  )
-)
+      (local.set $count (i32.const 0))
+      (i32.store offset=0 (local.get $array) (local.get $next))
+      (local.set $array (local.get $next))))
 
-(func $in-gray-queue? (param $val i32) (result i32)
+  (i32.store offset=8 
+    (i32.add (local.get $array) (%word-size-l $count))
+    (local.get $val))
+  (%inc $count)
+  (i32.store offset=4 (local.get $array) (local.get $count))
+  (i32.store offset=4
+    (local.get $ptr)
+    (i32.add (i32.load offset=4 (local.get $ptr)) (i32.const 1))))
+
+(func $in-touched-queue? (param $val i32) (result i32)
   (local $ptr i32)
   (local $array i32)
   (local $idx i32)
-  (local $tail-array i32)
-  (local $tail-idx i32)
-  (local $array-count i32)
+  (local $count i32)
+  (local $array-ptr i32)
 
   ;; ptr = g-gc-state
   (local.set $ptr (global.get $g-gc-state))
   ;; array = ptr.head-ptr
   ;; tail-array = ptr[0]
   (local.set $array (i32.load offset=0 (local.get $ptr)))
-  ;; idx = ptr.head-idx
-  ;; idx = ptr[4]
-  (local.set $idx (i32.load offset=4 (local.get $ptr)))
-  ;; array = ptr.head-ptr
-  ;; tail-array = ptr[0]
-  (local.set $tail-array (i32.load offset=8 (local.get $ptr)))
-  ;; idx = ptr.head-idx
-  ;; idx = ptr[4]
-  (local.set $tail-idx (i32.load offset=12 (local.get $ptr)))
 
   (block $end (loop $start
-      (local.set $array-count (i32.load offset=4 (local.get $array)))
+      (br_if $end (i32.eqz (local.get $array)))
 
+      (local.set $count (i32.load offset=4 (local.get $array)))
+      (local.set $array-ptr (i32.add (local.get $array) (i32.const 8)))
+      (local.set $idx (i32.const 0))
       (block $inner_end (loop $inner_start
-          (br_if $inner_end (i32.eqz (local.get $array-count)))
-          (%assert (i32.le_u (local.get $idx) (i32.const 256)))
+          (br_if $inner_end (i32.eq (local.get $idx) (local.get $count)))
 
-          (if (i32.eq
-              (local.get $val) 
-              (i32.load offset=8 (i32.add 
-                  (local.get $array)
-                  (%word-size-l $idx)))) (then
+          (if (i32.eq (local.get $val) (i32.load (local.get $array-ptr))) (then
               (return (i32.const 1))))
 
-          (%dec $array-count)
           (%inc $idx)
+          (%plus-eq $array-ptr 4)
           (br $inner_start)))
 
-
       (local.set $array (i32.load (local.get $array)))
-      (br_if $end (i32.eqz (local.get $array)))
-      (local.set $idx (i32.const 0))
-
       (br $start)))
 
   (return (i32.const 0)))

@@ -341,7 +341,7 @@ describe("runtime wasm", () => {
 
     const items: number[] = [];
     while (true) {
-      expect(words[0]).to.equal(3, "should be a cons cell");
+      expect(words[0] & 0x1F).to.equal(3, "should be a cons cell");
       const car = words[1];
       const carWords = new Uint32Array(
         exports.memory.buffer.slice(car, car + 12)
@@ -374,7 +374,7 @@ describe("runtime wasm", () => {
     const datum = exports.stringToDatum(input);
     let words = new Uint32Array(exports.memory.buffer.slice(datum, datum + 12));
 
-    expect(words[0]).to.equal(3, "should be a cons cell");
+    expect(words[0] & 0x1F).to.equal(3, "should be a cons cell");
     const car = words[1];
     const carWords = new Uint32Array(
       exports.memory.buffer.slice(car, car + 12)
@@ -405,7 +405,7 @@ describe("runtime wasm", () => {
 
     const items: number[] = [];
     while (true) {
-      expect(words[0]).to.equal(3, "should be a cons cell");
+      expect(words[0] & 0x1F).to.equal(3, "should be a cons cell");
       const car = words[1];
       const carWords = new Uint32Array(
         exports.memory.buffer.slice(car, car + 12)

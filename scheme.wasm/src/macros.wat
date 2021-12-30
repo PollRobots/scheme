@@ -64,7 +64,11 @@
 (%define %cont-proc-type () (i32.const 20))
 (%define %max-heap-type () (i32.const 20))
 
-(%define %get-type (%arg) (i32.and (i32.load (local.get %arg)) (i32.const 0x1F)))
+(%define %get-type (%arg) (i32.and (i32.load8_u (local.get %arg)) (i32.const 0x1F)))
+(%define %get-gc-flags (%arg) (i32.load8_u offset=1 (local.get %arg)))
+(%define %set-gc-flags (%arg %flags) (i32.store8 offset=1 (local.get %arg) %flags))
+(%define %get-flags (%arg) (i32.load8_u offset=2 (local.get %arg)))
+(%define %set-flags (%arg %flags) (i32.store8 offset=2 (local.get %arg) %flags))
 
 (%define %car (%cons) (i32.load offset=4 %cons))
 (%define %car-l (%cons) (i32.load offset=4 (local.get %cons)))

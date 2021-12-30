@@ -3,13 +3,14 @@
 (define (assert (x . m)) 
   (if (not x) (apply error "Assert failed" m)))
 
-(define (run-tests tests)
+(define (run-tests (name . tests))
   (let ((passed 0)
         (failed 0))
+    (display-all name #\newline)
     (for-each 
       (lambda (test)
         (call/cc (lambda (cont)
-            (display-all "Case: " (car test) " - ")
+            (display-all "    " (car test) " - ")
             (with-exception-handler 
               (lambda (ex) 
                 (display "\x1B;[0;31mfailed: ")
@@ -22,13 +23,13 @@
                 (display-all "\x1B;[0m" #\newline)
                 (set! failed (+ 1 failed))
                 (cont #f))
-              (car (cdr test)))
+              (cadr test))
             (display-all "passed." #\newline)
             (set! passed (+ 1 passed))
             (cont #t))))
       tests)
-    (display-all "\x1B;[0;32m" passed " tests passed.\x1B;[0m" #\newline)
+    (display-all "\x1B;[0;32m" passed " passing.\x1B;[0m" #\newline)
     (if (> failed 0)
       (begin
-        (display-all "\x1B;[0;31m" failed " tests failed.\x1B;[0m" #\newline)))))
+        (display-all "\x1B;[0;31m" failed " failing.\x1B;[0m" #\newline)))))
     

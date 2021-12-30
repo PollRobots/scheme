@@ -36,6 +36,7 @@ export class SchemeRuntime {
   private exports_: WebAssembly.Exports | undefined;
   private readonly unicodeData_: Record<number, ArrayBuffer> = {};
   private readonly lines_: string[] = [];
+  private readonly writePriorityCallbacks_: WriteCallback[] = [];
   private readonly writeCallbacks_: WriteCallback[] = [];
   private initialized_: boolean = false;
   private env_: number = 0;
@@ -47,14 +48,30 @@ export class SchemeRuntime {
     this.module_ = module;
   }
 
-  addEventListener(event: "write", callback: WriteCallback) {
-    this.writeCallbacks_.push(callback);
+  addEventListener(event: "write" | "write-priority", callback: WriteCallback) {
+    if (event === "write") {
+      this.writeCallbacks_.push(callback);
+    } else {
+      this.writePriorityCallbacks_.push(callback);
+    }
   }
 
-  removeEventListener(event: "write", callback: WriteCallback) {
-    const index = this.writeCallbacks_.findIndex((el) => el === callback);
-    if (index >= 0) {
-      this.writeCallbacks_.splice(index, 1);
+  removeEventListener(
+    event: "write" | "write-priority",
+    callback: WriteCallback
+  ) {
+    if (event === "write") {
+      const index = this.writeCallbacks_.findIndex((el) => el === callback);
+      if (index >= 0) {
+        this.writeCallbacks_.splice(index, 1);
+      }
+    } else {
+      const index = this.writePriorityCallbacks_.findIndex(
+        (el) => el === callback
+      );
+      if (index >= 0) {
+        this.writePriorityCallbacks_.splice(index, 1);
+      }
     }
   }
 
@@ -288,10 +305,16 @@ export class SchemeRuntime {
           this.instance_ = undefined;
           this.exports_ = undefined;
           this.initialized_ = false;
-          this.onWrite(`\x1B[0;31m${err}
-
-\x1B[0;94mPress <Enter> to restart scheme runtime.\x1B[0m
-`);
+          this.onWrite(`\x1B[0;31m${err}\n`);
+          if (err instanceof Error && typeof err.stack == "string") {
+            err.stack
+              .split("\n")
+              .forEach((el) => this.onWrite(`\x1B[0;91m${el}\n`));
+            this.onWrite("\n");
+          }
+          this.onWrite(
+            "\n\x1B[0;94mPress <Enter> to restart scheme runtime.\x1B[0m\n"
+          );
         }
 
         if (this.promises_.length == 0) {
@@ -345,7 +368,11 @@ export class SchemeRuntime {
   }
 
   onWrite(str: string) {
-    this.writeCallbacks_.forEach((el) => el(str));
+    if (this.writePriorityCallbacks_.length) {
+      this.writePriorityCallbacks_.forEach((el) => el(str));
+    } else {
+      this.writeCallbacks_.forEach((el) => el(str));
+    }
   }
 
   exit(exitCode: number) {
@@ -424,6 +451,12 @@ export class SchemeRuntime {
         this.onWrite(`\x1B[0;32m${err.message}\n`);
       } else {
         this.onWrite(`\x1B[0;31m${err}\n`);
+        if (err instanceof Error && typeof err.stack == "string") {
+          err.stack
+            .split("\n")
+            .forEach((el) => this.onWrite(`\x1B[0;31m]${el}\n`));
+          this.onWrite("\n");
+        }
       }
       this.onWrite(
         "\n\x1B[0;94mPress <Enter> to restart scheme runtime.\x1B[0m\n"
