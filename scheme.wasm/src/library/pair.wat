@@ -457,21 +457,21 @@
       (local.set $obj (%car-l $args))
       (local.set $k (%car (%cdr-l $args)))
       (br_if $b_fail (i32.ne (%get-type $k) (%i64-type)))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
 
   (local.set $tail (call $list-tail-impl (local.get $args) (local.get $obj) (local.get $k)))
-  (if (i32.eq (%get-type $tail) (%error-type))
-    (then (return (local.get $tail)))
-  )
+  (if (i32.eq (%get-type $tail) (%error-type)) (then 
+      (return (local.get $tail))))
+
+  (if (i32.and (%get-flags $tail) (i32.const 2)) (then
+      (return (call $argument-error (local.get $args)))))
 
   (local.set $val (%car (%cdr (%cdr-l $args))))
   (%set-car!-l $tail $val)
 
-  (return (local.get $obj))
-)
+  (return (local.get $obj)))
 
 (func $memq (param $env i32) (param $args i32) (result i32)
   (local $obj i32)

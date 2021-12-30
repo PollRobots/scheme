@@ -3,6 +3,15 @@
 (define (assert (x . m)) 
   (if (not x) (apply error "Assert failed" m)))
 
+(define (assert-not (x . m)) 
+  (if x (apply error "Assert failed" m)))
+
+(define (assert-error (x . m)) 
+  (if (not (error-object? x)) (apply error "Assert failed" x " should be an error, " m)))
+
+(define (assert-equal (x y . m)) 
+  (if (not (equal? x y)) (apply error "Assert failed" x " should equal " y ", " m)))
+
 (define (run-tests (name . tests))
   (let ((passed 0)
         (failed 0))
@@ -10,9 +19,9 @@
     (for-each 
       (lambda (test)
         (call/cc (lambda (cont)
-            (display-all "    " (car test) " - ")
             (with-exception-handler 
               (lambda (ex) 
+                (display-all "    " #\escape "[0;31m" #\x2718 #\escape "[94m " (car test) #\newline)
                 (display "\x1B;[0;31mfailed: ")
                 (if (error-object? ex)
                   (begin
@@ -20,15 +29,15 @@
                     (if (not (null? (error-object-irritants ex)))
                       (apply display-all ": " (error-object-irritants ex))))
                   (display ex))
-                (display-all "\x1B;[0m" #\newline)
+                (display #\newline)
                 (set! failed (+ 1 failed))
                 (cont #f))
               (cadr test))
-            (display-all "passed." #\newline)
+            (display-all "    " #\escape "[0;32m" #\x2714 #\escape "[94m " (car test) #\newline)
             (set! passed (+ 1 passed))
             (cont #t))))
       tests)
-    (display-all "\x1B;[0;32m" passed " passing.\x1B;[0m" #\newline)
+    (display-all #\newline #\newline "\x1B;[0;32m" passed " passing.\x1B;[0m" #\newline)
     (if (> failed 0)
       (begin
         (display-all "\x1B;[0;31m" failed " failing.\x1B;[0m" #\newline)))))

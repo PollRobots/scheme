@@ -29,6 +29,18 @@
 
   (return (global.get $g-false)))
 
+(func $numeric? (param $arg i32) (result i32)
+  (local $type i32)
+  (local.set $type (%get-type $arg))
+
+  (block $check
+    (br_if $check (i32.eq (local.get $type) (%i64-type)))
+    (br_if $check (i32.eq (local.get $type) (%f64-type)))
+    (br_if $check (i32.eq (local.get $type) (%big-int-type)))
+
+    (return (i32.const 0)))
+  (return (i32.const 1)))
+
 (func $all-numeric (param $args i32) (result i32)
   (local $temp i32)
   (local $temp-type i32)

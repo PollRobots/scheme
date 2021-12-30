@@ -23,8 +23,14 @@
   (local.set $a-type (%get-type $a))
   (local.set $b-type (%get-type $b))
 
-  (if (i32.ne (local.get $a-type) (local.get $b-type))
-    (then (return (i32.const 0))))
+  (if (i32.ne (local.get $a-type) (local.get $b-type)) (then 
+      (if (call $numeric? (local.get $a)) (then
+          (if (call $numeric? (local.get $b)) (then
+              (return (i32.eqz (call $num-core-cmp 
+                    (local.get $a) 
+                    (local.get $b))))))))
+
+      (return (i32.const 0))))
 
   (local.set $result (i32.const 0))
 
