@@ -41,4 +41,14 @@
     (if (> failed 0)
       (begin
         (display-all "\x1B;[0;31m" failed " failing.\x1B;[0m" #\newline)))))
+
+  (define (test-case (name fn))
+    (cond 
+      ((and (string? name) (procedure? fn)) (list name fn))
+      ((string? name) 
+        (list name (lambda () (error "test-case fn is not a procedure" name))))
+      (else 
+        (list 
+          "unknown" 
+          (lambda () (error "test-case name is not a string" name))))))
     
