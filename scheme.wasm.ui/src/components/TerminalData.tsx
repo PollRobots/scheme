@@ -12,9 +12,21 @@ export const TerminalData: React.FunctionComponent<TerminalDataProps> = (
       {props.text.map((el, i) => {
         return (
           <div key={`line${i}`}>
-            <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-              {AnsiEscaper(el)}
-            </span>
+            {el.length ? (
+              <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                {AnsiEscaper(el)}
+              </span>
+            ) : (
+              <span
+                style={{
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-all",
+                  userSelect: "none",
+                }}
+              >
+                {" "}
+              </span>
+            )}
           </div>
         );
       })}

@@ -38,8 +38,8 @@ h2 {
       Scheme.wasm is a partial implementation of 
       <a href="https://small.r7rs.org/" target="_blank">r7rs scheme</a>,
       written entirely in WebAssembly using the WebAssembly Text 
-      format. The only external imports are for IO (<code>read</code> and 
-      <code>write</code>), unicode (I have an import that reads
+      format. The only external imports are for IO (<code>read</code>, 
+      <code>write</code>, and <code>readFile</code>), unicode (I have an import that reads
       information about 256 code-point blocks, to enable case operations etc.), 
       and process control (<code>exit</code>)
     </p>
@@ -65,6 +65,7 @@ h2 {
         Tail call optimization &mdash; internally <code>eval</code> uses a 
         continuation passing style, so TCO comes for free.
       </li>
+      <li><code>call/cc</code> and exceptions</li>
     </ul>
     <h3>What is missing at the moment</h3>
     <ul>
@@ -75,7 +76,8 @@ h2 {
         </ul>
       </li>
       <li>Macros</li>
-      <li><code>call/cc</code></li>
+      <li>Modules</li>
+      <li><code>dynamic-wind</code></li>
       <li>Everything else</li>
     </ul>
     <h2>Credits</h2>

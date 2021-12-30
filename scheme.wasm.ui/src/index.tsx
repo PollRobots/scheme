@@ -124,11 +124,30 @@ class App extends React.Component<{}, AppState> {
   constructor(props: {}) {
     super(props);
     this.state = { ...kDefaultState, ...loadSettings() };
+    this.onClickOutside = this.onClickOutside.bind(this);
   }
 
   // useOnClickOutside(ref, () =>
   //   setState({ ...state, open: false, about: false })
   // );
+  componentDidMount() {
+    document.addEventListener("mousedown", this.onClickOutside);
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener("mousedown", this.onClickOutside);
+  }
+
+  onClickOutside(event: MouseEvent) {
+    const target = event.target;
+    if (
+      !this.ref.current ||
+      (target instanceof Element && this.ref.current.contains(target))
+    ) {
+      return;
+    }
+    this.setState({ open: false, about: false });
+  }
 
   onWrite(str: string) {
     if (this.writing) {
