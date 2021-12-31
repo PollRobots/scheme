@@ -210,6 +210,7 @@ async function main(): Promise<void> {
       await writeBlock(blockIndex, block);
       blocks[blockIndex] = Buffer.from(block).toString("base64");
       blockIndex = targetBlock;
+      block.fill(0);
     }
     const row = codePoint & 0xff;
     const offset = row * 8;
@@ -232,14 +233,14 @@ async function main(): Promise<void> {
       (isLower ? 0x04 : 0) |
       (isWhitespace ? 0x08 : 0) |
       (isPrint ? 0x10 : 0);
-
+    
+    // store the digit value of the code-point (if any) offset by 1 (so that 
+    // zero can signal no value).
     if (parts[6].length) {
-      block[offset + 1] = parseInt(parts[6]);
+      block[offset + 1] = 1 + parseInt(parts[6]);
     } else if (parts[7].length && parts[7] === parts[8]) {
-      block[offset + 1] = parseInt(parts[7]);
-    } else {
-      block[offset + 1] = 255;
-    }
+      block[offset + 1] = 1 + parseInt(parts[7]);
+    } 
 
     const upper = parts[12];
     if (upper.length) {

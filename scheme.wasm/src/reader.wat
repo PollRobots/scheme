@@ -483,7 +483,19 @@
                 (local.get $reader)
                 (local.tee $in-off (i32.sub (local.get $in-off) (i32.const 1))))
               (br $b_done)))
-          
+
+          ;; check if this is a character, if so accept almost anything as the 
+          ;; third character this allows #\  for space and #\( etc.
+          (block $b_char
+            (br_if $b_char (i32.ne (local.get $acc-off) (i32.const 2)))
+            (br_if $b_char (i32.ne (local.get $prev-char) (i32.const 0x5C))) ;; '\' 0x5C
+            (br_if $b_char (i32.ne (i32.load (local.get $accum)) (i32.const 0x23))) ;; # 0x23
+            (br_if $b_char (i32.lt_u (local.get $char) (i32.const 0x20))) ;; control characters
+            (i32.store
+              (i32.add (local.get $accum) (%word-size-l $acc-off))
+              (local.get $char))
+            (%inc $acc-off)
+            (br $forever))
 
           ;; if (is-delimiter(char)) {
           (if (call $is-delimiter (local.get $char)) (then

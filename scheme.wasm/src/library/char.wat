@@ -560,29 +560,20 @@
   (local $arg i32)
   (local $props i32)
 
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
       (local.set $arg (%car-l $args))
       (br_if $b_fail (i32.ne (%get-type $arg) (%char-type)))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
 
   (local.set $props (call $char-get-code-point-props (%car-l $arg))) 
 
-  (return 
-    (select
+  (return (select
       (global.get $g-true)
       (global.get $g-false)
-      (i32.ne 
-        (i32.and (local.get $props) (i32.const 0xff00)) 
-        (i32.const 0xFF00)
-      )
-    )
-  )
-)
+      (i32.and (local.get $props) (i32.const 0xff00)))))
 
 (func $char-whitespace? (param $env i32) (param $args i32) (result i32)
   (local $arg i32)
@@ -664,24 +655,22 @@
   (local $props i32)
   (local $digit i32)
 
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
       (local.set $arg (%car-l $args))
       (br_if $b_fail (i32.ne (%get-type $arg) (%char-type)))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
 
   (local.set $props (call $char-get-code-point-props (%car-l $arg))) 
   (local.set $digit (i32.shr_u (local.get $props) (i32.const 8)))
 
-  (if (i32.lt_u (local.get $digit) (i32.const 10))
-    (then (return (%alloc-i32 (local.get $digit))))
-  )
-  (return (global.get $g-false))
-)
+  (if (local.get $digit) (then 
+      ;; digit values are biased by +1 to allow 0 to signal no value.
+      (return (%alloc-i32 (i32.sub (local.get $digit) (i32.const 1))))))
+
+  (return (global.get $g-false)))
 
 (func $char->integer (param $env i32) (param $args i32) (result i32)
   (local $arg i32)
@@ -727,49 +716,45 @@
 (func $char-upcase-impl (param $code-point i32) (result i32)
   (local $data-ptr i32)
   (local $offset i32)
+  (local $upper i32)
 
   (local.set $data-ptr 
     (call $char-get-data-block 
       (global.get $g-char-data) 
-      (i32.shr_u (local.get $code-point) (i32.const 8))
-    )
-  )
-  ;; offset = (code-point & 0xFF) * 8
-  (local.set $offset (i32.shl (i32.and (local.get $code-point) (i32.const 0xFF)) (i32.const 3)))
+      (i32.shr_u (local.get $code-point) (i32.const 8))))
 
-  (return
-    (i32.and
+  ;; offset = (code-point & 0xFF) * 8
+  (local.set $offset (i32.shl 
+      (i32.and (local.get $code-point) (i32.const 0xFF)) 
+      (i32.const 3)))
+
+  (local.set $upper (i32.and
       (i32.load offset=2 (i32.add (local.get $data-ptr) (local.get $offset)))
-      (i32.const 0x1FFFFF)
-    )
-  )
-)
+      (i32.const 0x1FFFFF)))
+  
+  (if (i32.eqz (local.get $upper)) (then
+      (return (local.get $code-point))))
+
+  (return (local.get $upper)))
 
 (func $char-upcase (param $env i32) (param $args i32) (result i32)
   (local $arg i32)
   (local $code-point i32)
   (local $upper i32)
 
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
       (local.set $arg (%car-l $args))
       (br_if $b_fail (i32.ne (%get-type $arg) (%char-type)))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
 
   (local.set $code-point (%car-l $arg))
   (local.set $upper (call $char-upcase-impl (local.get $code-point)))
 
-  (if 
-    (i32.or 
-      (i32.eqz (local.get $upper)) 
-      (i32.eq (local.get $upper) (local.get $code-point))
-    )
-    (then (return (local.get $arg)))
-  )
+  (if (i32.eq (local.get $upper) (local.get $code-point)) (then 
+    (return (local.get $arg))))
 
   (return (%alloc-char (local.get $upper)))
 )
@@ -782,55 +767,42 @@
   (local.set $data-ptr 
     (call $char-get-data-block 
       (global.get $g-char-data) 
-      (i32.shr_u (local.get $code-point) (i32.const 8))
-    )
-  )
-  ;; offset = (code-point & 0xFF) * 8
-  (local.set $offset (i32.shl (i32.and (local.get $code-point) (i32.const 0xFF)) (i32.const 3)))
+      (i32.shr_u (local.get $code-point) (i32.const 8))))
 
-  (local.set $lower 
-    (i32.and
+  ;; offset = (code-point & 0xFF) * 8
+  (local.set $offset (i32.shl 
+      (i32.and (local.get $code-point) (i32.const 0xFF)) 
+      (i32.const 3)))
+
+  (local.set $lower (i32.and 
       (i32.shr_u 
         (i32.load offset=4 (i32.add (local.get $data-ptr) (local.get $offset)))
-        (i32.const 8)
-      )
-      (i32.const 0x1FFFFF)
-    )
-  )
+        (i32.const 8))
+      (i32.const 0x1FFFFF)))
 
-  (if 
-    (i32.or 
-      (i32.eqz (local.get $lower)) 
-      (i32.eq (local.get $lower) (local.get $code-point))
-    )
-    (then (return (local.get $code-point)))
-  )
+  (if (i32.eqz (local.get $lower)) (then
+      (return (local.get $code-point))))
 
-  (return (local.get $lower))
-)
+  (return (local.get $lower)))
 
 (func $char-downcase (param $env i32) (param $args i32) (result i32)
   (local $arg i32)
   (local $code-point i32)
   (local $lower i32)
 
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
       (local.set $arg (%car-l $args))
       (br_if $b_fail (i32.ne (%get-type $arg) (%char-type)))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
 
   (local.set $code-point (%car-l $arg))
   (local.set $lower (call $char-downcase-impl (local.get $code-point)))
 
-  (if (i32.eq (local.get $lower) (local.get $code-point))
-    (then (return (local.get $arg)))
-  )
+  (if (i32.eq (local.get $lower) (local.get $code-point)) (then 
+      (return (local.get $arg))))
 
-  (return (%alloc-char (local.get $lower)))
-)
+  (return (%alloc-char (local.get $lower))))
 
