@@ -192,14 +192,13 @@
       ;; *slot-ptr = digest
       (i64.store (local.get $slot-ptr) (local.get $digest))
       ;; *(slot-ptr + 8) = key
-      (i32.store (i32.add (local.get $slot-ptr) (i32.const 8)) (local.get $key))
+      (i32.store offset=8 (local.get $slot-ptr) (local.get $key))
       ;; *(slot-ptr + 12) = value
-      (i32.store (i32.add (local.get $slot-ptr) (i32.const 12)) (local.get $value))
+      (i32.store offset=12 (local.get $slot-ptr)  (local.get $value))
       ;; *(ptr + 4) = count + 1
-      (i32.store 
-        (i32.add (local.get $ptr) (i32.const 4))
-        (i32.add (local.get $count) (i32.const 1))
-      )
+      (i32.store offset=4
+        (local.get $ptr)
+        (i32.add (local.get $count) (i32.const 1)))
       ;; return ptr
       (return (local.get $ptr))
     )
