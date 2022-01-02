@@ -8,6 +8,7 @@ import { defineThemes } from "../monaco/solarized";
 import { EditorThemeContext, ThemeContext } from "./ThemeProvider";
 import { Copy, Cut, Open, Paste, Redo, Save, Undo } from "../icons/copy";
 import { IconButton } from "./IconButton";
+import { openFilePicker, saveFilePicker } from "../util";
 
 interface TerminalProps {
   welcomeMessage?: React.ReactNode;
@@ -373,37 +374,27 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
                             if (!editor) {
                               return;
                             }
-                            const input = document.createElement("input");
-                            input.type = "file";
-                            input.multiple = false;
-                            input.accept =
-                              ".scm,text/plain,text/x-script.scheme,text/x-scheme";
-                            input.addEventListener("change", async () => {
-                              const files = input.files;
-                              if (!files || files.length == 0) {
-                                return;
-                              }
-                              const file = files.item(0);
-                              if (!file) {
-                                return;
-                              }
-                              const text = await file.text();
-                              editor.focus();
-                              const selection = editor.getSelection();
-                              if (!selection) {
-                                editor.setValue(text);
-                                return;
-                              } else {
-                                editor.executeEdits("file-open", [
-                                  {
-                                    range: selection,
-                                    text: text,
-                                    forceMoveMarkers: true,
-                                  },
-                                ]);
-                              }
-                            });
-                            input.click();
+                            openFilePicker()
+                              .then((text) => {
+                                editor.focus();
+                                const selection = editor.getSelection();
+                                if (!selection) {
+                                  editor.setValue(text);
+                                  return;
+                                } else {
+                                  editor.executeEdits("file-open", [
+                                    {
+                                      range: selection,
+                                      text: text,
+                                      forceMoveMarkers: true,
+                                    },
+                                  ]);
+                                }
+                              })
+                              .catch((err) => {
+                                console.error(err);
+                                editor.focus();
+                              });
                           }}
                         >
                           <Open />
@@ -411,20 +402,18 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
                         <IconButton
                           size={this.props.fontSize * 2}
                           title="Save"
-                          onClick={() => {
+                          onClick={async () => {
                             const editor = this.state.editor;
                             if (!editor) {
                               return;
                             }
 
                             const content = editor.getValue();
-                            const blob = new Blob([content], {
-                              type: "text/plain",
-                            });
-                            const anchor = document.createElement("a");
-                            anchor.href = window.URL.createObjectURL(blob);
-                            anchor.download = "untitled.scm";
-                            anchor.click();
+                            saveFilePicker(content)
+                              .catch((err) => {
+                                console.error(err);
+                              })
+                              .finally(() => editor.focus());
                           }}
                         >
                           <Save />
