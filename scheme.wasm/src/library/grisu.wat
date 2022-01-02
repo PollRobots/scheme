@@ -1159,7 +1159,7 @@ struct CachedPower { // c = f * 2^e ~= 10^k
      ;)
 
     ;; assert(p2 <= UINT64_MAX / 10);
-    (%assert (i64.le_u (local.get $p2) (i64.const 0x0CCC_CCCC_CCCC_CCCC)))
+    (%assert (i64.le_u (local.get $p2) (i64.const 0x1999_9999_9999_9999)))
     ;; p2 *= 10;
     (local.set $p2 (i64.mul (local.get $p2) (i64.const 10)))
 
