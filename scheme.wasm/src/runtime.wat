@@ -21,7 +21,7 @@
 (global $g-close      (mut i32) (i32.const 0))
 (global $g-dot        (mut i32) (i32.const 0))
 (global $g-eof        (mut i32) (i32.const 0))
-(global $g-quote      (mut i32) (i32.const 0))
+(global $g-double-quote      (mut i32) (i32.const 0))
 (global $g-args       (mut i32) (i32.const 0))
 (global $g-not-impl   (mut i32) (i32.const 0))
 (global $g-vec-open   (mut i32) (i32.const 0))
@@ -51,6 +51,8 @@
 (global $g-letrec     (mut i32) (i32.const 0))
 (global $g-letrec-star  (mut i32) (i32.const 0))
 (global $g-syntax-error  (mut i32) (i32.const 0))
+(global $g-lambda     (mut i32) (i32.const 0))
+(global $g-quote      (mut i32) (i32.const 0))
 
 (global $g-eval-count (mut i32) (i32.const 0))
 (%define %gc-threshold () (i32.const 256))
@@ -79,7 +81,7 @@
   (global.set $g-close (%sym-32 0x29 1))          ;; )
   (global.set $g-dot (%sym-32 0x202e20 3))        ;; ' . '
   (global.set $g-eof (%sym-32 0x666f65 3))        ;; eof
-  (global.set $g-quote (%sym-32 0x22 1))          ;; "
+  (global.set $g-double-quote (%sym-32 0x22 1))   ;; "
   (global.set $g-args (%sym-32 0x73677261 4))     ;; args
   (global.set $g-not-impl (%sym-64 0x6c706d692D746f6e 8))     ;; not-impl
   (global.set $g-vec-open (%sym-32 0x2823 2))     ;; #(
@@ -108,6 +110,8 @@
   (global.set $g-letrec (%sym-64 0x63657274656c 6))   ;; 'letrec'
   (global.set $g-letrec-star (%sym-64 0x2A63657274656c 7)) ;; 'letrec*'
   (global.set $g-syntax-error (%sym-128 0x652D7861746e7973 0x726f7272 12)) ;; 'syntax-error'
+  (global.set $g-lambda (%sym-64 0x6164626d616c 6)) ;; 'lambda'
+  (global.set $g-quote (%sym-64 0x65746f7571 5)) ;; 'quote'
 
   ;; global reader is attached to stdin
   (global.set $g-reader (call $reader-init (i32.const 0)))
@@ -326,7 +330,7 @@
       (%check-datum $curr)
       ;; otherwise quote it
       ;; return (quote <curr>)
-      (return (%alloc-list-2 (global.get $quote-sym) (local.get $curr)))))
+      (return (%alloc-quote (local.get $curr)))))
 
   ;; if (token-str == "#;")
   (if (call $short-str-eq (local.get $token-str) (i32.const 0x3B23) (i32.const 2))

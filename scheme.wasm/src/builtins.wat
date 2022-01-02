@@ -212,9 +212,6 @@
 
 (table $table-builtin 208 anyfunc)
 
-(global $lambda-sym (mut i32) (i32.const 0))
-(global $quote-sym (mut i32) (i32.const 0))
-
 (func $register-builtins (param $heap i32) (param $env i32)
   (local $quote i32)
 
@@ -398,19 +395,17 @@
   (%add-builtin (%sym-128 0x616d2D6563617274 0x3F736f7263 13) (%builtin-trace-macros?)) ;; 'trace-macros?'
   (%add-builtin (%sym-192 0x616d2D6563617274 0x7465732D736f7263 0x21 17) (%builtin-trace-macros-set!)) ;; 'trace-macros-set!'
 
-  (global.set $lambda-sym (%sym-64 0x6164626d616c 6)) ;; 'lambda'
-  (global.set $quote-sym (%sym-64 0x65746f7571 5)) ;; 'quote'
 
   (%add-special (%sym-32 0x6669 2) (%special-if))               ;; 'if'
   (%add-special (global.get $g-let) (%special-let))             ;; 'let'
-  (%add-special (global.get $g-let-star) (%special-let*))           ;; 'let*'
+  (%add-special (global.get $g-let-star) (%special-let*))       ;; 'let*'
   (%add-special (global.get $g-letrec) (%special-letrec))       ;; 'letrec'
-  (%add-special (global.get $g-letrec-star) (%special-letrec))      ;; 'letrec*'
+  (%add-special (global.get $g-letrec-star) (%special-letrec))  ;; 'letrec*'
   (%add-special (%sym-128 0x756c61762D74656c 0x7365 10) (%special-let-values))    ;; 'let-values'
   (%add-special (%sym-128 0x6c61762D2A74656c 0x736575 11) (%special-let*-values)) ;; 'let*-values'
-  (%add-special (global.get $lambda-sym) (%special-lambda))     ;; 'lambda'
+  (%add-special (global.get $g-lambda) (%special-lambda))       ;; 'lambda'
   (%add-special (%sym-64 0x656e69666564 6) (%special-define))   ;; 'define'
-  (%add-special (global.get $quote-sym) (%special-quote))       ;; 'quote'
+  (%add-special (global.get $g-quote) (%special-quote))       ;; 'quote'
   (%add-special (%sym-32 0x27 1) (%special-quote))              ;; ' (0x27)
   (%add-special (%sym-32 0x21746573 4) (%special-set!))         ;; 'set!'
   (%add-special (%sym-32 0x646e6f63 4) (%special-cond))         ;; 'cond'

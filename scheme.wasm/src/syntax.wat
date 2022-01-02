@@ -502,6 +502,8 @@ Constants are
   (local $head i32)
   (local $tail i32)
   (local $gp i32)
+  (local $count i32)
+  (local $template-type i32)
 
   (local.set $type (%get-type $template))
 
@@ -535,24 +537,44 @@ Constants are
               (call $print-symbol (%sym-128 0x746e6f63206e6920 0x20747865 12)) ;; ' in context '
               (call $print (local.get $context))
               (call $print-symbol (global.get $g-newline))))
-          (if (i32.ge_u (call $list-len (local.get $context)) (i32.const 3))
+
+          (local.set $count (call $list-len (local.get $context))) 
+          ;; apply hygiene for binding constructs in lambda
+          (if (i32.ge_u (local.get $count) (i32.const 2))
             (then
-              (local.set $gp (%car (%cdr (%cdr-l $context))))
-              (block $no-hygiene (block $need-hygiene
-                  (br_if $no-hygiene (i32.ne (%get-type $gp) (%cons-type)))
-                  (br_if $no-hygiene (i32.ne (%cdr-l $gp) (global.get $g-nil)))
-                  (local.set $gp (%car-l $gp))
-                  (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-let)))
-                  (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-let-star)))
-                  (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-letrec)))
-                  (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-letrec-star)))
-                  (br $no-hygiene))
+              (local.set $gp (%car (%cdr-l $context)))
+              (block $no-lambda-hygiene (block $need-lambda-hygiene
+                  (br_if $no-lambda-hygiene (i32.ne (%get-type $gp) (%cons-type)))
+                  (br_if $no-lambda-hygiene (i32.ne (%cdr-l $gp) (global.get $g-nil)))
+                  (br_if $need-lambda-hygiene (i32.eq (%car-l $gp) (global.get $g-lambda)))
+                  (br $no-lambda-hygiene))
 
                 (call $environment-add 
                   (local.get $match-env)
                   (local.get $template)
                   (local.tee $curr (call $make-hygienic)))
-                (return (local.get $curr)))))
+                (return (local.get $curr)))
+
+              ;; apply hygiene for binding constructs in let let* letrec letrec*
+              (if (i32.ge_u (local.get $count) (i32.const 3))
+                (then
+                  (local.set $gp (%car (%cdr (%cdr-l $context))))
+                  (block $no-let-hygiene (block $need-let-hygiene
+                      (br_if $no-let-hygiene (i32.ne (%get-type $gp) (%cons-type)))
+                      (br_if $no-let-hygiene (i32.ne (%cdr-l $gp) (global.get $g-nil)))
+                      (local.set $gp (%car-l $gp))
+                      (br_if $need-let-hygiene (i32.eq (local.get $gp) (global.get $g-let)))
+                      (br_if $need-let-hygiene (i32.eq (local.get $gp) (global.get $g-let-star)))
+                      (br_if $need-let-hygiene (i32.eq (local.get $gp) (global.get $g-letrec)))
+                      (br_if $need-let-hygiene (i32.eq (local.get $gp) (global.get $g-letrec-star)))
+                      (br $no-let-hygiene))
+
+                    (call $environment-add 
+                      (local.get $match-env)
+                      (local.get $template)
+                      (local.tee $curr (call $make-hygienic)))
+                    (return (local.get $curr)))))))
+              
           (return (local.get $template))))))
 
   ;; list or vector
@@ -581,12 +603,13 @@ Constants are
               ;; check that we only have one entry
               (br_if $no-hygiene (i32.ne (%cdr-l $head) (global.get $g-nil)))
               ;; check if this is let, let*, letrec, or letrec*
-              ;; TODO let-values, let*-values, lambda
+              ;; TODO let-values, let*-values
               (local.set $gp (%car-l $head))
               (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-let)))
               (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-let-star)))
               (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-letrec)))
               (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-letrec-star)))
+              (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-lambda)))
               (br $no-hygiene))
 
             ;; hygienic macros need a local environment 
@@ -639,6 +662,39 @@ Constants are
             (then (local.set $head (local.get $matched)))
             (else (%set-cdr!-l $tail $matched)))
           (local.set $tail (local.get $matched))
+
+          ;; check for improper form
+          (block $improper
+            ;; not relevant for vectors
+            (br_if $improper (i32.eq (local.get $type) (%vector-type)))
+            (local.set $template-type (%get-type $template))
+            ;; only an improper form if the tail is not () or a cons cell
+            (br_if $improper (i32.eq (local.get $template-type) (%cons-type)))
+            (br_if $improper (i32.eq (local.get $template-type) (%nil-type)))
+
+            ;; this is an improper form.
+            (local.set $matched (call $expand-syntax-template
+                (local.get $template)
+                (local.get $match-env)
+                (local.get $ellipsis)
+                (local.get $in-ellipsis)
+                (%alloc-cons (local.get $head) (local.get $context))))
+
+            (if (local.get $in-ellipsis) (then
+                ;; we are in an ellipsis expansion, if we don't have another 
+                ;; element (i.e. we get a ()), then return ()
+                (if (i32.eq (local.get $matched) (global.get $g-nil)) (then
+                    (return (local.get $matched))))))
+
+            (if (i32.eq (%get-type $matched) (%error-type)) (then
+                (return (local.get $matched))))
+
+            ;; set this result to the cdr of the tail to create an improper list
+            (if (i32.eq (local.get $head) (global.get $g-nil))
+              (then (local.set $head (local.get $matched)))
+              (else (%set-cdr!-l $tail $matched)))
+
+            (return (local.get $head)))
 
           (br $start)))
 

@@ -210,7 +210,7 @@
 
 (func $print-lambda (param $ptr i32)
   (call $print-symbol (global.get $g-lt))
-  (call $print-symbol (global.get $lambda-sym))
+  (call $print-symbol (global.get $g-lambda))
   (call $print-symbol (global.get $g-space))
   (call $print-integer (i64.extend_i32_u (local.get $ptr)) (i32.const 16))
   (call $print-symbol (global.get $g-space))
@@ -427,9 +427,9 @@
 
 (func $print-str (param $str i32)
   ;; TODO handle strings with non-print characters
-  (call $print-symbol (global.get $g-quote))
+  (call $print-symbol (global.get $g-double-quote))
   (call $print-symbol (local.get $str))
-  (call $print-symbol (global.get $g-quote))
+  (call $print-symbol (global.get $g-double-quote))
 )
 
 (func $print-cons (param $car i32) (param $cdr i32) (param $paren i32)

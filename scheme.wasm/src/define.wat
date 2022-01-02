@@ -39,7 +39,7 @@
       ;; 
       ;; convert to (define var (lambda formals body ...))
       (local.set $expr (%alloc-cons
-          (global.get $lambda-sym)
+          (global.get $g-lambda)
           (%alloc-cons (local.get $formals) (local.get $temp))))))
 
   (if (call $environment-has (local.get $env) (local.get $var)) (then
