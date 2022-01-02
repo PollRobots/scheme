@@ -1,3 +1,29 @@
+(global $g-trace-macros (mut i32) (i32.const 0))
+
+;; (trace-macros?)
+(func $trace-macros? (param $env i32) (param $args i32) (result i32)
+  (block $check (block $fail
+      (br_if $fail (call $list-len (local.get $args)))
+      (br $check))
+    (return (call $argument-error (local.get $args))))
+
+  (return (select
+      (global.get $g-true)
+      (global.get $g-false)
+      (global.get $g-trace-macros))))
+
+;; (trace-macros-set! <bool>)
+(func $trace-macros-set! (param $env i32) (param $args i32) (result i32)
+  (block $check (block $fail
+      (br_if $fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
+      (br $check))
+    (return (call $argument-error (local.get $args))))
+
+  (global.set $g-trace-macros (call $is-truthy (%car-l $args)))
+
+  (return (global.get $g-nil)))
+
+
 (func $define-syntax (param $env i32) (param $args i32) (result i32)
   (local $keyword i32)
   (local $spec i32)
@@ -400,12 +426,16 @@ Constants are
               (local.get $template)
               (local.get $match)
               (local.get $ellipsis)
-              (i32.const 0)))
-          (call $print-symbol (%sym-64 0x20646e61707865 7)) ;; 'expand '
-          (call $print (local.get $template))
-          (call $print-symbol (%sym-32 0x206f7420 4)) ;; ' to '
-          (call $print (local.get $expanded))
-          (call $print-symbol (global.get $g-newline))
+              (i32.const 0)
+              (global.get $g-nil)))
+
+          (if (global.get $g-trace-macros) (then
+              (call $print-symbol (%sym-64 0x20646e61707865 7)) ;; 'expand '
+              (call $print (local.get $template))
+              (call $print-symbol (%sym-32 0x206f7420 4)) ;; ' to '
+              (call $print (local.get $expanded))
+              (call $print-symbol (global.get $g-newline))))
+
           (if (i32.eq (%get-type $expanded) (%error-type)) (then
               (return (local.get $expanded))))
           (return (call $cont-alloc
@@ -435,6 +465,7 @@ Constants are
   (param $match-env i32)
   (param $ellipsis i32) 
   (param $in-ellipsis i32)
+  (param $context i32)
   (result i32)
 
   (local $type i32)
@@ -443,17 +474,18 @@ Constants are
   (local $curr i32)
   (local $head i32)
   (local $tail i32)
+  (local $gp i32)
 
   (local.set $type (%get-type $template))
 
   ;; identifier
   (if (i32.eq (local.get $type) (%symbol-type)) (then
-      (if (call $environment-has (local.get $match-env) (local.get $template))
+      (local.set $matched (call $environment-get
+          (local.get $match-env)
+          (local.get $template)))
+      (if (i32.ne (%get-type $matched) (%error-type))
         (then
           ;; perform subsitution
-          (local.set $matched (call $environment-get
-              (local.get $match-env)
-              (local.get $template)))
           (if (local.get $in-ellipsis)
             (then
               ;; In an ellipsis expand next entry from match
@@ -471,6 +503,29 @@ Constants are
               (return (local.get $matched)))))
         (else
           ;; expands to itself
+          (if (global.get $g-trace-macros) (then
+              (call $print-symbol (local.get $template))
+              (call $print-symbol (%sym-128 0x746e6f63206e6920 0x20747865 12)) ;; ' in context '
+              (call $print (local.get $context))
+              (call $print-symbol (global.get $g-newline))))
+          (if (i32.ge_u (call $list-len (local.get $context)) (i32.const 3))
+            (then
+              (local.set $gp (%car (%cdr (%cdr-l $context))))
+              (block $no-hygiene (block $need-hygiene
+                  (br_if $no-hygiene (i32.ne (%get-type $gp) (%cons-type)))
+                  (br_if $no-hygiene (i32.ne (%cdr-l $gp) (global.get $g-nil)))
+                  (local.set $gp (%car-l $gp))
+                  (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-let)))
+                  (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-let-star)))
+                  (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-letrec)))
+                  (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-letrec-star)))
+                  (br $no-hygiene))
+
+                (call $environment-add 
+                  (local.get $match-env)
+                  (local.get $template)
+                  (local.tee $curr (call $make-hygienic)))
+                (return (local.get $curr)))))
           (return (local.get $template))))))
 
   ;; list or vector
@@ -491,6 +546,28 @@ Constants are
           (%chk-type $end $template %cons-type)
           (%pop-l $curr $template)
 
+          (block $no-hygiene (block $need-hygiene
+              ;; check that this is a list
+              (br_if $no-hygiene (i32.ne (local.get $type) (%cons-type)))
+              ;; check that we have entries
+              (br_if $no-hygiene (i32.ne (%get-type $head) (%cons-type)))
+              ;; check that we only have one entry
+              (br_if $no-hygiene (i32.ne (%cdr-l $head) (global.get $g-nil)))
+              ;; check if this is let, let*, letrec, or letrec*
+              ;; TODO let-values, let*-values, lambda
+              (local.set $gp (%car-l $head))
+              (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-let)))
+              (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-let-star)))
+              (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-letrec)))
+              (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-letrec-star)))
+              (br $no-hygiene))
+
+            ;; hygienic macros need a local environment 
+            (local.set $match-env (call $environment-init 
+                (global.get $g-heap) 
+                (local.get $match-env))))
+
+
           (if (i32.eq (%car (%cdr-l $template)) (local.get $ellipsis)) (then
               ;; the next item in the template is an ellipsis, so expand the 
               ;; current element until we get nothing
@@ -498,7 +575,8 @@ Constants are
                   (local.get $curr)
                   (local.get $match-env)
                   (local.get $ellipsis)
-                  (i32.const 1)))
+                  (i32.const 1)
+                  (%alloc-cons (local.get $head) (local.get $context))))
               (if (i32.eq (local.get $matched) (global.get $g-nil)) (then
                   ;; finished expanding ellipsis
                   (br $start)))
@@ -512,7 +590,8 @@ Constants are
               (local.get $curr)
               (local.get $match-env)
               (local.get $ellipsis)
-              (local.get $in-ellipsis)))
+              (local.get $in-ellipsis)
+              (%alloc-cons (local.get $head) (local.get $context))))
           
           (if (local.get $in-ellipsis) (then
               ;; we are in an ellipsis expansion, if we don't have another 
@@ -557,11 +636,12 @@ Constants are
       (global.get $g-heap) 
       (i32.const 0)))
 
-  (call $print-symbol (%sym-64 0x203F686374616d 7)) ;; 'match? '
-  (call $print (local.get $pattern))
-  (call $print-symbol (%sym-64 0x206874697720 6))
-  (call $print (local.get $exp))
-  (call $print-symbol (global.get $g-newline))
+  (if (global.get $g-trace-macros) (then
+      (call $print-symbol (%sym-64 0x203F686374616d 7)) ;; 'match? '
+      (call $print (local.get $exp))
+      (call $print-symbol (%sym-64 0x206874697720 6)) ;; ' with '
+      (call $print (local.get $pattern))
+      (call $print-symbol (global.get $g-newline))))
 
   (if (i32.eq (local.get $pattern) (local.get $exp)) (then
       (if (i32.eq (local.get $pattern) (global.get $g-nil)) (then
@@ -861,3 +941,15 @@ Constants are
       (br $start)))
 
   (return (local.get $count)))
+
+(global $g-hygienic-counter (mut i32) (i32.const 0x10000000))
+
+(func $make-hygienic (result i32)
+  (local $str i32)
+  (%ginc $g-hygienic-counter)
+  (local.set $str (call $integer->string-impl 
+      (i64.extend_i32_u (global.get $g-hygienic-counter))
+      (i32.const 16)))
+  (i32.store8 offset=4 (local.get $str) (i32.const 0x58)) ;; set first char to X
+  (return (%alloc-symbol (local.get $str))))
+

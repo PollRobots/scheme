@@ -207,8 +207,10 @@
 (%define %cont-include-read ()                (i32.const 203))
 (%define %cont-import-promise ()              (i32.const 204))
 (%define %special-define-syntax ()            (i32.const 205))
+(%define %builtin-trace-macros? ()            (i32.const 206))
+(%define %builtin-trace-macros-set! ()        (i32.const 207))
 
-(table $table-builtin 206 anyfunc)
+(table $table-builtin 208 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -393,15 +395,17 @@
   (%add-builtin (%sym-64  0x686361652D726f66 8) (%builtin-for-each)) ;; 'for-each'
   (%add-builtin (%sym-64  0x63632F6c6c6163 7) (%builtin-call/cc)) ;; 'call/cc'
   (%add-builtin (%sym-64  0x6564756c636e69 7) (%builtin-include)) ;; 'include'
+  (%add-builtin (%sym-128 0x616d2D6563617274 0x3F736f7263 13) (%builtin-trace-macros?)) ;; 'trace-macros?'
+  (%add-builtin (%sym-192 0x616d2D6563617274 0x7465732D736f7263 0x21 17) (%builtin-trace-macros-set!)) ;; 'trace-macros-set!'
 
   (global.set $lambda-sym (%sym-64 0x6164626d616c 6)) ;; 'lambda'
   (global.set $quote-sym (%sym-64 0x65746f7571 5)) ;; 'quote'
 
   (%add-special (%sym-32 0x6669 2) (%special-if))               ;; 'if'
-  (%add-special (%sym-32 0x74656c 3) (%special-let))            ;; 'let'
-  (%add-special (%sym-32 0x2A74656c 4) (%special-let*))         ;; 'let*'
-  (%add-special (%sym-64 0x63657274656c 6) (%special-letrec))   ;; 'letrec'
-  (%add-special (%sym-64 0x2A63657274656c 7) (%special-letrec)) ;; 'letrec*'
+  (%add-special (global.get $g-let) (%special-let))             ;; 'let'
+  (%add-special (global.get $g-let-star) (%special-let*))           ;; 'let*'
+  (%add-special (global.get $g-letrec) (%special-letrec))       ;; 'letrec'
+  (%add-special (global.get $g-letrec-star) (%special-letrec))      ;; 'letrec*'
   (%add-special (%sym-128 0x756c61762D74656c 0x7365 10) (%special-let-values))    ;; 'let-values'
   (%add-special (%sym-128 0x6c61762D2A74656c 0x736575 11) (%special-let*-values)) ;; 'let*-values'
   (%add-special (global.get $lambda-sym) (%special-lambda))     ;; 'lambda'
@@ -624,3 +628,5 @@
 (elem $table-builtin (%builtin-for-each) $for-each)
 (elem $table-builtin (%builtin-call/cc) $call/cc)
 (elem $table-builtin (%builtin-include) $include)
+(elem $table-builtin (%builtin-trace-macros?) $trace-macros?)
+(elem $table-builtin (%builtin-trace-macros-set!) $trace-macros-set!)
