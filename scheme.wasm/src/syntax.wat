@@ -568,23 +568,27 @@ Constants are
                 (local.get $match-env))))
 
 
-          (if (i32.eq (%car (%cdr-l $template)) (local.get $ellipsis)) (then
-              ;; the next item in the template is an ellipsis, so expand the 
-              ;; current element until we get nothing
-              (local.set $matched (call $expand-syntax-template
-                  (local.get $curr)
-                  (local.get $match-env)
-                  (local.get $ellipsis)
-                  (i32.const 1)
-                  (%alloc-cons (local.get $head) (local.get $context))))
-              (if (i32.eq (local.get $matched) (global.get $g-nil)) (then
-                  ;; finished expanding ellipsis
-                  (br $start)))
-              (local.set $matched (%alloc-list-1 (local.get $matched)))
-              (if (i32.eq (local.get $head) (global.get $g-nil))
-                (then (local.set $head (local.get $matched)))
-                (else (%set-cdr!-l $tail $matched)))
-              (local.set $tail (local.get $matched))))
+          (if (i32.eq (%car-l $template) (local.get $ellipsis)) (then
+              ;; the next item in the template is an ellipsis, 
+              ;; skip over the ellipsis
+              (local.set $template (%cdr-l $template))
+              ;; expand the current element until we get nothing
+              (loop $forever
+                (local.set $matched (call $expand-syntax-template
+                    (local.get $curr)
+                    (local.get $match-env)
+                    (local.get $ellipsis)
+                    (i32.const 1)
+                    (%alloc-cons (local.get $head) (local.get $context))))
+                (if (i32.eq (local.get $matched) (global.get $g-nil)) (then
+                    ;; finished expanding ellipsis
+                    (br $start)))
+                (local.set $matched (%alloc-list-1 (local.get $matched)))
+                (if (i32.eq (local.get $head) (global.get $g-nil))
+                  (then (local.set $head (local.get $matched)))
+                  (else (%set-cdr!-l $tail $matched)))
+                (local.set $tail (local.get $matched))
+                (br $forever))))
 
           (local.set $matched (call $expand-syntax-template
               (local.get $curr)
@@ -729,7 +733,7 @@ Constants are
               (local.get $pattern)))
           ;; this is in an ellipsis, so store a list
 
-          (if (i32.eq (local.get $curr-exp) (global.get $g-nil)) (then
+          (if (i32.eq (%get-type $curr-exp) (%error-type)) (then
               ;; There is nothing in the environment, so add to the environment 
               ;; as a list of 1
               (call $environment-add 
@@ -784,7 +788,7 @@ Constants are
               ;; advance pattern past the ellipsis
               (local.set $pattern (%cdr-l $pattern))
 
-              (loop $inner-start
+              (block $inner-end (loop $inner-start
                   (if (call $match-syntax-pattern-impl
                       (local.get $curr-pattern)
                       (local.get $curr-exp)
@@ -797,12 +801,13 @@ Constants are
                       ;; try the next
                       ;; TODO: this won't handle some cases where we might
                       ;; need to check the lengths of the lists
+                      (%chk-type $inner-end $exp %cons-type)
                       (%pop-l $curr-exp $exp)
                       (br $inner-start))
                     (else
                       ;; current expression didn't match the ellipsis pattern,
                       ;; push it back
-                      (%push-l $curr-exp $exp)))))
+                      (%push-l $curr-exp $exp))))))
             (else
               ;; regular one-one match
               (if (i32.eqz (call $match-syntax-pattern-impl
