@@ -189,14 +189,17 @@ class App extends React.Component<{}, AppState> {
         this.runtime = await SchemeRuntime.load();
         this.runtime.addEventListener("write", (str) => this.onWrite(str));
         this.setState({ first: false, stopped: false }, () =>
-          this.onWrite("\x1B[0;94mStarted runtime.\x1B[0m ")
+          this.onWrite("\x1B[0;94mStarted runtime.\x1B[0m\n")
         );
+        this.runtime.processLine("\n");
         return;
       } else if (!this.runtime || this.runtime.stopped) {
         await this.runtime.start();
         this.setState({ stopped: false }, () =>
-          this.onWrite("\x1B[0;94mRestarted.\x1B[0m ")
+          this.onWrite("\x1B[0;94mRestarted.\x1B[0m\n")
         );
+      } else if (this.runtime.waiting) {
+        return;
       }
       const result = this.runtime.processLine(str + "\n");
       if (this.runtime.stopped) {

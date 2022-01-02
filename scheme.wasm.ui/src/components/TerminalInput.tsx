@@ -120,6 +120,7 @@ export class TerminalInput extends React.Component<
             wordWrap: "break-word",
             wordBreak: "break-all",
           }}
+          title="Open editor with Ctrl+E, or Escape"
           innerRef={this.ref}
           html={sanitizeHtml(this.state.text, kSanitizeConfig)}
           spellCheck={false}

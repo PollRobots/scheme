@@ -10,6 +10,8 @@ imports are for IO (`read`, `write`, and `readFile`), unicode (I have an
 import that reads information about 256 code-point blocks to enable case
 operations etc.), and process control (`exit`).
 
+You can try it out at [pollrobots.com/scheme/scheme.wasm.html](https://pollrobots.com/scheme/scheme.wasm.html)
+
 ## How Complete Is It?
 
 The aim is to write a spec complete version of `r7rs`, although I may skip

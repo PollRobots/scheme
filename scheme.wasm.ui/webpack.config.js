@@ -2,6 +2,7 @@ const path = require("path");
 const { CleanWebpackPlugin: CleanWebpack } = require("clean-webpack-plugin");
 const CopyWebpack = require("copy-webpack-plugin");
 const HtmlWebpack = require("html-webpack-plugin");
+const TerserWebpack = require("terser-webpack-plugin");
 
 module.exports = (env, argv) => {
   // Selects a different template file for the start page based on whether
@@ -26,7 +27,7 @@ module.exports = (env, argv) => {
         publicPath: path.join(__dirname, "/dist"),
       },
     },
-    devtool: "source-map",
+    devtool: isProduction ? undefined : "source-map",
     resolve: {
       extensions: [".ts", ".tsx", ".js"],
     },
@@ -41,10 +42,12 @@ module.exports = (env, argv) => {
         {
           enforce: "pre",
           test: /\.js$/,
+          exclude: /node_modules/,
           loader: "source-map-loader",
         },
         {
           test: /\.css$/,
+          exclude: /node-modules/,
           use: ["style-loader", "css-loader"],
         },
       ],
@@ -53,6 +56,17 @@ module.exports = (env, argv) => {
     externals: {
       react: "React",
       "react-dom": "ReactDOM",
+      "@monaco-editor/react": "monaco_react",
+    },
+
+    optimization: {
+      minimize: isProduction,
+      minimizer: [new TerserWebpack()],
+      splitChunks: isProduction
+        ? {
+            chunks: "all",
+          }
+        : undefined,
     },
 
     plugins: [

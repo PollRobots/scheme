@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "webpack server --mode development --no-hot",
+    "start": "webpack server --mode production --no-hot",
     "build-prod": "webpack --mode production",
     "build-dev": "webpack --mode development",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -28,6 +28,7 @@
     "scheme.wasm": "file:../scheme.wasm",
     "source-map-loader": "^3.0.0",
     "style-loader": "^3.3.1",
+    "terser-webpack-plugin": "^5.3.0",
     "ts-loader": "^9.2.6",
     "typescript": "^4.5.3",
     "webpack": "^5.65.0",

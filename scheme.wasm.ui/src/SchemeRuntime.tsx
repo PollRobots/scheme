@@ -101,6 +101,10 @@ export class SchemeRuntime {
     return this.partial_;
   }
 
+  get waiting(): boolean {
+    return this.waiting_;
+  }
+
   get memory(): WebAssembly.Memory {
     return this.exports.memory as WebAssembly.Memory;
   }
