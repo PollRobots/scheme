@@ -305,12 +305,13 @@ export class SchemeRuntime {
           this.instance_ = undefined;
           this.exports_ = undefined;
           this.initialized_ = false;
-          this.onWrite(`\x1B[0;31m${err}\n`);
           if (err instanceof Error && typeof err.stack == "string") {
             err.stack
               .split("\n")
               .forEach((el) => this.onWrite(`\x1B[0;91m${el}\n`));
             this.onWrite("\n");
+          } else {
+            this.onWrite(`\x1B[0;31m${err}\n`);
           }
           this.onWrite(
             "\n\x1B[0;94mPress <Enter> to restart scheme runtime.\x1B[0m\n"
@@ -450,12 +451,13 @@ export class SchemeRuntime {
       if (err instanceof RuntimeExit) {
         this.onWrite(`\x1B[0;32m${err.message}\n`);
       } else {
-        this.onWrite(`\x1B[0;31m${err}\n`);
         if (err instanceof Error && typeof err.stack == "string") {
           err.stack
             .split("\n")
-            .forEach((el) => this.onWrite(`\x1B[0;31m]${el}\n`));
+            .forEach((el) => this.onWrite(`\x1B[0;31m${el}\n`));
           this.onWrite("\n");
+        } else {
+          this.onWrite(`\x1B[0;31m${err}\n`);
         }
       }
       this.onWrite(
