@@ -1,18 +1,18 @@
-(define (display-all x) (for-each display x))
+(define (display-all . x) (for-each display x))
 
-(define (assert (x . m)) 
+(define (assert x . m) 
   (if (not x) (apply error "Assert failed" m)))
 
-(define (assert-not (x . m)) 
+(define (assert-not x . m) 
   (if x (apply error "Assert failed" m)))
 
-(define (assert-error (x . m)) 
+(define (assert-error x . m) 
   (if (not (error-object? x)) (apply error "Assert failed" x " should be an error, " m)))
 
-(define (assert-equal (x y . m)) 
+(define (assert-equal x y . m) 
   (if (not (equal? x y)) (apply error "Assert failed" x " should equal " y ", " m)))
 
-(define (run-tests (name . tests))
+(define (run-tests name . tests)
   (let ((passed 0)
         (failed 0))
     (display-all name #\newline)
@@ -42,7 +42,7 @@
       (begin
         (display-all "\x1B;[0;31m" failed " failing.\x1B;[0m" #\newline)))))
 
-  (define (test-case (name fn))
+  (define (test-case name fn)
     (cond 
       ((and (string? name) (procedure? fn)) (list name fn))
       ((string? name) 

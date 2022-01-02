@@ -5,7 +5,7 @@
   (local $temp i32)
   (local $expr i32)
   (local $formals i32)
-  (local $lambda i32)
+  (local $fn i32)
 
   (if (i32.lt_u (call $list-len (local.get $args)) (i32.const 2))
     (then (return (call $argument-error (local.get $args)))))
@@ -22,25 +22,27 @@
       (if (i32.ne (%get-type $temp) (%nil-type))
         (then (return (call $argument-error (local.get $args))))))
     (else
-      (block $b_check
-        (block $b_fail
+      (block $b_check (block $b_fail
           (local.set $vars (local.get $var))
-          (br_if $b_fail (i32.eqz (call $is-list-impl (local.get $vars))))
-          (br_if $b_fail (i32.ne (call $list-len (local.get $vars)) (i32.const 2)))
-
+          (%chk-type $b_fail $vars %cons-type)
           (%pop-l $var $vars)
           (br_if $b_fail (i32.ne (%get-type $var) (%symbol-type)))
-          (%pop-l $formals $vars)
+          (br_if $b_fail (call $environment-has 
+              (local.get $env) 
+              (local.get $var)))
+          (local.set $formals (local.get $vars))
+
+          (local.set $fn (call $lambda 
+              (local.get $env) 
+              (%alloc-cons (local.get $formals) (local.get $temp))))
+          (%chk-type $b_fail $fn %lambda-type)
           (br $b_check))
         
         (return (call $argument-error (local.get $args))))
 
       ;; format is (define (var formals) body ...)
-      ;; 
-      ;; convert to (define var (lambda formals body ...))
-      (local.set $expr (%alloc-cons
-          (global.get $g-lambda)
-          (%alloc-cons (local.get $formals) (local.get $temp))))))
+      (call $environment-add (local.get $env) (local.get $var) (local.get $fn))
+      (return (global.get $g-nil))))
 
   (if (call $environment-has (local.get $env) (local.get $var)) (then
       (return (call $argument-error (local.get $args)))))
