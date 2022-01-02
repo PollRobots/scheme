@@ -402,6 +402,7 @@ Constants are
   (local $pattern i32)
   (local $template i32)
   (local $expanded i32)
+  (local $expanded-type i32)
   (local $match i32)
 
   (local.set $literals (%car-l $syntax-rules))
@@ -436,8 +437,16 @@ Constants are
               (call $print (local.get $expanded))
               (call $print-symbol (global.get $g-newline))))
 
-          (if (i32.eq (%get-type $expanded) (%error-type)) (then
+          (local.set $expanded-type (%get-type $expanded))
+          (if (i32.eq (local.get $expanded-type) (%error-type)) (then
               (return (local.get $expanded))))
+
+          (if (i32.eq (local.get $expanded-type) (%cons-type)) (then
+              (if (i32.eq (%car-l $expanded) (global.get $g-syntax-error)) (then
+                  (return (call $syntax-error 
+                      (local.get $env) 
+                      (%cdr-l $expanded)))))))
+
           (return (call $cont-alloc
               (%eval-fn)
               (local.get $env)
@@ -447,6 +456,24 @@ Constants are
       (br $start)))
 
   (return (call $argument-error (local.get $args))))
+
+;; (syntax-error <msg> <obj> ...)
+(func $syntax-error (param $env i32) (param $args i32) (result i32)
+  (local $temp i32)
+  (local $msg i32)
+
+  (block $check (block $fail
+      (br_if $fail (i32.eqz (call $list-len (local.get $args))))
+      (local.set $temp (local.get $args))
+      (%pop-l $msg $temp)
+      (%chk-type $fail $msg %str-type)
+      (br $check))
+
+    (return (call $argument-error (local.get $args))))
+
+  (return (%alloc-raise (%alloc-error-cons 
+        (local.get $msg) 
+        (local.get $temp)))))
 
 (;
  ;  A <template> is either an identifier, a constant, or one of the following

@@ -50,6 +50,7 @@
 (global $g-let-star   (mut i32) (i32.const 0))
 (global $g-letrec     (mut i32) (i32.const 0))
 (global $g-letrec-star  (mut i32) (i32.const 0))
+(global $g-syntax-error  (mut i32) (i32.const 0))
 
 (global $g-eval-count (mut i32) (i32.const 0))
 (%define %gc-threshold () (i32.const 256))
@@ -106,6 +107,7 @@
   (global.set $g-let-star (%sym-32 0x2A74656c 4)) ;; 'let*'
   (global.set $g-letrec (%sym-64 0x63657274656c 6))   ;; 'letrec'
   (global.set $g-letrec-star (%sym-64 0x2A63657274656c 7)) ;; 'letrec*'
+  (global.set $g-syntax-error (%sym-128 0x652D7861746e7973 0x726f7272 12)) ;; 'syntax-error'
 
   ;; global reader is attached to stdin
   (global.set $g-reader (call $reader-init (i32.const 0)))
