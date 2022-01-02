@@ -10,7 +10,8 @@ imports are for IO (`read`, `write`, and `readFile`), unicode (I have an
 import that reads information about 256 code-point blocks to enable case
 operations etc.), and process control (`exit`).
 
-You can try it out at [pollrobots.com/scheme/scheme.wasm.html](https://pollrobots.com/scheme/scheme.wasm.html)
+You can try it out at [pollrobots.com/scheme/scheme.wasm.html](https://pollrobots.com/scheme/scheme.wasm.html) &mdash; apologies for the huge download. I need to fix
+bundling.
 
 ## How Complete Is It?
 
