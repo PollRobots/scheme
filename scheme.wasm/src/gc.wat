@@ -185,6 +185,12 @@ while the working set is non-empty:
           (call $gc-maybe-touched-push (%car-l $curr))
           (call $gc-maybe-touched-push (%cdr-l $curr))
           (br $b_switch)))
+
+      ;; case syntax-rules-type
+      (if (i32.eq (local.get $type) (%syntax-rules-type)) (then
+          (call $gc-maybe-touched-push (%car-l $curr))
+          (call $gc-maybe-touched-push (%cdr-l $curr))
+          (br $b_switch)))
           
       ;; }
     )
@@ -437,6 +443,7 @@ while the working set is non-empty:
     (block $b_else
       ;; if (type == cons-type || type == lambda-type || type == env-type) {
       (block $b_then
+        ;; ALL types that have outgoing references must branch to b_then
         (br_if $b_then (i32.eq (local.get $type) (%cons-type)))
         (br_if $b_then (i32.eq (local.get $type) (%lambda-type)))
         (br_if $b_then (i32.eq (local.get $type) (%env-type)))
@@ -445,6 +452,8 @@ while the working set is non-empty:
         (br_if $b_then (i32.eq (local.get $type) (%vector-type)))
         (br_if $b_then (i32.eq (local.get $type) (%cont-type)))
         (br_if $b_then (i32.eq (local.get $type) (%except-type)))
+        (br_if $b_then (i32.eq (local.get $type) (%cont-proc-type)))
+        (br_if $b_then (i32.eq (local.get $type) (%syntax-rules-type)))
         (br $b_else)
       )
       ;; mark-touched(item)

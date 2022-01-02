@@ -25,6 +25,7 @@
     "src/reader.wat",
     "src/runtime.wat",
     "src/start.wat",
+    "src/syntax.wat",
     "src/xxh3.wat",
     "src/library/boolean.wat",
     "src/library/bytevector.wat",
@@ -55,31 +56,44 @@
       "module": "io",
       "name": "write",
       "index": "$io-write",
-      "params": ["i32"]
+      "params": [
+        "i32"
+      ]
     },
     {
       "module": "process",
       "name": "exit",
       "index": "$process-exit",
-      "params": ["i32"]
+      "params": [
+        "i32"
+      ]
     },
     {
       "module": "unicode",
       "name": "loadData",
       "index": "$unicode-load-data",
-      "params": ["i32", "i32"]
+      "params": [
+        "i32",
+        "i32"
+      ]
     },
     {
       "module": "dbg",
       "name": "data",
       "index": "$dbg-data",
-      "params": ["i32", "i32", "i32"]
+      "params": [
+        "i32",
+        "i32",
+        "i32"
+      ]
     },
     {
       "module": "file",
       "name": "read",
       "index": "$file-read",
-      "params": [ "i32" ],
+      "params": [
+        "i32"
+      ],
       "result": "i32"
     }
   ],

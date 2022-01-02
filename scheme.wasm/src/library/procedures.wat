@@ -16,6 +16,7 @@
   (if (i32.eq (local.get $type) (%special-type)) (then (return (i32.const 1))))
   (if (i32.eq (local.get $type) (%builtin-type)) (then (return (i32.const 1))))
   (if (i32.eq (local.get $type) (%lambda-type)) (then (return (i32.const 1))))
+  (if (i32.eq (local.get $type) (%syntax-rules-type)) (then (return (i32.const 1))))
 
   (return (i32.const 0)))
 

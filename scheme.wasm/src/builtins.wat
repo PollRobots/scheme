@@ -206,8 +206,9 @@
 (%define %cont-include ()                     (i32.const 202))
 (%define %cont-include-read ()                (i32.const 203))
 (%define %cont-import-promise ()              (i32.const 204))
+(%define %special-define-syntax ()            (i32.const 205))
 
-(table $table-builtin 205 anyfunc)
+(table $table-builtin 206 anyfunc)
 
 (global $lambda-sym (mut i32) (i32.const 0))
 (global $quote-sym (mut i32) (i32.const 0))
@@ -415,6 +416,7 @@
   (%add-special (%sym-32 0x6e656877 4) (%special-when))         ;; 'when'
   (%add-special (%sym-64 0x7373656c6e75 6) (%special-unless))   ;; 'unless'
   (%add-special (%sym-64 0x6e69676562 5) (%special-begin))      ;; 'begin'
+  (%add-special (%sym-128 0x732D656e69666564 0x7861746e79 13) (%special-define-syntax)) ;; 'define-syntax'
 )
 
 (elem $table-builtin (%special-if) $if)
@@ -434,6 +436,7 @@
 (elem $table-builtin (%special-when) $when)
 (elem $table-builtin (%special-unless) $unless)
 (elem $table-builtin (%special-begin) $begin)
+(elem $table-builtin (%special-define-syntax) $define-syntax)
 
 (elem $table-builtin (%cont-apply) $cont-apply)
 (elem $table-builtin (%cont-apply-form) $cont-apply-form)

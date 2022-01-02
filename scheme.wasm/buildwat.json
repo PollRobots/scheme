@@ -25,6 +25,7 @@
     "src/reader.wat",
     "src/runtime.wat",
     "src/start.wat",
+    "src/syntax.wat",
     "src/xxh3.wat",
     "src/library/boolean.wat",
     "src/library/bytevector.wat",

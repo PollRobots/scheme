@@ -1,0 +1,863 @@
+(func $define-syntax (param $env i32) (param $args i32) (result i32)
+  (local $keyword i32)
+  (local $spec i32)
+  (local $syntax-rules i32)
+
+  (block $check (block $fail
+      (br_if $fail (i32.ne (call $list-len (local.get $args)) (i32.const 2)))
+      (local.set $keyword (%car-l $args))
+      (%chk-type $fail $keyword %symbol-type)
+      (br_if $fail (call $environment-has (local.get $env) (local.get $keyword)))
+      (local.set $spec (%car (%cdr-l $args)))
+      (br_if $fail (i32.eqz (call $is-list-impl (local.get $spec))))
+      (br $check))
+
+    (return (call $argument-error (local.get $args))))
+
+  (local.set $syntax-rules (call $create-syntax-rules 
+      (local.get $keyword) 
+      (local.get $spec)))
+  (if (i32.ne (%get-type $syntax-rules) (%syntax-rules-type)) (then
+      (return (local.get $syntax-rules))))
+    
+  (call $environment-add 
+    (local.get $env) 
+    (local.get $keyword) 
+    (local.get $syntax-rules))
+  (return (global.get $g-nil)))
+
+;; (syntax-rules (<literal> ...) <syntax-rule> ...) 
+;; (syntax-rules <ellipsis> (<literal> ...) <syntax-rule> ...) 
+(func $create-syntax-rules (param $keyword i32) (param $spec i32) (result i32)
+  (local $ellipsis i32)
+  (local $literals i32)
+  (local $num-args i32)
+  (local $temp i32)
+  (local $rules i32)
+  (local $cmd i32)
+  
+  (block $check (block $fail
+      (local.set $num-args (call $list-len (local.get $spec)))
+      (br_if $fail (i32.lt_u (local.get $num-args) (i32.const 3)))
+      (local.set $temp (local.get $spec))
+      (%pop-l $cmd $temp)
+      (br_if $fail (i32.ne (local.get $cmd) (global.get $g-syntax-rules)))
+      (%pop-l $ellipsis $temp)
+      (if (i32.eq (%get-type $ellipsis) (%symbol-type))
+        (then
+          ;; this is the (syntax-rules <ellipsis> form)
+          (%pop-l $literals $temp)
+          (br_if $fail (i32.lt_u (local.get $num-args) (i32.const 4))))
+        (else
+          ;; this is the (syntax-rules (<literal> ...) ... ) form
+          (local.set $literals (local.get $ellipsis))
+          (local.set $ellipsis (global.get $g-ellipsis))))
+      (br_if $fail (i32.eqz (call $is-list-impl (local.get $literals))))
+      (br_if $fail (i32.eqz (call $all-symbol (local.get $literals))))
+      (local.set $rules (local.get $temp))
+      (br $check))
+
+    (return (call $argument-error (local.get $spec))))
+
+  (local.set $literals (%alloc-cons (local.get $ellipsis) (local.get $literals)))
+
+  (if (i32.eqz (call $valid-rules? 
+        (local.get $keyword) 
+        (local.get $literals) 
+        (local.get $rules)))  (then
+    (return (call $argument-error (local.get $spec)))))
+
+  (return (call $heap-alloc
+      (global.get $g-heap)
+      (%syntax-rules-type)
+      (local.get $literals)
+      (local.get $rules))))
+
+
+(func $all-symbol (param $args i32) (result i32)
+  (local $curr i32)
+
+  (block $done (loop $forever
+      (br_if $done (i32.eq (%get-type $args) (%nil-type)))
+
+      (%pop-l $curr $args)
+
+      (if (i32.ne (%get-type $curr) (%symbol-type)) 
+        (then (return (i32.const 0))))
+
+      (br $forever)))
+
+  (return (i32.const 1)))
+
+(func $valid-rules? (param $keyword i32) (param $literals i32) (param $rules i32) (result i32)
+  (local $rule i32)
+
+  (block $end (loop $start
+      (br_if $end (i32.eq (%get-type $rules) (%nil-type)))
+      (%pop-l $rule $rules)
+
+      (if (i32.eqz (call $valid-rule? 
+            (local.get $keyword) 
+            (local.get $literals) 
+            (local.get $rule)))
+        (then (return (i32.const 0))))
+
+      (br $start)))
+
+  (return (i32.const 1)))
+
+(;
+  A <rule> is of the form (<pattern> <template>)
+ ;)
+(func $valid-rule? (param $keyword i32) (param $literals i32) (param $rule i32) (result i32)
+  (local $pattern i32)
+  (local $template i32)
+  (local $ellipsis i32)
+
+  (if (i32.ne (call $list-len (local.get $rule)) (i32.const 2)) (then
+      ;; rule must be a list of 2
+      (return (i32.const 0))))
+
+  (local.set $pattern (%car-l $rule))
+  (local.set $template (%car (%cdr-l $rule)))
+
+  ;; first literal is the ellipsis
+  (local.set $ellipsis (%car-l $literals))
+
+  ;; pattern must be a list starting with keyword
+  (if (i32.ne (%get-type $pattern) (%cons-type)) (then
+      ;; not a list
+      (return (i32.const 0))))
+  (if (i32.ne (%car-l $pattern) (local.get $keyword)) (then
+      ;; doesn't start with keyword
+      (return (i32.const 0))))
+
+  ;; a valid rule must be a valid pattern...
+  (if (i32.eqz (call $valid-pattern? 
+        (local.get $ellipsis) 
+        (local.get $pattern)))
+    (then (return (i32.const 0))))
+
+  ;; ... and a valid template
+  (return (call $valid-template? (local.get $ellipsis) (local.get $template))))
+
+(;
+ ;  A <pattern> is either an identifier, a constant, or one of the following
+ ;    (<pattern> ...)
+ ;    (<pattern> <pattern> ... . <pattern>)
+ ;    (<pattern> ... <pattern> <ellipsis> <pattern> ...)
+ ;    (<pattern> ... <pattern> <ellipsis> <pattern> ...  . <pattern>)
+ ;    #(<pattern> ...)
+ ;    #(<pattern> ... <pattern> <ellipsis> <pattern> ...)
+ ;)
+(func $valid-pattern? (param $ellipsis i32) (param $pattern i32) (result i32)
+  (local $type i32)
+  (local $curr i32)
+  (local $ptr i32)
+  (local $count i32)
+  (local $check-ellipsis i32)
+  (local $have-ellipsis i32)
+
+  (local.set $type (%get-type $pattern))
+  (if (call $identifier-or-constant? (local.get $type)) (then
+      ;; it is invalid for this to be the ellipsis identifier
+      (return (i32.ne (local.get $pattern) (local.get $ellipsis)))))
+
+  (if (i32.eq (local.get $type) (%nil-type)) (then
+      ;; an empty list is a valid pattern
+      (return (i32.const 1))))
+
+  (local.set $check-ellipsis (i32.const 0))
+  (local.set $have-ellipsis (i32.const 0))
+
+  (if (i32.eq (local.get $type) (%cons-type)) (then
+      (block $end (loop $start
+          (%chk-type $end $pattern %cons-type)
+          (%pop-l $curr $pattern)
+
+          (if (i32.and (local.get $check-ellipsis) (i32.eq
+                (local.get $curr)
+                (local.get $ellipsis))) 
+            (then
+              ;; this is an ellipsis in a valid position
+              (local.set $check-ellipsis (i32.const 0))
+              (local.set $have-ellipsis (i32.const 1)))
+            (else
+              (if (i32.eqz (call $valid-pattern? 
+                    (local.get $ellipsis) 
+                    (local.get $curr))) (then
+                  ;; curr is not a valid pattern
+                  (return (i32.const 0))))
+              ;; Curr is a valid pattern, so an ellipsis is possible, if one
+              ;; has not yet been seen in this pattern
+              (local.set $check-ellipsis (i32.eqz (local.get $have-ellipsis)))))
+
+          ;; check for a dotted list ending
+          (local.set $type (%get-type $pattern))
+          (if (i32.and 
+              (i32.ne (local.get $type) (%nil-type))
+              (i32.ne (local.get $type) (%cons-type)))
+            (then
+              (return (call $valid-pattern? 
+                  (local.get $ellipsis) 
+                  (local.get $pattern)))))
+
+          (br $start)))
+      (return (i32.const 1))))
+
+  (if (i32.eq (local.get $type) (%vector-type)) (then
+      (local.set $ptr (%car-l $pattern))
+      (local.set $count (%cdr-l $pattern))
+
+      (block $end (loop $start
+          (br_if $end (i32.eqz (local.get $count)))
+
+          (local.set $curr (i32.load (local.get $ptr)))
+
+          (if (i32.and (local.get $check-ellipsis) (i32.eq 
+                (local.get $curr) 
+                (local.get $ellipsis))) 
+            (then
+              ;; this is a valid ellipsis
+              (local.set $check-ellipsis (i32.const 0))
+              (local.set $have-ellipsis (i32.const 1)))
+            (else
+              (if (i32.eqz (call $valid-pattern? 
+                    (local.get $ellipsis) 
+                    (local.get $curr))) (then
+                  (return (i32.const 0))))
+              ;; Curr is a valid pattern, so an ellipsis is possible, if one
+              ;; has not yet been seen in this pattern
+              (local.set $check-ellipsis (i32.eqz (local.get $have-ellipsis)))))
+
+          (%dec $count)
+          (%plus-eq $ptr 4)
+          (br $start)))
+
+      (return (i32.const 1))))
+
+  (return (i32.const 0)))
+
+(;
+ ;  A <template> is either an identifier, a constant, or one of the following
+ ;    (<element> ...)
+ ;    (<element> <element> ... . <template>)
+ ;    (<ellipsis> <template>)
+ ;    #(<element> ...)
+ ;  Where an <element> is a <template> optionally followed by an <ellipsis>
+ ;)
+(func $valid-template? (param $ellipsis i32) (param $template i32) (result i32)
+  (local $type i32)
+  (local $curr i32)
+  (local $ptr i32)
+  (local $count i32)
+  (local $check-ellipsis i32)
+
+  (local.set $type (%get-type $template))
+
+  (if (call $identifier-or-constant? (local.get $type)) (then
+      ;; it is invalid for this to be the ellipsis identifier
+      (return (i32.ne (local.get $template) (local.get $ellipsis)))))
+
+  (if (i32.eq (local.get $type) (%nil-type)) (then
+      ;; an empty list is a valid template
+      (return (i32.const 1))))
+
+  (if (i32.eq (local.get $type) (%cons-type)) (then
+      ;; first check for (<ellipsis> <template>)
+      (if (i32.eq (%car-l $template) (local.get $ellipsis)) (then
+          (%pop-l $curr $template)
+          ;; head of the list is the ellipsis symbol, rest of the list must be a 
+          ;; single template
+          (%pop-l $curr $template)
+          (if (i32.eq (%get-type $template) (%nil-type)) (then 
+              (if (call $valid-template? 
+                  (local.get $ellipsis) 
+                  (local.get $curr)) (then 
+                  (return (i32.const 1))))))
+          (return (i32.const 0))))
+
+      (local.set $check-ellipsis (i32.const 0))
+      (block $end (loop $start
+          (%chk-type $end $template %cons-type)
+          (%pop-l $curr $template)
+
+          (if (i32.and (local.get $check-ellipsis) (i32.eq 
+                (local.get $curr) 
+                (local.get $ellipsis))) 
+            (then
+              ;; this is a valid ellipsis
+              (local.set $check-ellipsis (i32.const 0)))
+            (else
+              (if (i32.eqz (call $valid-template? 
+                    (local.get $ellipsis) 
+                    (local.get $curr))) (then
+                  (return (i32.const 0))))
+              (local.set $check-ellipsis (i32.const 1))))
+
+          (local.set $type (%get-type $template))
+          ;; check for dotted list
+          (if (i32.and 
+              (i32.ne (local.get $type) (%nil-type))
+              (i32.ne (local.get $type) (%cons-type))) (then
+              (return (call $valid-template? (local.get $ellipsis) (local.get $template)))))
+          (br $start)))
+
+      (return (i32.const 1))))
+
+  (if (i32.eq (local.get $type) (%vector-type)) (then
+      (local.set $ptr (%car-l $template))
+      (local.set $count (%cdr-l $template))
+      (local.set $check-ellipsis (i32.const 0))
+
+      (block $end (loop $start
+          (br_if $end (i32.eqz (local.get $count)))
+
+          (local.set $curr (i32.load (local.get $ptr)))
+
+          (if (i32.and (local.get $check-ellipsis) (i32.eq 
+                (local.get $curr) 
+                (local.get $ellipsis))) 
+            (then
+              ;; this is a valid ellipsis
+              (local.set $check-ellipsis (i32.const 0)))
+            (else
+              (if (i32.eqz (call $valid-template? 
+                    (local.get $ellipsis) 
+                    (local.get $curr))) (then
+                  (return (i32.const 0))))
+              (local.set $check-ellipsis (i32.const 1))))
+
+          (%dec $count)
+          (%plus-eq $ptr 4)
+          (br $start)))
+
+      (return (i32.const 1))))
+
+  (return (i32.const 0)))
+
+(;
+Constants are 
+  Numbers
+  Strings
+  Characters
+  Booleans
+  Vectors -- but we handle vectors explicitly
+  Bytevectors
+ ;)
+(func $identifier-or-constant? (param $obj-type i32) (result i32)
+  (block $check 
+    ;; indentifier
+    (br_if $check (i32.eq (local.get $obj-type) (%symbol-type)))
+    ;; boolean
+    (br_if $check (i32.eq (local.get $obj-type) (%boolean-type)))
+    ;; number
+    (br_if $check (i32.eq (local.get $obj-type) (%i64-type)))
+    (br_if $check (i32.eq (local.get $obj-type) (%f64-type)))
+    (br_if $check (i32.eq (local.get $obj-type) (%big-int-type)))
+    ;; string
+    (br_if $check (i32.eq (local.get $obj-type) (%str-type)))
+    ;; character
+    (br_if $check (i32.eq (local.get $obj-type) (%char-type)))
+    ;; vector
+    ;; (br_if $check (i32.eq (local.get $obj-type) (%vector-type)))
+    ;; bytevector
+    (br_if $check (i32.eq (local.get $obj-type) (%bytevector-type)))
+    (return (i32.const 0)))
+
+  (return (i32.const 1)))
+
+ 
+(func $apply-syntax-rules (param $env i32) (param $syntax-rules i32) (param $args i32) (result i32)
+  (local $literals i32)
+  (local $ellipsis i32)
+  (local $rules i32)
+  (local $rule i32)
+  (local $pattern i32)
+  (local $template i32)
+  (local $expanded i32)
+  (local $match i32)
+
+  (local.set $literals (%car-l $syntax-rules))
+  (%pop-l $ellipsis $literals)
+  (local.set $rules (%cdr-l $syntax-rules))
+
+  (block $end (loop $start
+      (br_if $end (i32.eq (%get-type $rules) (%nil-type)))
+
+      (%pop-l $rule $rules)
+      (local.set $pattern (%car-l $rule))
+      (local.set $template (%car (%cdr-l $rule)))
+
+      ;; the first element of the pattern has already matched...
+      (if (local.tee $match (call $match-syntax-pattern 
+            (%cdr-l $pattern) 
+            (local.get $args)
+            (local.get $ellipsis)
+            (local.get $literals)))
+        (then
+          (local.set $expanded (call $expand-syntax-template 
+              (local.get $template)
+              (local.get $match)
+              (local.get $ellipsis)
+              (i32.const 0)))
+          (call $print-symbol (%sym-64 0x20646e61707865 7)) ;; 'expand '
+          (call $print (local.get $template))
+          (call $print-symbol (%sym-32 0x206f7420 4)) ;; ' to '
+          (call $print (local.get $expanded))
+          (call $print-symbol (global.get $g-newline))
+          (if (i32.eq (%get-type $expanded) (%error-type)) (then
+              (return (local.get $expanded))))
+          (return (call $cont-alloc
+              (%eval-fn)
+              (local.get $env)
+              (local.get $expanded)
+              (i32.const 0)))))
+
+      (br $start)))
+
+  (return (call $argument-error (local.get $args))))
+
+(;
+ ;  A <template> is either an identifier, a constant, or one of the following
+ ;    (<element> ...)
+ ;    (<element> <element> ... . <template>)
+ ;    (<ellipsis> <template>)
+ ;    #(<element> ...)
+ ;  Where an <element> is a <template> optionally followed by an <ellipsis>
+ ;
+ ;  constants expand to themselves
+ ;  identifiers that match entries in the match-env expand to that entry 
+ ;  expanding elements with ellipsis matches single items from lists in the env
+ ;)
+(func $expand-syntax-template 
+  (param $template i32) 
+  (param $match-env i32)
+  (param $ellipsis i32) 
+  (param $in-ellipsis i32)
+  (result i32)
+
+  (local $type i32)
+  (local $matched i32)
+  (local $result i32)
+  (local $curr i32)
+  (local $head i32)
+  (local $tail i32)
+
+  (local.set $type (%get-type $template))
+
+  ;; identifier
+  (if (i32.eq (local.get $type) (%symbol-type)) (then
+      (if (call $environment-has (local.get $match-env) (local.get $template))
+        (then
+          ;; perform subsitution
+          (local.set $matched (call $environment-get
+              (local.get $match-env)
+              (local.get $template)))
+          (if (local.get $in-ellipsis)
+            (then
+              ;; In an ellipsis expand next entry from match
+              (if (i32.eq (%get-type $matched) (%cons-type))
+                (then
+                  (%pop-l $result $matched)
+                  (call $environment-set!
+                    (local.get $match-env)
+                    (local.get $template)
+                    (local.get $matched))
+                  (return (local.get $result)))
+                (else
+                  (return (global.get $g-nil)))))
+            (else
+              (return (local.get $matched)))))
+        (else
+          ;; expands to itself
+          (return (local.get $template))))))
+
+  ;; list or vector
+  (block $list-or-vector (block $not-list-or-vector
+      (br_if $not-list-or-vector (i32.eq (local.get $type) (%cons-type)))
+      (br_if $not-list-or-vector (i32.eq (local.get $type) (%vector-type)))
+      (br $list-or-vector))
+
+      ;; check if this template starts with ellipsis
+      (if (i32.eq (%car-l $template) (local.get $ellipsis)) (then
+          ;; set the ellipsis to something that won't match
+          (local.set $ellipsis (i32.const -1))
+          (local.set $template (%cdr-l $template))))
+
+      (local.set $head (global.get $g-nil))
+
+      (block $end (loop $start
+          (%chk-type $end $template %cons-type)
+          (%pop-l $curr $template)
+
+          (if (i32.eq (%car (%cdr-l $template)) (local.get $ellipsis)) (then
+              ;; the next item in the template is an ellipsis, so expand the 
+              ;; current element until we get nothing
+              (local.set $matched (call $expand-syntax-template
+                  (local.get $curr)
+                  (local.get $match-env)
+                  (local.get $ellipsis)
+                  (i32.const 1)))
+              (if (i32.eq (local.get $matched) (global.get $g-nil)) (then
+                  ;; finished expanding ellipsis
+                  (br $start)))
+              (local.set $matched (%alloc-list-1 (local.get $matched)))
+              (if (i32.eq (local.get $head) (global.get $g-nil))
+                (then (local.set $head (local.get $matched)))
+                (else (%set-cdr!-l $tail $matched)))
+              (local.set $tail (local.get $matched))))
+
+          (local.set $matched (call $expand-syntax-template
+              (local.get $curr)
+              (local.get $match-env)
+              (local.get $ellipsis)
+              (local.get $in-ellipsis)))
+          
+          (if (local.get $in-ellipsis) (then
+              ;; we are in an ellipsis expansion, if we don't have another 
+              ;; element (i.e. we get a ()), then return ()
+              (if (i32.eq (local.get $matched) (global.get $g-nil)) (then
+                  (return (local.get $matched))))))
+
+          (if (i32.eq (%get-type $matched) (%error-type)) (then
+              (return (local.get $matched))))
+
+          ;; add this result to the list we are building
+          (local.set $matched (%alloc-list-1 (local.get $matched)))
+          (if (i32.eq (local.get $head) (global.get $g-nil))
+            (then (local.set $head (local.get $matched)))
+            (else (%set-cdr!-l $tail $matched)))
+          (local.set $tail (local.get $matched))
+
+          (br $start)))
+
+      (if (i32.eq (local.get $type) (%cons-type)) 
+        (then
+          ;; this is a list so simply return the list that we just built      
+          (return (local.get $head)))
+        (else
+          ;; return a vector
+          (return (call $make-vector-internal (local.get $head))))))
+
+  ;; everything else
+  (return (local.get $template)))
+
+(func $match-syntax-pattern 
+  (param $pattern i32) 
+  (param $exp i32) 
+  (param $ellipsis i32) 
+  (param $literals i32) 
+  (result i32)
+
+  (local $match-env i32)
+  (local $res i32)
+
+  (local.set $match-env (call $environment-init 
+      (global.get $g-heap) 
+      (i32.const 0)))
+
+  (call $print-symbol (%sym-64 0x203F686374616d 7)) ;; 'match? '
+  (call $print (local.get $pattern))
+  (call $print-symbol (%sym-64 0x206874697720 6))
+  (call $print (local.get $exp))
+  (call $print-symbol (global.get $g-newline))
+
+  (if (i32.eq (local.get $pattern) (local.get $exp)) (then
+      (if (i32.eq (local.get $pattern) (global.get $g-nil)) (then
+          (return (local.get $match-env))))))
+
+  (local.set $res (call $match-syntax-pattern-impl 
+      (local.get $pattern)
+      (local.get $exp)
+      (local.get $ellipsis)
+      (local.get $literals)
+      (local.get $match-env)
+      (i32.const 0)))
+
+  (if (i32.eqz (local.get $res)) (then
+      (call $environment-destroy (local.get $match-env) (i32.const 0))
+      (call $heap-free (global.get $g-heap) (local.get $match-env))
+      (return (i32.const 0))))
+
+  (return (local.get $match-env)))
+
+(;
+ ;  An input expression E matches a pattern P if and only if:
+ ;    • P is an underscore (_); OR
+ ;    • P is a non-literal identifier; OR
+ ;    • P is a literal identifier and E is an identifier with the same binding; OR
+ ;    • P is a list (P1 ... Pn) and E is a list of n elements that match P1 
+ ;        through Pn, respectively; OR
+ ;    • P is an improper list (P1 P2 ... Pn . Pn+1) and E is a list or improper
+ ;        list of n or more elements that match P1 through Pn, respectively, and
+ ;        whose nth tail matches Pn+1; OR
+ ;    • P is of the form (P1 ... Pk Pe <ellipsis> Pm+1 ... Pn) where E is a 
+ ;        proper list of n elements, the first k of which match P1 through Pk, 
+ ;        respectively, whose next m − k elements each match Pe, whose 
+ ;        remaining n − m elements match Pm+1 through Pn; OR
+ ;    • P is of the form (P1 ... Pk Pe <ellipsis> Pm+1 ... Pn . Px) where E is 
+ ;        a list or improper list of n elements, the first k of which match P1 
+ ;        through Pk, whose next m − k elements each match Pe, whose remaining
+ ;        n−m elements match Pm+1 through Pn, and whose nth and final cdr
+ ;        matches Px; OR
+ ;    • P is a vector of the form #(P1 ... Pn) and E is a vector of n elements 
+ ;        that match P1 through Pn; OR
+ ;    • P is of the form #(P1 ... Pk Pe <ellipsis> Pm+1 ... Pn) where E is a 
+ ;        vector of n elements the first k of which match P1 through Pk, whose 
+ ;        next m − k elements each match Pe, and whose remaining n − m elements 
+ ;        match Pm+1 through Pn; OR 
+ ;    • P is a constant and E is equal to P in the sense of the equal? procedure.
+ ;)
+(func $match-syntax-pattern-impl
+  (param $pattern i32) 
+  (param $exp i32) 
+  (param $ellipsis i32) 
+  (param $literals i32) 
+  (param $match-env i32)
+  (param $in-ellipsis i32)
+  (result i32)
+
+  (local $pattern-type i32)
+  (local $exp-type i32)
+  (local $curr-pattern i32)
+  (local $next-pattern i32)
+  (local $curr-exp i32) 
+  (local $next-exp i32) 
+  (local $pattern-ptr i32)
+  (local $exp-ptr i32)
+  (local $pattern-count i32)
+  (local $exp-count i32)
+  (local.set $pattern-type (%get-type $pattern))
+
+  ;; underscore
+  (if (i32.eq (local.get $pattern) (global.get $g-underscore)) (then
+      (return (i32.const 1))))
+
+  ;; identifiers
+  (if (i32.eq (local.get $pattern-type) (%symbol-type)) (then
+      ;; pattern is an identifier
+      (if (call $symbol-in-list? (local.get $pattern) (local.get $literals)) (then
+          ;; pattern is a literal, then this matches if the pattern is the same
+          ;; as the exp, otherwise no match;
+          (return (i32.eq (local.get $pattern) (local.get $exp)))))
+      ;; pattern is a non-literal identifier
+      (if (local.get $in-ellipsis) 
+        (then
+          (local.set $curr-exp (call $environment-get 
+              (local.get $match-env) 
+              (local.get $pattern)))
+          ;; this is in an ellipsis, so store a list
+
+          (if (i32.eq (local.get $curr-exp) (global.get $g-nil)) (then
+              ;; There is nothing in the environment, so add to the environment 
+              ;; as a list of 1
+              (call $environment-add 
+                (local.get $match-env)
+                (local.get $pattern) 
+                (%alloc-list-1 (local.get $exp)))
+              (return (i32.const 1))))
+
+          (if (i32.ne (%get-type $curr-exp) (%cons-type)) (then
+              ;; current item in the env isn't a list, this is an error
+              (return (i32.const 0))))
+
+          (block $end (loop $start
+              (br_if $end (i32.eq 
+                  (local.tee $next-exp (%cdr-l $curr-exp))
+                  (global.get $g-nil)))
+              (local.set $curr-exp (local.get $next-exp))
+              (br $start)))
+          (%set-cdr! (local.get $curr-exp) (%alloc-list-1 (local.get $exp)))
+          (return (i32.const 1))))
+
+      (if (call $environment-has (local.get $match-env) (local.get $pattern)) 
+        ;; this is already defined in the environment
+        (then (return (i32.const 0))))
+      (call $environment-add 
+        (local.get $match-env)
+        (local.get $pattern) 
+        (local.get $exp))
+      ;; Expression is now bound to this pattern literal
+      (return (i32.const 1))))
+
+  (local.set $exp-type (%get-type $exp))
+  ;; expression type must be the same as pattern type from here on
+  (if (i32.ne (local.get $exp-type) (local.get $pattern-type)) (then
+      (return (i32.const 0))))
+
+  ;; lists
+  (if (i32.eq (local.get $pattern-type) (%cons-type)) (then
+      ;; walk along the pattern matching each step
+      (block $end (loop $start
+          (%chk-type $end $pattern %cons-type)
+          (%chk-type $end $exp %cons-type)
+
+          (%pop-l $curr-pattern $pattern)
+          (%pop-l $curr-exp $exp)
+
+          (local.set $next-pattern (%car-l $pattern))
+          (if (i32.eq (local.get $next-pattern) (local.get $ellipsis))
+            (then
+              ;; this is an ellipsis, so we need to try and match as many as 
+              ;; possible
+              ;; advance pattern past the ellipsis
+              (local.set $pattern (%cdr-l $pattern))
+
+              (loop $inner-start
+                  (if (call $match-syntax-pattern-impl
+                      (local.get $curr-pattern)
+                      (local.get $curr-exp)
+                      (local.get $ellipsis)
+                      (local.get $literals)
+                      (local.get $match-env)
+                      (i32.const 1)) 
+                    (then
+                      ;; current expression matched the ellipsis pattern, 
+                      ;; try the next
+                      ;; TODO: this won't handle some cases where we might
+                      ;; need to check the lengths of the lists
+                      (%pop-l $curr-exp $exp)
+                      (br $inner-start))
+                    (else
+                      ;; current expression didn't match the ellipsis pattern,
+                      ;; push it back
+                      (%push-l $curr-exp $exp)))))
+            (else
+              ;; regular one-one match
+              (if (i32.eqz (call $match-syntax-pattern-impl
+                    (local.get $curr-pattern)
+                    (local.get $curr-exp)
+                    (local.get $ellipsis)
+                    (local.get $literals)
+                    (local.get $match-env)
+                    (local.get $in-ellipsis)))
+                  (then (return (i32.const 0))))))
+
+          ;; check for improper pattern list
+          (local.set $pattern-type (%get-type $pattern))
+          (block $improper  
+            (br_if $improper (i32.eq (local.get $pattern-type) (%cons-type)))
+            (br_if $improper (i32.eq (local.get $pattern-type) (%nil-type)))
+
+            (return (call $match-syntax-pattern-impl
+                (local.get $pattern)
+                (local.get $exp)
+                (local.get $ellipsis)
+                (local.get $literals)
+                (local.get $match-env)
+                (local.get $in-ellipsis))))
+
+          (br $start)))
+      
+      (if (i32.eq (local.get $pattern) (global.get $g-nil)) (then
+          (if (i32.eq (local.get $exp) (global.get $g-nil)) (then
+              (return (i32.const 1))))))
+
+      (return (i32.const 0))))
+
+  (if (i32.eq (local.get $pattern-type) (%vector-type)) (then
+      (local.set $pattern-ptr (%car-l $pattern))
+      (local.set $pattern-count (%cdr-l $pattern))
+      (local.set $exp-ptr (%car-l $exp))
+      (local.set $exp-count (%cdr-l $exp))
+
+      (local.set $next-pattern (i32.load (local.get $pattern-ptr)))
+      (block $end (loop $start
+          (br_if $end (i32.eqz (local.get $pattern-count)))
+          (br_if $end (i32.eqz (local.get $exp-count)))
+
+          (local.set $curr-pattern (local.get $next-pattern))
+          (local.set $curr-exp (i32.load (local.get $exp-ptr)))
+          (%dec $pattern-count)
+          (%dec $exp-count)
+          (%plus-eq $pattern-ptr 4)
+          (%plus-eq $exp-ptr 4)
+
+          (if (local.get $pattern-count) 
+            (then
+              (local.set $next-pattern (i32.load (local.get $pattern-ptr))))
+            (else
+              (local.set $next-pattern (i32.const 0))))
+
+          (if (i32.eq (local.get $next-pattern) (local.get $ellipsis))
+            (then
+              ;; skip the counter over the ellipsis
+              (%dec $pattern-count)
+              (%plus-eq $pattern-ptr 4)
+              (if (local.get $pattern-count) 
+                (then
+                  (local.set $next-pattern (i32.load (local.get $pattern-ptr))))
+                (else
+                  (local.set $next-pattern (i32.const 0))))
+
+              (if (i32.lt_u (local.get $exp-count) (local.get $pattern-count)) 
+                (then
+                  ;; there are no matches for this ellipsis, rewind the 
+                  ;; exp count and ptr to continue matching them against the
+                  ;; next pattern
+                  (%inc $exp-count)
+                  (%minus-eq $exp-ptr 4)
+                  (br $start)))
+
+              ;; loop do-while exp-count > pattern-count
+              (block $inner-end (loop $inner-start
+                  (if (i32.eqz (call $match-syntax-pattern-impl
+                        (local.get $curr-pattern)
+                        (local.get $curr-exp)
+                        (local.get $ellipsis)
+                        (local.get $literals)
+                        (local.get $match-env)
+                        (i32.const 1)))
+                      (then (return (i32.const 0))))
+                  (br_if $inner-end (i32.eq (local.get $exp-count) (local.get $pattern-count)))
+
+                  (local.set $curr-exp (i32.load (local.get $exp-ptr)))
+                  (%dec $exp-count)
+                  (%plus-eq $exp-ptr 4)
+                  (br $inner-start))))
+            (else
+              (if (i32.eqz (call $match-syntax-pattern-impl
+                    (local.get $curr-pattern)
+                    (local.get $curr-exp)
+                    (local.get $ellipsis)
+                    (local.get $literals)
+                    (local.get $match-env)
+                    (local.get $in-ellipsis)))
+                  (then (return (i32.const 0))))))
+            
+          (br $start)))))
+
+  ;; at this point pattern must be a constant, only match if (equal? pattern exp)
+  (return (call $equal-inner 
+      (local.get $pattern) 
+      (local.get $exp) 
+      (i32.const 1))))
+      
+(func $symbol-in-list? (param $symbol i32) (param $list i32) (result i32)
+  (local $curr i32)
+  (block $end (loop $start
+      (%chk-type $end $list %cons-type)
+      (%pop-l $curr $list)
+
+      (if (i32.eq (local.get $symbol) (local.get $curr)) (then
+          (return (i32.const 1))))
+
+      (br $start)))
+  (return (i32.const 0)))
+
+;; gets the length of a list, if it is an improper list, returns the length, not
+;; including the improper cdr value
+;; i.e  (a b c) => 3
+;;      (a b . c) => 2
+(func $improper-list-len (param $list i32) (result i32)
+  (local $count i32)
+
+  (local.set $count (i32.const 0))
+  (block $end (loop $start
+      (%chk-type $end $list %cons-type)
+      (%inc $count)
+      (local.set $list (%cdr-l $list))
+      (br $start)))
+
+  (return (local.get $count)))

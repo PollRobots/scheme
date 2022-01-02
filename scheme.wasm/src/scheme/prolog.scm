@@ -1,5 +1,5 @@
 (cond 
-  ((null? have-prolog?)
+  ((error-object? have-prolog?)
     (define have-prolog? #f)
     (include 
       "pair.scm"

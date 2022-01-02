@@ -22,25 +22,15 @@
 )
 
 (func $environment-destroy (param $env i32) (param $destroy-outer i32)
-  (local $hashtable i32)
-  (local $outer i32)
+  (block $done (loop $forever
+      ;; we don't free the keys here because symbols are interned
+      (call $malloc-free (%car-l $env))
 
-  ;; hashtable = env[4]
-  ;; hashtable-free-keys(hashtable)
-  ;;  as point-free
-  ;; hashtable-free-keys(env[4])
-  ;; (call $hashtable-free-keys  (%car-l $env))
+      ;; if (!destroy-outer) break
+      (br_if $done (i32.eqz (local.get $destroy-outer)))
 
-  ;; if (destroy-outer) {
-  (if (local.get $destroy-outer)
-    (then
-      ;; outer = env[8]
-      (local.set $outer (%cdr-l $env))
-      ;; if (outer) {
-      (if (local.get $outer)
-        (then
-          ;; environment-destroy(outer, destroy-outer)
-          (call $environment-destroy (local.get $outer) (local.get $destroy-outer)))))))
+      ;; if (env = env[8]) continue
+      (br_if $forever (local.tee $env (%cdr-l $env))))))
 
 (func $environment-add (param $env i32) (param $key i32) (param $value i32)
   (local $key-str i32)
@@ -109,13 +99,10 @@
 
   ;; check that key is a string
   ;; if (*key & 0xF != 6) {
-  (if (i32.ne (%get-type $key) (%symbol-type))
-    (then
+  (if (i32.ne (%get-type $key) (%symbol-type)) (then
       ;; return g-nil
-      (return (global.get $g-nil))
-    )
-  ;; }
-  )
+      (return (global.get $g-nil))))
+
   ;; key-str = key[4]
   (local.set $key-str (i32.load offset=4 (local.get $key)))
 
@@ -123,31 +110,22 @@
     ;; hashtable = env[4]
     (local.set $hashtable (i32.load offset=4 (local.get $env)))
     ;; value = hashtable-get(hashtable, key-str)
-    (local.set $value 
-      (call $hashtable-get 
+    (local.set $value (call $hashtable-get 
         (local.get $hashtable) 
-        (local.get $key-str)
-      )
-    )
+        (local.get $key-str)))
     ;; if (value != 0) {
-    (if (local.get $value)
-      (then
+    (if (local.get $value) (then
         ;; return value
-        (return (local.get $value))
-      )
-    ;; }
-    )
+        (return (local.get $value))))
 
     ;; env = env[8]
     (local.set $env (i32.load offset=8 (local.get $env)))
 
     ;; if (env) continue;
-    (br_if $forever (local.get $env))
-  )
+    (br_if $forever (local.get $env)))
 
   ;; return g-nil;
-  (return (global.get $g-nil))
-)
+  (return (%alloc-error (global.get $g-unknown) (local.get $key))))
 
 (func $environment-set! (param $env i32) (param $key i32) (param $value i32) (result i32)
   (local $key-str i32)

@@ -43,6 +43,9 @@
 (global $g-neg        (mut i32) (i32.const 0))
 (global $g-cont-type  (mut i32) (i32.const 0))
 (global $g-curr-cont  (mut i32) (i32.const 0))
+(global $g-syntax-rules   (mut i32) (i32.const 0))
+(global $g-ellipsis   (mut i32) (i32.const 0))
+(global $g-underscore (mut i32) (i32.const 0))
 
 (global $g-eval-count (mut i32) (i32.const 0))
 (%define %gc-threshold () (i32.const 256))
@@ -64,7 +67,7 @@
   (global.set $g-env (%sym-32 0x766e65 3))
   (global.set $g-lt (%sym-32 0x3c 1))
   (global.set $g-gt (%sym-32 0x3e 1))
-  (global.set $g-unknown (%sym-64 0x6e776f6e6b6e75 7))
+  (global.set $g-unknown (%sym-64 0x6e776f6e6b6e75 7)) ;; 'unknown'
   (global.set $g-space (%sym-32 0x20 1))          ;; ' '
   (global.set $g-error (%sym-64 0x726f727265 5))  ;; error
   (global.set $g-open (%sym-32 0x28 1))           ;; (
@@ -92,6 +95,9 @@
   (global.set $g-exp (%sym-32 0x65 1)) ;; 'e'
   (global.set $g-neg (%sym-32 0x2d 1)) ;; '-'
   (global.set $g-cont-type (%sym-32 0x746e6f63 4)) ;; 'cont'
+  (global.set $g-syntax-rules (%sym-128 0x722D7861746e7973 0x73656c75 12)) ;; 'syntax-rules'
+  (global.set $g-ellipsis (%sym-32 0x2E2E2E 3)) ;; '...'
+  (global.set $g-underscore (%sym-32 0x5F 1)) ;; '_'
 
   ;; global reader is attached to stdin
   (global.set $g-reader (call $reader-init (i32.const 0)))
@@ -1266,6 +1272,12 @@
       call_indirect $table-builtin (type $builtin-type)
       (return)))
 
+  (if (i32.eq (local.get $op-type) (%syntax-rules-type)) (then
+      (return (call $apply-syntax-rules
+          (local.get $env)
+          (local.get $op)
+          (local.get $args)))))
+
   (if (i32.eq (%get-type $args) (%nil-type)) (then
       (return (call $cont-alloc
           (%cont-apply-form)
@@ -1370,6 +1382,12 @@
     ;; case %cont-proc-type:
     (if (i32.eq (local.get $op-type) (%cont-proc-type)) (then
         (return (call $apply-cont-proc
+            (local.get $op)
+            (local.get $args)))))
+
+    (if (i32.eq (local.get $op-type) (%syntax-rules-type)) (then
+        (return (call $apply-syntax-rules
+            (local.get $env)
             (local.get $op)
             (local.get $args)))))
 

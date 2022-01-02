@@ -40,7 +40,8 @@
 ;;   big-int = 18
 ;;   except = 19
 ;;   cont-proc = 20
-;; kMaxType = 18
+;;   syntax-rules = 21
+;; kMaxType = 21
 (%define %empty-type () (i32.const 0))
 (%define %nil-type () (i32.const 1))
 (%define %boolean-type () (i32.const 2))
@@ -62,7 +63,8 @@
 (%define %big-int-type () (i32.const 18))
 (%define %except-type () (i32.const 19))
 (%define %cont-proc-type () (i32.const 20))
-(%define %max-heap-type () (i32.const 20))
+(%define %syntax-rules-type () (i32.const 21))
+(%define %max-heap-type () (i32.const 21))
 
 (%define %get-type (%arg) (i32.and (i32.load8_u (local.get %arg)) (i32.const 0x1F)))
 (%define %get-gc-flags (%arg) (i32.load8_u offset=1 (local.get %arg)))

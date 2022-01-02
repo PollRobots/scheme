@@ -37,7 +37,8 @@
 ;;   big-int = 18
 ;;   exception = 19
 ;;   cont-proc = 20
-;; kMaxType = 20
+;;   syntax-rules = 21
+;; kMaxType = 21
 
 ;;  Empty cell
 ;;    next-empty: i32 ptr
@@ -91,6 +92,10 @@
 
 ;;  ContinuationProc
 ;;    car: i32 ptr - Continuation
+
+;;  SyntaxRules
+;;    car: i32 ptr - list literals (first item is always the ellipsis symbol)
+;;    cdr: i32 ptr - (<syntax-rule> ...)
 
 ;; Heap
 ;;   Size:      i32
@@ -223,9 +228,6 @@
             ;; destroy the environment (but not any outer environment)
             ;; environment-destroy(entry-ptr, false)
             (call $environment-destroy (local.get $entry-ptr) (i32.const 0))
-            ;; free the environment hashtable
-            ;; malloc-free(entry-ptr[4])
-            (call $malloc-free (i32.load offset=4 (local.get $entry-ptr)))
             (br $b_switch))))
         ;; }
 
