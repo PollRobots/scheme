@@ -713,7 +713,7 @@ describe("runtime wasm", () => {
   it("define sets a lambda in the environment", () => {
     const tokens = [
       `
-      (define (add (x y)) (+ x y))
+      (define (add x y) (+ x y))
       (add 2 3)
       `,
     ];
