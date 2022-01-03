@@ -67,7 +67,7 @@ to implement them myself, so credit is due to:
 
 Additionally inspiration came from a couple of places
 
-- **Lispy**: [Peter Norvig's](https://norvig.com) artible
+- **Lispy**: [Peter Norvig's](https://norvig.com) article
   [(How to Write a (Lisp) Interpreter (in Python))](https://norvig.com/lispy.html)
   was a critical source of inspiration.
 - **EPLAiP**: Nearly a decade ago a <span title="Hi Ashley!">friend</span> gave
