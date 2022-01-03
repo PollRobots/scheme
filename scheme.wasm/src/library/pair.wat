@@ -389,19 +389,13 @@
       (br_if $b_end (i64.eqz (local.get $count)))
 
       (if (i32.ne (%get-type $obj) (%cons-type))
-        (then
-          (return (call $argument-error (local.get $args)))
-        )
-      )
+        (then (return (call $argument-error (local.get $args)))))
 
       (local.set $obj (%cdr-l $obj))
       (%dec64 $count)
-      (br $b_start)
-    )
-  )
+      (br $b_start)))
 
-  (return (local.get $obj))
-)
+  (return (local.get $obj)))
 
 (func $list-tail (param $env i32) (param $args i32) (result i32)
   (local $obj i32)
@@ -426,24 +420,20 @@
   (local $k i32)
   (local $tail i32)
 
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 2)))
       (local.set $obj (%car-l $args))
       (local.set $k (%car (%cdr-l $args)))
       (br_if $b_fail (i32.ne (%get-type $k) (%i64-type)))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
 
   (local.set $tail (call $list-tail-impl (local.get $args) (local.get $obj) (local.get $k)))
-  (if (i32.eq (%get-type $tail) (%error-type))
-    (then (return (local.get $tail)))
-  )
+  (if (i32.eq (%get-type $tail) (%except-type)) (then 
+    (return (local.get $tail))))
 
-  (return (%car-l $tail))
-)
+  (return (%car-l $tail)))
 
 (func $list-set! (param $env i32) (param $args i32) (result i32)
   (local $obj i32)
@@ -462,7 +452,7 @@
     (return (call $argument-error (local.get $args))))
 
   (local.set $tail (call $list-tail-impl (local.get $args) (local.get $obj) (local.get $k)))
-  (if (i32.eq (%get-type $tail) (%error-type)) (then 
+  (if (i32.eq (%get-type $tail) (%except-type)) (then 
       (return (local.get $tail))))
 
   (if (i32.and (%get-flags $tail) (i32.const 2)) (then

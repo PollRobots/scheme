@@ -10,8 +10,6 @@
 (define (even? x) (zero? (floor-remainder (exact x) 2)))
 (define (odd? x) (not (even? x)))
 
-(define (quotient x y) (truncate-quotient x y))
-(define (remainder x y) (truncate-remainder x y))
 (define (modulo x y) (floor-remainder x y))
 (define (gcd a b)
   (if (zero? b) 

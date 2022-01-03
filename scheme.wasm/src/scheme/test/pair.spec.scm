@@ -19,20 +19,20 @@
     (assert (equal? (car '(a b c)) 'a) "(car '(a b c)) is a")
     (assert (equal? (car '((a) b c d)) '(a)) "(car '((a) b c d)) is (a)")
     (assert (equal? (car '(1 . 2)) 1) "(car '(1 . 2)) is 1")
-    (assert (error-object? (car '())) "(car '()) is an error")))
+    (assert-error (car '()) "(car '()) is an error")))
 
   (list "(cdr <pair>)" (lambda ()
     (assert (equal? (cdr '(a b c)) '(b c)) "(cdr '(a b c)) is (b c)")
     (assert (equal? (cdr '((a) b c d)) '(b c d)) "(cdr '((a) b c d)) is (b c d)")
     (assert (equal? (cdr '(1 . 2)) 2) "(cdr '(1 . 2)) is 2")
-    (assert (error-object? (cdr '())) "(cdr '()) is an error")))
+    (assert-error (cdr '()) "(cdr '()) is an error")))
 
   (list "(set-car! <pair> <obj>)" (lambda ()
     (define f (list 'not-a-constant-list))
     (define g '(constant-list))
     (set-car! f 3)
     (assert (equal? f '(3)) "set-car! sets the first item on the cons")
-    (assert (error-object? (set-car! g 3)) "cannot set-car! on a constant list")))
+    (assert-error (set-car! g 3) "cannot set-car! on a constant list")))
 
   (list "(null? <obj>)" (lambda ()
     (assert (null? ()) "(null? ()) is true")

@@ -1,16 +1,36 @@
 (define (display-all . x) (for-each display x))
 
-(define (assert x . m) 
-  (if (not x) (apply error "Assert failed" m)))
+(define-syntax assert
+  (syntax-rules ()
+    ((assert x) (assert x ""))
+    ((assert x m ...) 
+      (if (not x) (error "Assert failed" x m ..)))))
 
-(define (assert-not x . m) 
-  (if x (apply error "Assert failed" m)))
+(define-syntax assert-not
+  (syntax-rules ()
+    ((assert-not x) (assert-not x ""))
+    ((assert-not x m ...)
+      (if x (error "Assert failed" 'x m ...)))))
 
-(define (assert-error x . m) 
-  (if (not (error-object? x)) (apply error "Assert failed" x " should be an error, " m)))
+(define-syntax assert-equal
+  (syntax-rules ()
+    ((assert-equal x y) (assert-equal x y ""))
+    ((assert-equal x y m ...)
+      (if (not (equal? x y)) 
+          (error "Assert failed" 'x " should equal " 'y ", " m ...)))))
 
-(define (assert-equal x y . m) 
-  (if (not (equal? x y)) (apply error "Assert failed" x " should equal " y ", " m)))
+(define-syntax assert-error
+  (syntax-rules ()
+    ((assert-error x) (assert-error x ""))
+    ((assert-error x m ...)
+      (if 
+        (call/cc 
+          (lambda (cont)
+            (with-exception-handler
+              (lambda (ex) (cont #f))
+              (lambda () x))
+            (cont #t)))
+        (error "Assert failed" 'x " should have raised an exception " m ...)))))
 
 (define (run-tests name . tests)
   (let ((passed 0)

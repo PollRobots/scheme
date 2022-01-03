@@ -148,7 +148,7 @@
   (if (i32.eq (call $list-len (local.get $args)) (i32.const 4))
     (then
       (%pop-l $map-res $args)
-      (if (i32.eq (%get-type $map-res) (%error-type)) (then
+      (if (i32.eq (%get-type $map-res) (%except-type)) (then
           (return (local.get $map-res))))
       (%pop-l $all-res $args)
       (local.set $all-res (%alloc-cons
@@ -231,7 +231,7 @@
     (then
       (%pop-l $map-res $args)
       (local.set $map-res-type (%get-type $map-res))
-      (if (i32.eq (local.get $map-res-type) (%error-type)) (then
+      (if (i32.eq (local.get $map-res-type) (%except-type)) (then
           (return (local.get $map-res))))
       (if (i32.ne (local.get $map-res-type) (%char-type)) (then
           (return (%alloc-error (%sym-32 0x65707974 4) (local.get $map-res)))))
@@ -334,7 +334,7 @@
   (if (i32.eq (%get-type $idx) (%i64-type))
     (then
       (%pop-l $map-res $args)
-      (if (i32.eq (%get-type $map-res) (%error-type)) (then
+      (if (i32.eq (%get-type $map-res) (%except-type)) (then
           (return (local.get $map-res))))
       (%pop-l $idx $args)
       (local.set $temp64 (i64.load offset=4 (local.get $idx)))
@@ -473,7 +473,7 @@
 
   (if (i32.eq (call $list-len (local.get $args)) (i32.const 3)) (then
       (%pop-l $proc-res $args)
-      (if (i32.eq (%get-type $proc-res) (%error-type)) (then
+      (if (i32.eq (%get-type $proc-res) (%except-type)) (then
           (return (local.get $proc-res))))))
   
   (%pop-l $proc $args)

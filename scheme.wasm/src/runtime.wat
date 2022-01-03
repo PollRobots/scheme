@@ -1539,12 +1539,12 @@
 )
 
 (func $argument-error (param $args i32) (result i32)
-  (return
-    (%alloc-error-cons (global.get $g-args) (local.get $args))))
+  (return (%alloc-raise
+    (%alloc-error-cons (global.get $g-args) (local.get $args)))))
 
 (func $not-implemented-error (param $args i32) (result i32)
-  (return
-    (%alloc-error-cons (global.get $g-not-impl) (local.get $args))))
+  (return (%alloc-raise
+    (%alloc-error-cons (global.get $g-not-impl) (local.get $args)))))
 
 (global $g-dump-eval (mut i32) (i32.const 0))
 (global $g-dump-eval-indent (mut i32) (i32.const 0))
