@@ -671,6 +671,7 @@
 (func $num-string->number (param $env i32) (param $args i32) (result i32)
   (local $args-len i32)
   (local $radix i32)
+  (local $temp64 i64)
   (local $str i32)
 
   (local.set $args-len (call $list-len (local.get $args)))
@@ -688,8 +689,10 @@
       (local.set $radix (%car (%cdr-l $args)))
       (%chk-type $b_fail $radix %i64-type)
       (br_if $b_fail (i32.ne (%get-type $radix) (%i64-type)))
-      (br_if $b_fail (i64.gt_u (i64.load offset=4 (local.get $radix)) (i64.const 16)))
-      (local.set $radix (i32.wrap_i64 (i64.load offset=4 (local.get $radix))))
+      (br_if $b_fail (i64.gt_u (local.tee $temp64 (i64.load offset=4 
+              (local.get $radix)) 
+              (i64.const 16))))
+      (local.set $radix (i32.wrap_i64 (local.get $temp64)))
       (br_if $b_check (i32.eq (local.get $radix) (i32.const 16)))
       (br_if $b_check (i32.eq (local.get $radix) (i32.const 10)))
       (br_if $b_check (i32.eq (local.get $radix) (i32.const 8)))
@@ -705,20 +708,24 @@
   (local $radix i32)
   (local $num i32)
   (local $num-type i32)
+  (local $temp64 i64)
   (local $str i32)
 
   (local.set $args-len (call $list-len (local.get $args)))
 
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.eqz (local.get $args-len)))
       (local.set $radix (i32.const 10))
       (local.set $num (%car-l $args))
+      (br_if $b_check (i32.eq (local.get $args-len) (i32.const 1)))
 
+      (br_if $b_fail (i32.ne (local.get $args-len) (i32.const 2)))
       (local.set $radix (%car (%cdr-l $args)))
       (%chk-type $b_fail $radix %i64-type)
-      (br_if $b_fail (i64.gt_u (i64.load offset=4 (local.get $radix)) (i64.const 16)))
-      (local.set $radix (i32.wrap_i64 (i64.load offset=4 (local.get $radix))))
+      (br_if $b_fail (i64.gt_u (local.tee $temp64 (i64.load offset=4 
+              (local.get $radix)) 
+              (i64.const 16))))
+      (local.set $radix (i32.wrap_i64 (local.get $temp64)))
       (br_if $b_check (i32.eq (local.get $radix) (i32.const 16)))
       (br_if $b_check (i32.eq (local.get $radix) (i32.const 10)))
       (br_if $b_check (i32.eq (local.get $radix) (i32.const 8)))
