@@ -1,4 +1,4 @@
-import { Monaco } from "@monaco-editor/react";
+import monaco from "monaco-editor";
 import { BaseColors, Theme } from "./theme";
 
 const kSolarizedColors: BaseColors = {
@@ -41,8 +41,9 @@ export const kSolarizedLight: Theme = {
 export const kDarkThemeName = "r7rsSchemeThemeDark";
 export const kLightThemeName = "r7rsSchemeThemeLight";
 
-export function defineThemes(monaco: Monaco) {
-  monaco.editor.defineTheme(kSolarizedDark.name, {
+export function defineThemes() {
+  // @ts-ignore
+  window.monaco.editor.defineTheme(kSolarizedDark.name, {
     base: "vs-dark",
     inherit: false,
     rules: [
@@ -74,7 +75,8 @@ export function defineThemes(monaco: Monaco) {
       "editorLineNumber.foreground": kSolarizedColors.base00,
     },
   });
-  monaco.editor.defineTheme(kSolarizedLight.name, {
+  // @ts-ignore
+  window.monaco.editor.defineTheme(kSolarizedLight.name, {
     base: "vs",
     inherit: false,
     rules: [

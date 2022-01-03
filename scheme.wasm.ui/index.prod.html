@@ -1,66 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><%= htmlWebpackPlugin.options.title %></title>
-    <script>
-      window.addEventListener('error', event => {
-        const app = document.getElementById('app');
-        const head = document.createElement('h2');
-        const details = document.createElement('div');
-        if (event.message.toLowerCase().indexOf('script error') >= 0) {
-          head.append('Script Error');
-          details.append('See console for details');
-        } else {
-          head.append('Uncaught Error');
-          const message = [
-            'Message: ' + event.message,
-            'Url: ' + event.filename,
-            'Line: ' + event.lineno + ', column: ' + event.colno,
-            'Error: ' + event.error
-          ];
-          message.forEach(el => {
-            details.append(el);
-            details.append(document.createElement('br'));
-          });
-        }
-        app.append(head);
-        app.append(details);
-        return false;
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>
+    <%= htmlWebpackPlugin.options.title %>
+  </title>
+  <script>
+    window.addEventListener('error', event => {
+      const app = document.getElementById('app');
+      const head = document.createElement('h2');
+      const details = document.createElement('div');
+      if (event.message.toLowerCase().indexOf('script error') >= 0) {
+        head.append('Script Error');
+        details.append('See console for details');
+      } else {
+        head.append('Uncaught Error');
+        const message = [
+          'Message: ' + event.message,
+          'Url: ' + event.filename,
+          'Line: ' + event.lineno + ', column: ' + event.colno,
+          'Error: ' + event.error
+        ];
+        message.forEach(el => {
+          details.append(el);
+          details.append(document.createElement('br'));
+        });
+      }
+      app.append(head);
+      app.append(details);
+      return false;
+    });
+  </script>
+</head>
+
+<body>
+  <div id="app"></div>
+  <script crossorigin src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.31.1/min/vs/loader.min.js"></script>
+  <script>
+    require.config({ paths: { vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.31.1/min/vs/" } });
+    window.MonacoEnvironment = {
+      getWorkerUrl: function (moduleId, label) {
+        return `data:text/javascript;charset=utf-8,${encodeURIComponent(`
+          self.MonacoEnvironment = { baseUrl: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.31.1/min/"};
+          importScripts("https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.31.1/min/vs/base/worker/workerMain.min.js");`
+        )}`;
+      }
+    };
+
+    function getMonaco() {
+      return new Promise((resolve, reject) => {
+        require(["vs/editor/editor.main"], function (monaco) {
+          window.monaco = monaco;
+          console.log("Loaded editor.main");
+          resolve();
+        }, reject);
       });
-    </script>
- </head>
-  <body>
-    <div id="app">
-      <h2>Loading...</h2>
-      <p>There is an 
-        <a href="https://github.com/pollrobots/scheme/issues/2" target="_blank">issue</a> 
-        with bundle size. Please be patient.</p>
-    </div>
-    <script
-      crossorigin
-      src="https://unpkg.com/react@17/umd/react.production.min.js"
-    ></script>
-    <script
-      crossorigin
-      src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"
-    ></script>
-    <script
-      src="https://unpkg.com/prop-types@15.7.2/prop-types.js"
-      crossorigin
-    ></script>
-    <script
-      src="https://unpkg.com/state-local@1.0.7/lib/umd/state-local.min.js"
-      crossorigin
-    ></script>
-    <script
-      src="https://unpkg.com/@monaco-editor/loader@0.1.2/lib/umd/monaco-loader.min.js"
-      crossorigin
-    ></script>
-    <script
-      src="https://unpkg.com/@monaco-editor/react@4.0.0/lib/umd/monaco-react.min.js"
-      crossorigin
-    ></script>
-  </body>
+    }
+  </script>
+</body>
+
 </html>

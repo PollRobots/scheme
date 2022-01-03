@@ -16,9 +16,7 @@ module.exports = (env, argv) => {
     entry: "./src/index.tsx", // The entry point into the bundle
     output: {
       path: path.join(__dirname, "/dist"),
-      filename: "[name].[contenthash].js", // The name of the output bundle,
-      // this is referenced from the start
-      // page.
+      filename: "[name].[contenthash].js",
     },
     devServer: {
       port: 8080,
@@ -50,23 +48,25 @@ module.exports = (env, argv) => {
           exclude: /node-modules/,
           use: ["style-loader", "css-loader"],
         },
+        {
+          test: /\.ttf$/,
+          use: ["file-loader"],
+        },
       ],
     },
 
     externals: {
       react: "React",
       "react-dom": "ReactDOM",
-      "@monaco-editor/react": "monaco_react",
+      "monaco-editor": [],
     },
 
     optimization: {
       minimize: isProduction,
       minimizer: [new TerserWebpack()],
-      splitChunks: isProduction
-        ? {
-            chunks: "all",
-          }
-        : undefined,
+      splitChunks: {
+        chunks: "all",
+      },
     },
 
     plugins: [

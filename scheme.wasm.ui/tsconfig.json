@@ -6,9 +6,10 @@
     "noImplicitAny": true,
     "module": "CommonJS",
     "target": "ES2021",
-    "declaration": true,
+    "declaration": false,
     "strict": true,
     "jsx": "react",
+    "lib": ["dom", "es2021"],
     "esModuleInterop": true,
     "resolveJsonModule": true
   }

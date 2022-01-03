@@ -303,4 +303,9 @@ class App extends React.Component<{}, AppState> {
   }
 }
 
-ReactDOM.render(<App />, document.getElementById("app"));
+ReactDOM.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+  document.getElementById("app")
+);

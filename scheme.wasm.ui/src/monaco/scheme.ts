@@ -1,5 +1,4 @@
-import { Monaco } from "@monaco-editor/react";
-import { languages } from "monaco-editor";
+import monaco from "monaco-editor";
 
 const kBuiltins = [
   "+",
@@ -159,6 +158,55 @@ const kBuiltins = [
   "procedure?",
   "apply",
   "map",
+  "vector-map",
+  "string-map",
+  "for-each",
+  "include",
+  "number?",
+  "complex?",
+  "rational?",
+  "exact-integer?",
+  "zero?",
+  "positive?",
+  "negative?",
+  "even?",
+  "odd?",
+  "modulo",
+  "gcd",
+  "lcm",
+  "square",
+  "expt",
+  "sqrt",
+  "caar",
+  "cadr",
+  "cdar",
+  "cddr",
+  "caaar",
+  "caadr",
+  "cadar",
+  "caddr",
+  "cdaar",
+  "cdadr",
+  "cddar",
+  "cdddr",
+  "caaaar",
+  "caaadr",
+  "caadar",
+  "caaddr",
+  "cadaar",
+  "cadadr",
+  "caddar",
+  "cadddr",
+  "cdaaar",
+  "cdaadr",
+  "cdadar",
+  "cdaddr",
+  "cddaar",
+  "cddadr",
+  "cdddar",
+  "cddddr",
+  "string-for-each",
+  "vector-for-each",
 ];
 
 const kSpecial = [
@@ -180,8 +228,13 @@ const kSpecial = [
   "when",
   "unless",
   "begin",
+  "define-syntax",
+  "syntax-rules",
+  "syntax-error",
+  "call/cc",
+  "call-with-current-continuation",
 ];
-const kConf: languages.LanguageConfiguration = {
+const kConf: monaco.languages.LanguageConfiguration = {
   comments: {
     lineComment: ";",
     blockComment: ["#|", "|#"],
@@ -201,7 +254,7 @@ const kConf: languages.LanguageConfiguration = {
   ],
 };
 
-const kLanguage: languages.IMonarchLanguage = {
+const kLanguage: monaco.languages.IMonarchLanguage = {
   defaultToken: "",
   ignoreCase: false,
   tokenPostfix: ".scheme",
@@ -293,8 +346,11 @@ const kLanguage: languages.IMonarchLanguage = {
 
 export const kLanguageId = "r7rsScheme";
 
-export function registerLanguage(monaco: Monaco) {
-  monaco.languages.register({ id: kLanguageId });
-  monaco.languages.setMonarchTokensProvider(kLanguageId, kLanguage);
-  monaco.languages.setLanguageConfiguration(kLanguageId, kConf);
+export function registerLanguage() {
+  // @ts-ignore
+  window.monaco.languages.register({ id: kLanguageId });
+  // @ts-ignore
+  window.monaco.languages.setMonarchTokensProvider(kLanguageId, kLanguage);
+  // @ts-ignore
+  window.monaco.languages.setLanguageConfiguration(kLanguageId, kConf);
 }

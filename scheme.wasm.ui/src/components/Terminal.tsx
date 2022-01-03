@@ -1,14 +1,12 @@
-import Editor, { Monaco } from "@monaco-editor/react";
 import React from "react";
 import { TerminalData } from "./TerminalData";
 import { TerminalInput } from "./TerminalInput";
-import { editor, KeyMod, KeyCode } from "monaco-editor";
-import { kLanguageId, registerLanguage } from "../monaco/scheme";
-import { defineThemes } from "../monaco/solarized";
-import { EditorThemeContext, ThemeContext } from "./ThemeProvider";
-import { Copy, Cut, Open, Paste, Redo, Save, Undo } from "../icons/copy";
-import { IconButton } from "./IconButton";
-import { openFilePicker, saveFilePicker } from "../util";
+import { ThemeContext } from "./ThemeProvider";
+
+const TerminalEditor = React.lazy(async () => {
+  await ((window as any).getMonaco as () => Promise<void>)();
+  return import("./TerminalEditor");
+});
 
 interface TerminalProps {
   welcomeMessage?: React.ReactNode;
@@ -27,7 +25,6 @@ interface TerminalState {
   cached: string;
   editing: boolean;
   line: string;
-  editor: editor.IStandaloneCodeEditor | null;
   canPaste: boolean;
   initialVersion: number;
   currentVersion: number;
@@ -41,7 +38,6 @@ const kDefaultState: TerminalState = {
   cached: "",
   editing: false,
   line: "",
-  editor: null,
   canPaste: false,
   initialVersion: 0,
   currentVersion: 0,
@@ -115,11 +111,6 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
     });
   }
 
-  beforeEditorMount(monaco: Monaco) {
-    registerLanguage(monaco);
-    defineThemes(monaco);
-  }
-
   async clipboardChange() {
     try {
       const content = await navigator.clipboard.readText();
@@ -129,61 +120,7 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
     }
   }
 
-  onEditorMount(editor: editor.IStandaloneCodeEditor) {
-    // editor.updateOptions({ minimap: { enabled: false } });
-    editor.addAction({
-      id: "end-editing-scheme",
-      label: "End Editing",
-      keybindings: [
-        KeyMod.CtrlCmd | KeyCode.KeyE,
-        KeyMod.chord(
-          KeyMod.CtrlCmd | KeyCode.KeyK,
-          KeyMod.CtrlCmd | KeyCode.KeyD
-        ),
-      ],
-      contextMenuGroupId: "navigation",
-      contextMenuOrder: 1.5,
-      run: (ed: editor.IStandaloneCodeEditor) => {
-        this.setState({
-          editing: false,
-          line: "",
-          input: ed.getValue(),
-        });
-      },
-    });
-    editor.updateOptions({ fontSize: this.props.fontSize });
-    editor.focus();
-    const model = editor.getModel();
-    if (model) {
-      const ver = model.getAlternativeVersionId();
-      this.setState({
-        initialVersion: ver,
-        currentVersion: ver,
-        highVersion: ver,
-      });
-    }
-    editor.onDidChangeModelContent(() => {
-      const model = editor.getModel();
-      if (!model) {
-        return;
-      }
-      const ver = model.getAlternativeVersionId();
-      this.setState({
-        currentVersion: ver,
-        highVersion: Math.max(ver, this.state.highVersion),
-      });
-    });
-    this.setState({ editor: editor });
-  }
-
   componentDidUpdate(prevProps: TerminalProps, prevState: TerminalState) {
-    if (this.props.fontSize != prevProps.fontSize) {
-      const editor = this.state.editor;
-      if (editor) {
-        editor.updateOptions({ fontSize: this.props.fontSize });
-      }
-    }
-
     if (this.state.editing != prevState.editing) {
       if (this.state.editing) {
         navigator.clipboard.addEventListener(
@@ -204,285 +141,93 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
     }
   }
 
-  onDoneEditing() {
+  onDoneEditing(line: string) {
     this.setState({
       editing: false,
       line: "",
-      editor: null,
-      input: this.state.editor ? this.state.editor.getValue() : this.state.line,
+      input: line,
     });
   }
 
   render() {
+    if (this.state.editing && !this.props.pause) {
+      return (
+        <React.Suspense fallback={<Loading />}>
+          <TerminalEditor
+            fontSize={this.props.fontSize}
+            line={this.state.line}
+            onDoneEditing={(line) => this.onDoneEditing(line)}
+          />
+        </React.Suspense>
+      );
+    }
     return (
       <ThemeContext.Consumer>
         {(theme) => (
-          <EditorThemeContext.Consumer>
-            {(maybeEditorTheme) => {
-              const editorTheme = maybeEditorTheme || theme;
-              if (this.state.editing && !this.props.pause) {
-                return (
-                  <div
-                    style={{
-                      color: editorTheme.foreground,
-                      background: editorTheme.background,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "grid",
-                        background: editorTheme.boldBackground,
-                        padding: "0.25em",
-                        gridTemplateColumns: "auto auto 1fr auto",
-                      }}
-                    >
-                      <span
-                        style={{
-                          margin: "auto 1em",
-                          fontWeight: 500,
-                        }}
-                      >
-                        Editing current line
-                      </span>
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns:
-                            "3fr 3fr 3fr 1fr 3fr 3fr 1fr 3fr 3fr",
-                          columnGap: "0.25em",
-                          alignSelf: "center",
-                        }}
-                      >
-                        <IconButton
-                          size={this.props.fontSize * 2}
-                          title="Cut"
-                          onClick={() => {
-                            const editor = this.state.editor;
-                            if (!editor) {
-                              return;
-                            }
-                            editor.focus();
-                            const selection = editor.getSelection();
-                            if (!selection || selection.isEmpty()) {
-                              navigator.clipboard.writeText("");
-                              return;
-                            }
-                            const data = editor
-                              .getModel()
-                              ?.getValueInRange(selection);
-                            navigator.clipboard.writeText(data || "");
-                            editor.executeEdits("clipboard", [
-                              {
-                                range: selection,
-                                text: "",
-                                forceMoveMarkers: true,
-                              },
-                            ]);
-                          }}
-                        >
-                          <Cut />
-                        </IconButton>
-                        <IconButton
-                          size={this.props.fontSize * 2}
-                          title="Copy"
-                          onClick={() => {
-                            const editor = this.state.editor;
-                            if (!editor) {
-                              return;
-                            }
-                            editor.focus();
-                            const selection = editor.getSelection();
-                            if (!selection || selection.isEmpty()) {
-                              navigator.clipboard.writeText("");
-                              return;
-                            }
-                            const data = editor
-                              .getModel()
-                              ?.getValueInRange(selection);
-                            navigator.clipboard.writeText(data || "");
-                          }}
-                        >
-                          <Copy />
-                        </IconButton>
-                        <IconButton
-                          size={this.props.fontSize * 2}
-                          title="Paste"
-                          disabled={!this.state.canPaste}
-                          onClick={() => {
-                            const editor = this.state.editor;
-                            if (!editor) {
-                              return;
-                            }
-                            editor.focus();
-                            navigator.clipboard.readText().then((v) => {
-                              const selection = editor.getSelection();
-                              if (!selection) {
-                                return;
-                              }
-                              editor.executeEdits("clipboard", [
-                                {
-                                  range: selection,
-                                  text: v,
-                                  forceMoveMarkers: true,
-                                },
-                              ]);
-                            });
-                          }}
-                        >
-                          <Paste />
-                        </IconButton>
-                        <div />
-                        <IconButton
-                          disabled={
-                            this.state.currentVersion <=
-                            this.state.initialVersion
-                          }
-                          size={this.props.fontSize * 2}
-                          title="Undo"
-                          onClick={() => {
-                            const editor = this.state.editor;
-                            if (!editor) {
-                              return;
-                            }
-                            editor.trigger("toolbar", "undo", null);
-                          }}
-                        >
-                          <Undo />
-                        </IconButton>
-                        <IconButton
-                          disabled={
-                            this.state.currentVersion >= this.state.highVersion
-                          }
-                          size={this.props.fontSize * 2}
-                          title="Redo"
-                          onClick={() => {
-                            const editor = this.state.editor;
-                            if (!editor) {
-                              return;
-                            }
-                            editor.trigger("toolbar", "redo", null);
-                          }}
-                        >
-                          <Redo />
-                        </IconButton>
-                        <div />
-                        <IconButton
-                          size={this.props.fontSize * 2}
-                          title="Open"
-                          onClick={() => {
-                            const editor = this.state.editor;
-                            if (!editor) {
-                              return;
-                            }
-                            openFilePicker()
-                              .then((text) => {
-                                editor.focus();
-                                const selection = editor.getSelection();
-                                if (!selection) {
-                                  editor.setValue(text);
-                                  return;
-                                } else {
-                                  editor.executeEdits("file-open", [
-                                    {
-                                      range: selection,
-                                      text: text,
-                                      forceMoveMarkers: true,
-                                    },
-                                  ]);
-                                }
-                              })
-                              .catch((err) => {
-                                console.error(err);
-                                editor.focus();
-                              });
-                          }}
-                        >
-                          <Open />
-                        </IconButton>
-                        <IconButton
-                          size={this.props.fontSize * 2}
-                          title="Save"
-                          onClick={async () => {
-                            const editor = this.state.editor;
-                            if (!editor) {
-                              return;
-                            }
-
-                            const content = editor.getValue();
-                            saveFilePicker(content)
-                              .catch((err) => {
-                                console.error(err);
-                              })
-                              .finally(() => editor.focus());
-                          }}
-                        >
-                          <Save />
-                        </IconButton>
-                      </div>
-                      <div />
-                      <button
-                        style={{
-                          fontSize: "inherit",
-                          minWidth: "6em",
-                          minHeight: "2em",
-                          margin: "0.25em",
-                          background: editorTheme.blue,
-                          border: `1px solid ${theme.base00}`,
-                          borderRadius: "0.25em",
-                          color: editorTheme.foreground,
-                        }}
-                        title={
-                          "Finish editing\nShortcuts:\n  · Ctrl+K Ctrl+D\n  · Ctrl+E"
-                        }
-                        onClick={() => this.onDoneEditing()}
-                      >
-                        Done
-                      </button>
-                    </div>
-                    <Editor
-                      height="90vh"
-                      theme={editorTheme.name}
-                      defaultLanguage={kLanguageId}
-                      defaultValue={this.state.line}
-                      onMount={(editor: editor.IStandaloneCodeEditor) =>
-                        this.onEditorMount(editor)
-                      }
-                      beforeMount={(instance: Monaco) =>
-                        this.beforeEditorMount(instance)
-                      }
-                    />
-                  </div>
-                );
-              } else {
-                return (
-                  <div
-                    style={{
-                      backgroundColor: theme.background,
-                      color: theme.foreground,
-                      fontFamily: "'Source Code Pro', monospace",
-                      padding: "0.5em",
-                      minWidth: "40rem",
-                    }}
-                  >
-                    {this.props.welcomeMessage}
-                    <TerminalData text={this.props.output} />
-                    <TerminalInput
-                      prompt={this.props.prompt}
-                      readonly={this.props.pause}
-                      value={this.state.input}
-                      autofocus={this.props.autofocus}
-                      onEnter={(text) => this.onEnter(this.props.prompt, text)}
-                      onUp={() => this.onUp()}
-                      onDown={() => this.onDown()}
-                      onEscape={(text) => this.onEscape(text)}
-                    />
-                  </div>
-                );
-              }
+          <div
+            style={{
+              backgroundColor: theme.background,
+              color: theme.foreground,
+              fontFamily: "'Source Code Pro', monospace",
+              padding: "0.5em",
+              minWidth: "40rem",
             }}
-          </EditorThemeContext.Consumer>
+          >
+            {this.props.welcomeMessage}
+            <TerminalData text={this.props.output} />
+            <TerminalInput
+              prompt={this.props.prompt}
+              readonly={this.props.pause}
+              value={this.state.input}
+              autofocus={this.props.autofocus}
+              onEnter={(text) => this.onEnter(this.props.prompt, text)}
+              onUp={() => this.onUp()}
+              onDown={() => this.onDown()}
+              onEscape={(text) => this.onEscape(text)}
+            />
+          </div>
         )}
       </ThemeContext.Consumer>
     );
   }
 }
+
+const Loading: React.FC = (props) => (
+  <div
+    style={{
+      display: "flex",
+      width: "100%",
+      height: "100%",
+      margin: 0,
+      padding: 0,
+      justifyContent: "space-around",
+    }}
+  >
+    <svg style={{ alignSelf: "center" }} width="6em" viewBox="0 0 90 30">
+      <circle cx="15" cy="15" r="10">
+        <animate
+          attributeName="r"
+          values="10;0;10"
+          dur="1s"
+          repeatCount="indefinite"
+        />
+      </circle>
+      <circle cx="45" cy="15" r="10">
+        <animate
+          attributeName="r"
+          values="5;10;0;5"
+          dur="1s"
+          repeatCount="indefinite"
+        />
+      </circle>
+      <circle cx="75" cy="15" r="10">
+        <animate
+          attributeName="r"
+          values="0;10;0"
+          dur="1s"
+          repeatCount="indefinite"
+        />
+      </circle>
+    </svg>
+  </div>
+);
