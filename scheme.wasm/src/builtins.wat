@@ -1,6 +1,7 @@
 (type $builtin-type (func (param i32 i32) (result i32)))
 
 (%define %eval-fn ()                          (i32.const 0))
+(%define %eval-fn-def ()                      (i32.const 1))
 (%define %guard-fn ()                         (i32.const -1))
 
 (%define %special-if ()                       (i32.const 2))
@@ -209,8 +210,12 @@
 (%define %special-define-syntax ()            (i32.const 205))
 (%define %builtin-trace-macros? ()            (i32.const 206))
 (%define %builtin-trace-macros-set! ()        (i32.const 207))
+(%define %cont-body-list-def ()               (i32.const 208))
+(%define %cont-apply-def ()                   (i32.const 209))
+(%define %special-define-values ()            (i32.const 210))
+(%define %cont-env-add-values ()              (i32.const 211))
 
-(table $table-builtin 208 anyfunc)
+(table $table-builtin 212 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
   (local $quote i32)
@@ -405,6 +410,7 @@
   (%add-special (%sym-128 0x6c61762D2A74656c 0x736575 11) (%special-let*-values)) ;; 'let*-values'
   (%add-special (global.get $g-lambda) (%special-lambda))       ;; 'lambda'
   (%add-special (%sym-64 0x656e69666564 6) (%special-define))   ;; 'define'
+  (%add-special (%sym-128 0x762D656e69666564 0x7365756c61 13) (%special-define-values))   ;; 'define-values'
   (%add-special (global.get $g-quote) (%special-quote))       ;; 'quote'
   (%add-special (%sym-32 0x27 1) (%special-quote))              ;; ' (0x27)
   (%add-special (%sym-32 0x21746573 4) (%special-set!))         ;; 'set!'
@@ -427,6 +433,7 @@
 (elem $table-builtin (%special-lambda) $lambda)
 (elem $table-builtin (%special-quote) $quote)
 (elem $table-builtin (%special-define) $define)
+(elem $table-builtin (%special-define-values) $define-values)
 (elem $table-builtin (%special-set!) $set!)
 (elem $table-builtin (%special-cond) $cond)
 (elem $table-builtin (%special-case) $case)
@@ -438,10 +445,13 @@
 (elem $table-builtin (%special-define-syntax) $define-syntax)
 
 (elem $table-builtin (%cont-apply) $cont-apply)
+(elem $table-builtin (%cont-apply-def) $cont-apply-def)
 (elem $table-builtin (%cont-apply-form) $cont-apply-form)
 (elem $table-builtin (%cont-expr-list) $cont-expr-list)
 (elem $table-builtin (%cont-body-list) $cont-body-list)
+(elem $table-builtin (%cont-body-list-def) $cont-body-list-def)
 (elem $table-builtin (%cont-env-add) $cont-env-add)
+(elem $table-builtin (%cont-env-add-values) $cont-env-add-values)
 (elem $table-builtin (%cont-env-set!) $cont-env-set!)
 (elem $table-builtin (%cont-if) $cont-if)
 (elem $table-builtin (%cont-let) $cont-let)

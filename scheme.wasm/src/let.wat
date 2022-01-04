@@ -53,7 +53,7 @@
 
   (if (i32.eq (local.get $vars) (global.get $g-nil))
     ;; there are no bindings, so simply eval body in child environment
-    (then (return (call $eval-body (local.get $child-env) (local.get $body)))))
+    (then (return (call $eval-body (i32.const 1) (local.get $child-env) (local.get $body)))))
 
   (return (call $cont-alloc
         (%eval-fn) ;; eval
@@ -95,7 +95,7 @@
 
       (br $b_start)))
 
-  (return (call $eval-body (local.get $env) (local.get $args))))
+  (return (call $eval-body (i32.const 1) (local.get $env) (local.get $args))))
 
 ;; (let* <bindings> <expression_1> ...)
 ;;    bindings ::=
@@ -149,6 +149,7 @@
   ;; if there are no bindings, simply eval the body
   (if (i32.eq (local.get $var-init-pairs) (global.get $g-nil))
     (then (return (call $eval-body 
+          (i32.const 1)
           (call $environment-init (global.get $g-heap) (local.get $env))
           (local.get $body)))))
 
@@ -166,7 +167,7 @@
   ;; check if no more args 
   (if (i32.eq (%get-type $var-init-pairs) (%nil-type))
     ;; no more args, evaluate the body
-    (then (return (call $eval-body (local.get $env) (local.get $body)))))
+    (then (return (call $eval-body (i32.const 1) (local.get $env) (local.get $body)))))
 
   (%pop-l $temp $var-init-pairs)
   (local.set $var (%car-l $temp))
@@ -258,7 +259,7 @@
 
   (if (i32.eq (local.get $vars) (global.get $g-nil))
     ;; there are no bindings, so simply eval body in child environment
-    (then (return (call $eval-body (local.get $child-env) (local.get $body)))))
+    (then (return (call $eval-body (i32.const 1) (local.get $child-env) (local.get $body)))))
 
   (return (call $cont-alloc
         (%eval-fn) ;; eval
@@ -302,7 +303,7 @@
 
       (br $b_start)))
 
-  (return (call $eval-body (local.get $env) (local.get $args))))
+  (return (call $eval-body (i32.const 1) (local.get $env) (local.get $args))))
 
 ;; (let-values <mv binding spec> <body>)
 ;;    mv binding spec ::=
@@ -358,7 +359,7 @@
 
   ;; if no bindings, simply eval
   (if (i32.eq (local.get $formals-list) (global.get $g-nil))
-    (then (return (call $eval-body (local.get $child-env) (local.get $body)))))
+    (then (return (call $eval-body (i32.const 1) (local.get $child-env) (local.get $body)))))
 
   (%push-l $formals-list $body)
   (return (call $cont-alloc
@@ -419,7 +420,7 @@
 
     (return (call $argument-error (local.get $args))))
 
-  (return (call $eval-body (local.get $env) (local.get $body))))
+  (return (call $eval-body (i32.const 1) (local.get $env) (local.get $body))))
 
 (func $let-check-formals (param $args i32) (result i32)
   (local $type i32)
@@ -489,6 +490,7 @@
   ;; if there are no bindings, simply call the body
   (if (i32.eq (local.get $init-list) (global.get $g-nil))
     (then (return (call $eval-body 
+          (i32.const 1)
           (call $environment-init (global.get $g-heap) (local.get $env)) 
           (local.get $body)))))
 
@@ -505,7 +507,7 @@
   (local $formals i32)
   (local $init i32)
   (if (i32.eq (%get-type $formals-list) (%nil-type))
-    (then (return (call $eval-body (local.get $env) (local.get $body)))))
+    (then (return (call $eval-body (i32.const 1) (local.get $env) (local.get $body)))))
 
   (%pop-l $init $init-list)
 

@@ -68,6 +68,114 @@
   (call $environment-add (local.get $env) (local.get $name) (local.get $value))
   (return (global.get $g-nil)))
 
+;; (define-values <formals> <expression>)
+(func $define-values (param $env i32) (param $args i32) (result i32)
+  (local $temp i32)
+  (local $formals i32)
+  (local $expr i32)
+
+  (block $check (block $fail
+      (br_if $fail (i32.ne (call $list-len (local.get $args)) (i32.const 2)))
+      (local.set $temp (local.get $args))
+      (%pop-l $formals $temp)
+      (br_if $fail (i32.eqz (call $check-formals 
+            (local.get $env) 
+            (local.get $formals))))
+
+      (local.set $expr (%car-l $temp))
+      (br $check))
+
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $cont-alloc
+      (%eval-fn)
+      (local.get $env)
+      (local.get $expr)
+      (call $cont-alloc 
+        (%cont-env-add-values)
+        (local.get $env)
+        (local.get $args)
+        (i32.const 0)))))
+
+;; (cont-env-add-values <values> <formals> <expr>)
+(func $cont-env-add-values (param $env i32) (param $args i32) (result i32)
+  (local $values i32)
+  (local $formals i32)
+  (local $var i32)
+  (local $val i32)
+
+  (%pop-l $values $args)
+
+  (if (i32.ne (%get-type $values) (%values-type)) (then
+      (return (call $argument-error (local.get $args)))))
+
+  (local.set $formals (%car-l $args))
+  ;; convert values to a list
+  (local.set $values (%alloc-cons 
+      (%car-l $values) 
+      (%cdr-l $values)))
+
+  (if (i32.lt_u 
+      (call $list-len (local.get $values)) 
+      (call $improper-list-len (local.get $formals)))
+    (then (return (call $argument-error (local.get $args)))))
+
+  (block $end (loop $start
+      (br_if $end (i32.eq (local.get $formals) (global.get $g-nil)))
+
+      (if (i32.eq (%get-type $formals) (%symbol-type)) (then
+          ;; dotted formal consumes all remaining values, including a potentially empty list
+          (call $environment-add (local.get $env) (local.get $formals) (local.get $values))
+          (return (global.get $g-nil))))
+
+      ;; because of the length check above, this should never happen
+      (br_if $end (i32.eq (local.get $values) (global.get $g-nil)))
+
+      (%pop-l $var $formals)
+      (%pop-l $val $values)
+
+      (call $environment-add (local.get $env) (local.get $var) (local.get $val))
+      (br $start)))
+
+  ;; BUG: if there are still values remaining then they will be silently dropped.
+  (return (global.get $g-nil)))
+
+(func $check-formals (param $env i32) (param $formals i32) (result i32)
+  (local $tail-type i32)
+  (local $curr i32)
+  (local $have-formals i32)
+
+  (local.set $have-formals (i32.const 0))
+
+  (block $end (loop $start
+      ;; if the tail is nil, then this is a good list, exit the loop, if the
+      ;; list has had any entries then the result will be 1, otherwise 0
+      (br_if $end (i32.eq (local.get $formals) (global.get $g-nil)))
+      (local.set $have-formals (i32.const 1))
+
+      (local.set $tail-type (%get-type $formals))
+      ;; its ok if formals is an improper list IFF the tail is a symbol
+      (if (i32.eq (local.get $tail-type) (%symbol-type)) (then
+          (return (i32.eqz (call $environment-has 
+                (local.get $env) 
+                (local.get $formals))))))
+
+      (if (i32.ne (local.get $tail-type) (%cons-type)) (then
+          ;; improper lists with tail types that aren't symbols aren't valid
+          (return (i32.const 0))))
+
+      (%pop-l $curr $formals)
+      (if (i32.ne (%get-type $curr) (%symbol-type)) (then
+          ;; all list entries must be symbols.
+          (return (i32.const 0))))
+      (if (call $environment-has (local.get $env) (local.get $curr)) (then
+          ;; formals must not already be in the environment
+          (return (i32.const 0))))
+
+      (br $start)))
+
+  (return (local.get $have-formals)))
+
 (func $set! (param $env i32) (param $args i32) (result i32)
   (local $name i32)
   (local $value i32)

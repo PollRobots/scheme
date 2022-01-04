@@ -996,11 +996,11 @@
       (local.set $args (i32.load offset=8 (local.get $curr-cont))))
     (else
       (local.set $cont-stack (call $cont-alloc
-        (%eval-fn)
+        (%eval-fn-def) ;; external calls allow define to be set
         (local.get $env)
         (local.get $args)
         (i32.const 0)))
-      (local.set $fn (%eval-fn))))
+      (local.set $fn (%eval-fn-def))))
 
   (loop $forever
     ;; set the current continuation (so that call/cc can get it)
@@ -1008,26 +1008,35 @@
     (global.set $g-curr-cont (local.get $cont-stack))
 
     (block $b_eval_cont
-      (if (i32.eqz (local.get $fn)) (then
-          ;; check if a gc has been indicated
-          (if (call $should-collect)
-            (then
-              ;; root for gc must include cont stack, args, and env. If there is already
-              ;; a collection, simply allocating these will add them to the touched set
-              ;; otherwise they are passed into the call to gc-run (and thence to 
-              ;; gc-init)
-              (local.set $roots (%alloc-list-3 
-                  (local.get $env) 
-                  (local.get $args)
-                  (local.get $cont-stack)))
+      ;; if this is eval-fn or eval-fn-def
+      ;; Note: the difference is that eval-fn-def allows the use of define
+      (block $b_not_eval (block $b_is_eval
+          (br_if $b_is_eval (i32.eq (local.get $fn) (%eval-fn)))
+          (br_if $b_is_eval (i32.eq (local.get $fn) (%eval-fn-def)))
+          (br $b_not_eval))
 
-              ;; (call $print-symbol (global.get $g-gc-run))
-              (call $gc-run (local.get $roots))
-              (global.set $g-eval-count (i32.const 0))))
+        ;; check if a gc has been indicated
+        (if (call $should-collect)
+          (then
+            ;; root for gc must include cont stack, args, and env. If there is already
+            ;; a collection, simply allocating these will add them to the touched set
+            ;; otherwise they are passed into the call to gc-run (and thence to 
+            ;; gc-init)
+            (local.set $roots (%alloc-list-3 
+                (local.get $env) 
+                (local.get $args)
+                (local.get $cont-stack)))
 
-          ;; this is a call to eval. So pass to eval inner
-          (local.set $result (call $eval-inner (local.get $env) (local.get $args)))
-          (br $b_eval_cont)))
+            ;; (call $print-symbol (global.get $g-gc-run))
+            (call $gc-run (local.get $roots))
+            (global.set $g-eval-count (i32.const 0))))
+
+        ;; this is a call to eval. So pass to eval inner
+        (local.set $result (call $eval-inner 
+            (local.get $fn) 
+            (local.get $env) 
+            (local.get $args)))
+        (br $b_eval_cont))
 
       (if (i32.eq (local.get $fn) (%guard-fn)) (then
           ;; executing a guard fn is a no-op, with no return value, if the args 
@@ -1205,9 +1214,10 @@
   (unreachable))
 
 
-(func $eval-inner (param $env i32) (param $args i32) (result i32)
+(func $eval-inner (param $eval-fn i32) (param $env i32) (param $args i32) (result i32)
   (local $type i32)
   (local $result i32)
+  (local $op i32)
 
   ;; type = *args & 0xf
   (local.set $type (%get-type $args))
@@ -1241,7 +1251,7 @@
           (local.get $env)
           (%car-l $args)
           (call $cont-alloc
-            (%cont-apply)
+            (select (%cont-apply) (%cont-apply-def) (i32.eq (local.get $eval-fn) (%eval-fn)))
             (local.get $env)
             (%cdr-l $args)
             (i32.const 0))))))
@@ -1251,11 +1261,27 @@
   (return (local.get $args)))
 
 (func $cont-apply (param $env i32) (param $args i32) (result i32)
+  (return (call $cont-apply-impl 
+      (i32.const 0)
+      (local.get $env)
+      (local.get $args))))
+
+(func $cont-apply-def (param $env i32) (param $args i32) (result i32)
+  (return (call $cont-apply-impl 
+      (i32.const 1)
+      (local.get $env)
+      (local.get $args))))
+
+(func $cont-apply-impl (param $allow-def i32) (param $env i32) (param $args i32) (result i32)
   (local $op i32)
   (local $result i32)
 
   (%pop-l $op $args)
-  (local.set $result (call $apply (local.get $env) (local.get $op) (local.get $args)))
+  (local.set $result (call $apply 
+      (local.get $allow-def) 
+      (local.get $env)
+      (local.get $op)
+      (local.get $args)))
 
   (if (global.get $g-dump-eval)
     (then
@@ -1271,8 +1297,9 @@
   (return (local.get $result)))
 
 
-(func $apply (param $env i32) (param $op i32) (param $args i32) (result i32)
+(func $apply (param $allow-def i32) (param $env i32) (param $op i32) (param $args i32) (result i32)
   (local $op-type i32)
+  (local $fn i32)
   (local $curr i32)
   (local $head i32)
 
@@ -1280,9 +1307,22 @@
   (local.set $op-type (%get-type $op))
 
   (if (i32.eq (local.get $op-type) (%special-type)) (then
+      (local.set $fn (%car-l $op))
+
+      (block $chk-define (block $chk-define-fail
+          (br_if $chk-define (local.get $allow-def))
+          (br_if $chk-define-fail (i32.eq (local.get $fn) (%special-define)))
+          (br_if $chk-define-fail (i32.eq (local.get $fn) (%special-define-values)))
+          (br_if $chk-define-fail (i32.eq (local.get $fn) (%special-define-syntax)))
+          (br $chk-define))
+
+        (return (%alloc-raise (%alloc-error-cons 
+              (%cdr-l $op) 
+              (local.get $args)))))
+
       (local.get $env)
       (local.get $args)
-      (i32.load offset=4 (local.get $op))
+      (local.get $fn)
       call_indirect $table-builtin (type $builtin-type)
       (return)))
 
@@ -1375,6 +1415,7 @@
   (local $op-type i32)
   (local $curr i32)
   (local $head i32)
+  (local $fn i32)
 
   ;; op-type = *op & 0xF
   (local.set $op-type (%get-type $op))
@@ -1408,13 +1449,24 @@
     ;; default:
     ;;   any other type:
     (return
-      (%alloc-error-cons 
+      (%alloc-raise (%alloc-error-cons 
         (global.get $g-apply) 
-        (%alloc-cons (local.get $op) (local.get $args)))))
+        (%alloc-cons (local.get $op) (local.get $args))))))
+
+  (local.set $fn (%car-l $op))
+  (block $chk-define (block $chk-define-fail
+      (br_if $chk-define-fail (i32.eq (local.get $fn) (%special-define)))
+      (br_if $chk-define-fail (i32.eq (local.get $fn) (%special-define-values)))
+      (br_if $chk-define-fail (i32.eq (local.get $fn) (%special-define-syntax)))
+      (br $chk-define))
+
+    (return (%alloc-raise (%alloc-error-cons 
+          (%cdr-l $op) 
+          (local.get $args)))))
 
   (local.get $env)
   (local.get $args)
-  (i32.load offset=4 (local.get $op))
+  (local.get $fn)
   call_indirect $table-builtin (type $builtin-type))
 
 (func $apply-lambda (param $env i32) (param $lambda i32) (param $args i32) (result i32)
@@ -1442,7 +1494,7 @@
   ;; zip-lambda-args(child-env, formals, args)
   (call $zip-lambda-args (local.get $child-env) (local.get $formals) (local.get $args))
 
-  (return (call $eval-body (local.get $child-env) (local.get $body))))
+  (return (call $eval-body (i32.const 1) (local.get $child-env) (local.get $body))))
 
 (func $apply-cont-proc (param $cont-proc i32) (param $args i32) (result i32)
   (if (i32.ne (call $list-len (local.get $args)) (i32.const 1)) (then
@@ -1453,27 +1505,26 @@
       (%car-l $cont-proc)
       (local.get $args))))
 
-(func $eval-body (param $env i32) (param $args i32) (result i32)
-  (local $body-len i32)
-  (local.set $body-len (call $list-len (local.get $args)))
-
-  (if (i32.eqz (local.get $body-len)) (then 
+(func $eval-body (param $allow-def i32) (param $env i32) (param $args i32) (result i32)
+  ;; If the argument list (body) is empty, simply return nil
+  (if (i32.eq (local.get $args) (global.get $g-nil)) (then 
       (return (global.get $g-nil))))
 
-  (if (i32.eq (local.get $body-len) (i32.const 1)) (then 
+  ;; If the argument list has only one entry, simply evaluate it
+  (if (i32.eq (%cdr-l $args) (global.get $g-nil)) (then 
       ;; single body element, simply return its evaluation
       (return (call $cont-alloc 
-          (%eval-fn) 
+          (select (%eval-fn-def) (%eval-fn) (local.get $allow-def))
           (local.get $env) 
           (%car-l $args) 
           (i32.const 0)))))
 
   (return (call $cont-alloc
-      (%eval-fn) ;; eval
+      (select (%eval-fn-def) (%eval-fn) (local.get $allow-def))
       (local.get $env)
       (%car-l $args)
       (call $cont-alloc
-        (%cont-body-list)
+        (select (%cont-body-list-def) (%cont-body-list) (local.get $allow-def))
         (local.get $env)
         (%cdr-l $args)
         (i32.const 0)))))
@@ -1490,15 +1541,21 @@
     ;; return the last thing that was evaluated.
     (then (return (local.get $val))))
 
-  (return (call $cont-alloc
-      (%eval-fn) ;; eval
-      (local.get $env)
-      (%car-l $args)
-      (call $cont-alloc
-        (%cont-body-list)
-        (local.get $env)
-        (%cdr-l $args)
-        (i32.const 0)))))
+  (return (call $eval-body (i32.const 0) (local.get $env) (local.get $args))))
+
+;; (cont-body-list-def val args ...)
+(func $cont-body-list-def (param $env i32) (param $args i32) (result i32)
+  (local $val i32)
+  (local $stack i32)
+
+  (%pop-l $val $args)
+
+  (if (i32.eq (%get-type $args) (%nil-type))
+    ;; Nothing left to evaluate, 
+    ;; return the last thing that was evaluated.
+    (then (return (local.get $val))))
+
+  (return (call $eval-body (i32.const 1) (local.get $env) (local.get $args))))
 
 (func $zip-lambda-args (param $env i32) (param $formals i32) (param $args i32)
   (loop $forever

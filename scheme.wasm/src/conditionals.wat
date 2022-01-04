@@ -82,7 +82,7 @@
       (then
         ;; check that this is a final clause
         (%chk-type $b_error $clauses %nil-type)
-        (return (call $eval-body (local.get $env) (local.get $clause)))))
+        (return (call $eval-body (i32.const 0) (local.get $env) (local.get $clause)))))
 
     (%push-l $clause $clauses)
     (return (call $cont-alloc
@@ -136,7 +136,7 @@
             (local.get $clause)
             (i32.const 0)))))
 
-  (return (call $eval-body (local.get $env) (local.get $clause))))
+  (return (call $eval-body (i32.const 0) (local.get $env) (local.get $clause))))
       
 ;; (case <key> <clause_1> <clause_2> ...)
 ;;    clause ::=
@@ -221,7 +221,7 @@
 
             (else
               ;; this is an ordinary else
-              (return (call $eval-body (local.get $env) (local.get $tail)))))))
+              (return (call $eval-body (i32.const 0) (local.get $env) (local.get $tail)))))))
         
       ;; this is a regular clause, check that head is a list...
       (br_if $b_error (i32.eqz (call $is-list-impl (local.get $head))))
@@ -253,7 +253,7 @@
                         (i32.const 0))))
                 (else
                   ;; this is a regular clause
-                  (return (call $eval-body (local.get $env) (local.get $tail)))))))
+                  (return (call $eval-body (i32.const 0) (local.get $env) (local.get $tail)))))))
 
           (br $check_key_start)))
 
@@ -350,7 +350,7 @@
   
   (%pop-l $test-res $args)
   (if (call $is-truthy (local.get $test-res))
-    (then (return (call $eval-body (local.get $env) (local.get $args)))))
+    (then (return (call $eval-body (i32.const 0) (local.get $env) (local.get $args)))))
 
   (return (global.get $g-nil)))
 
@@ -381,11 +381,11 @@
   (if (call $is-truthy (local.get $test-res))
     (then (return (global.get $g-nil))))
 
-  (return (call $eval-body (local.get $env) (local.get $args))))
+  (return (call $eval-body (i32.const 0) (local.get $env) (local.get $args))))
 
 ;; (begin <expression_1> ...)
 (func $begin (param $env i32) (param $args i32) (result i32)
   (if (i32.eqz (call $list-len (local.get $args)))
     (then (return (call $argument-error (local.get $args)))))
 
-  (return (call $eval-body (local.get $env) (local.get $args))))
+  (return (call $eval-body (i32.const 1) (local.get $env) (local.get $args))))
