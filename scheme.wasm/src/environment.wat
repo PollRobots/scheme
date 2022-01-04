@@ -130,10 +130,8 @@
 (func $environment-set! (param $env i32) (param $key i32) (param $value i32) (result i32)
   (local $key-str i32)
   (local $hashtable i32)
-  (local $new-hashtable i32)
+  (local $curr i32)
 
-  ;; check that key is a string
-  ;; if (*key & 0xF != symbol) {
   (if (i32.ne (%get-type $key) (%symbol-type)) (then 
       (return (call $argument-error (%alloc-list-2 
             (local.get $key) 
@@ -147,19 +145,22 @@
     ;; hashtable = car(env)
     (local.set $hashtable (%car-l $env))
 
-    ;; Note: cannot remove then add, because the duplicated key-string in the hashtable will leak.
-    ;; if (hashtable-replace(hashtable, key-str, value)) {
-    (if (call $hashtable-replace 
-        (local.get $hashtable) 
-        (local.get $key-str) 
-        (local.get $value))
-      ;; return
-      (then (return (global.get $g-nil))))
-
-
-    ;; if (env = cdr(env)) continue;
-    (br_if $forever (local.tee $env (%cdr-l $env))))
-  ;; }
+    (if (local.tee $curr (call $hashtable-get 
+          (local.get $hashtable) 
+          (local.get $key-str)))
+      (then
+        (if (i32.ne (%get-type $curr) (%syntax-rules-type)) (then
+            ;; Note: cannot remove then add, because the duplicated key-string in 
+            ;; the hashtable will leak.
+            (if (call $hashtable-replace 
+                (local.get $hashtable) 
+                (local.get $key-str) 
+                (local.get $value))
+              ;; return
+              (then (return (global.get $g-nil)))))))
+      (else
+        ;; if (env = cdr(env)) continue;
+        (br_if $forever (local.tee $env (%cdr-l $env))))))
 
   (return (call $argument-error (%alloc-list-2 
         (local.get $key) 
