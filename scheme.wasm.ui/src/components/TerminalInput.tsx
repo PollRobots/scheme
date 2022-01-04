@@ -6,14 +6,13 @@ import { useOnClickOutside } from "./hooks";
 
 interface TerminalInputProps {
   value: string;
-  autofocus: boolean;
   readonly: boolean;
   prompt: string;
   onEnter: (text: string) => void;
   onUp: () => void;
   onDown: () => void;
   onEscape: (text: string) => void;
-  inputRef?: React.RefObject<HTMLElement>;
+  parent?: HTMLElement;
 }
 
 interface TerminalInputState {
@@ -33,38 +32,47 @@ export class TerminalInput extends React.Component<
   constructor(props: TerminalInputProps) {
     super(props);
     this.state = { text: props.value };
+    this.onParentKeyPress = this.onParentKeyPress.bind(this);
   }
 
-  runAutoFocus() {
-    const timeoutFn = () => {
-      if (
-        this.props.autofocus &&
-        this.ref.current &&
-        this.ref.current !== document.activeElement
-      ) {
-        this.ref.current.focus();
-        this.ref.current.scrollIntoView(false);
-      }
-      if (this.props.autofocus) {
-        return window.setTimeout(() => {
-          timeoutFn();
-        }, 250);
-      }
-    };
-    timeoutFn();
+  onParentKeyPress(evt: KeyboardEvent) {
+    if (!this.ref.current || !evt.target) {
+      return;
+    }
+    if (
+      evt.target instanceof HTMLElement &&
+      evt.target.contains(this.ref.current)
+    ) {
+      this.ref.current.focus();
+      this.ref.current.scrollIntoView(false);
+    }
   }
 
   componentDidMount() {
-    this.runAutoFocus();
+    if (this.ref.current) {
+      this.ref.current.scrollIntoView(false);
+      this.ref.current.focus();
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.props.parent) {
+      this.props.parent.removeEventListener("keypress", this.onParentKeyPress);
+    }
   }
 
   componentDidUpdate(prevProps: TerminalInputProps) {
-    if (prevProps.autofocus != this.props.autofocus) {
-      this.runAutoFocus();
-    }
     if (prevProps.value != this.props.value) {
       if (this.ref.current) {
         this.ref.current.innerHTML = this.props.value;
+      }
+    }
+    if (prevProps.parent !== this.props.parent) {
+      if (prevProps.parent) {
+        prevProps.parent.removeEventListener("keypress", this.onParentKeyPress);
+      }
+      if (this.props.parent) {
+        this.props.parent.addEventListener("keypress", this.onParentKeyPress);
       }
     }
   }

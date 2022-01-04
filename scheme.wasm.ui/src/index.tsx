@@ -259,7 +259,6 @@ class App extends React.Component<{}, AppState> {
                 prompt={this.getPrompt()}
                 pause={this.state.stopped}
                 welcomeMessage="Welcome to scheme.wasm"
-                autofocus={!this.state.open && !this.state.inspector}
                 fontSize={(4 * this.state.fontSize) / 3}
                 onInput={(str) => this.onInput(str)}
                 output={this.state.output}

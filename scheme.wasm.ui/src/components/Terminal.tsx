@@ -13,7 +13,6 @@ interface TerminalProps {
   output: string[];
   prompt: string;
   pause: boolean;
-  autofocus: boolean;
   fontSize: number;
   onInput: (str: string) => Promise<void>;
 }
@@ -45,6 +44,8 @@ const kDefaultState: TerminalState = {
 };
 
 export class Terminal extends React.Component<TerminalProps, TerminalState> {
+  private readonly terminalRef = React.createRef<HTMLDivElement>();
+
   constructor(props: TerminalProps) {
     super(props);
     this.state = { ...kDefaultState };
@@ -165,12 +166,15 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
       <ThemeContext.Consumer>
         {(theme) => (
           <div
+            tabIndex={0}
+            ref={this.terminalRef}
             style={{
               backgroundColor: theme.background,
               color: theme.foreground,
               fontFamily: "'Source Code Pro', monospace",
               padding: "0.5em",
               minWidth: "40rem",
+              outline: "none",
             }}
           >
             {this.props.welcomeMessage}
@@ -179,11 +183,11 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
               prompt={this.props.prompt}
               readonly={this.props.pause}
               value={this.state.input}
-              autofocus={this.props.autofocus}
               onEnter={(text) => this.onEnter(this.props.prompt, text)}
               onUp={() => this.onUp()}
               onDown={() => this.onDown()}
               onEscape={(text) => this.onEscape(text)}
+              parent={this.terminalRef.current || undefined}
             />
           </div>
         )}
