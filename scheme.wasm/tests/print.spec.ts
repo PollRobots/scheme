@@ -39,7 +39,10 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
     mallocFree: instance.exports.mallocFree as (ptr: number) => void,
     runtimeInit: instance.exports.runtimeInit as () => void,
     runtimeCleanup: instance.exports.runtimeCleanup as () => void,
-    stringToNumberImpl: instance.exports.stringToNumberImpl as (str: number, radix: number) => number,
+    stringToNumberImpl: instance.exports.stringToNumberImpl as (
+      str: number,
+      radix: number
+    ) => number,
     shortStrEq: instance.exports.shortStrEq as (
       str: number,
       shortStr: number,
@@ -54,7 +57,7 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
 
 describe("print wasm", () => {
   const io = new IoTest();
-  const wasm = loadWasm(io.module);
+  const wasm = loadWasm({ io: io.module });
   let exports: TestExports;
 
   const written: string[] = [];

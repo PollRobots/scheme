@@ -299,6 +299,16 @@
       "index": "$heap-alloc"
     },
     {
+      "name": "heapAllocString",
+      "type": "func",
+      "index": "$heap-alloc-string"
+    },
+    {
+      "name": "heapAllocError",
+      "type": "func",
+      "index": "$heap-alloc-error"
+    },
+    {
       "name": "heapFree",
       "type": "func",
       "index": "$heap-free"

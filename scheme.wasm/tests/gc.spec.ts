@@ -71,7 +71,7 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
 
 describe("gc wasm", () => {
   const io = new IoTest();
-  const wasm = loadWasm(io.module);
+  const wasm = loadWasm({ io: io.module });
   let exports: TestExports;
   const written: string[] = [];
   const writeHandler = (evt: IoEvent) => {

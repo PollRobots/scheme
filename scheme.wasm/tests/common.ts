@@ -1,5 +1,7 @@
 import { expect } from "chai";
 import fs from "fs/promises";
+import path from "path";
+import zlib from "zlib"
 
 export interface CommonTestExports {
   memory: WebAssembly.Memory;
@@ -21,6 +23,33 @@ export interface CommonTestExports {
     data1: number,
     data2: number
   ) => number;
+  heapAllocError: (symbol: number, message: number) => number;
+}
+
+const enum SchemeType {
+  Empty = 0,
+  Nil = 1,
+  Boolean = 2,
+  Cons = 3,
+  I64 = 4,
+  F64 = 5,
+  Symbol = 6,
+  Str = 7,
+  Char = 8,
+  Env = 9,
+  Special = 10,
+  Builtin = 11,
+  Lambda = 12,
+  Error = 13,
+  Values = 14,
+  Vector = 15,
+  Bytevector = 16,
+  Cont = 17,
+  BigInt = 18,
+  Except = 19,
+  ContProc = 20,
+  MaxHeap = 20,
+  Mask = 0x1f,
 }
 
 export function commonExportsFromInstance(
@@ -60,6 +89,10 @@ export function commonExportsFromInstance(
       data1: number,
       data2: number
     ) => number,
+    heapAllocError: instance.exports.heapAllocError as (
+      symbol: number,
+      message: number
+    ) => number,
   };
 }
 
@@ -76,16 +109,78 @@ export interface UnicodeModule extends Record<string, Function> {
   loadData: (block: number, ptr: number) => void;
 }
 
+export class TestUnicode {
+  private exports_: CommonTestExports | undefined;
+  private readonly unicodeData_: Record<number, ArrayBuffer> = {};
+
+  public get exports(): CommonTestExports {
+    if (!this.exports_) {
+      throw new Error("Invalid Operation");
+    }
+    return this.exports_;
+  }
+  public set exports(v: CommonTestExports) {
+    this.exports_ = v;
+  }
+
+  async loadUnicodeBlocks() {
+    const fullpath = path.resolve(__dirname, '../dist/unicode/blocks.json.gz');
+    const compressed = await fs.readFile(fullpath);
+    const decompressed = await new Promise<string>((resolve, reject) => {
+      zlib.gunzip(compressed, (err, buf) => {
+        if (err) {
+          reject (err);
+        } else {
+          resolve(buf.toString('utf-8'))
+        }
+      })
+    });
+
+    const data = JSON.parse(decompressed);
+    for (const key of Object.keys(data)) {
+      const blockIndex = Number(key);
+      if (isNaN(blockIndex)) {
+        continue;
+      }
+      const blockData = Buffer.from(data[key], 'base64');
+      this.unicodeData_[blockIndex] = blockData;
+    }
+  }
+
+  loadData(block: number, ptr: number) {
+    const data = this.unicodeData_[block];
+    if (!data) {
+      throw new Error(
+        `No unicode data for ${block.toString(16).padStart(4, "0")}`
+      );
+    }
+    pokeMemory(this.exports, ptr, this.unicodeData_[block]);
+  }
+
+  get module(): UnicodeModule {
+    return {
+      loadData: (block, ptr) => this.loadData(block, ptr),
+    };
+  }
+}
+
+export interface FileModule extends Record<string, Function> {
+  read: (filenamePtr: number) => number;
+}
+
 export async function loadWasm(
-  io?: IoModule,
-  process?: ProcessModule,
-  unicode?: UnicodeModule
+  modules: {
+    io?: IoModule;
+    process?: ProcessModule;
+    unicode?: UnicodeModule;
+    file?: FileModule;
+  } = {}
 ): Promise<WebAssembly.Instance> {
   const wasm = await fs.readFile("dist/test.wasm");
   try {
     const imports: WebAssembly.Imports = {};
 
-    imports["io"] = io || {
+    imports["io"] = modules.io || {
       read: () => {
         console.warn("READ");
         return 0;
@@ -94,17 +189,19 @@ export async function loadWasm(
         console.warn(`WRITE: 0x${ptr.toString(16).padStart(8, "0")}`);
       },
     };
-    imports["process"] = process || {
+    imports["process"] = modules.process || {
       exit: (exitCode: number) => {
         console.warn(`EXIT: ${exitCode}`);
       },
     };
-    imports["unicode"] = unicode || {
+    imports["unicode"] = modules.unicode || {
       loadData: (block: number, ptr: number) => {
-        const path = `./dist/unicode/${block
+        const blockPath = `../dist/unicode/${block
           .toString(16)
           .padStart(4, "0")}.bin`;
-        throw new Error(`Unicode data file ${path} loading not implemented`);
+        throw new Error(
+          `unicode.loadData not implemented, looking for ${blockPath}`
+        );
       },
     };
     imports["dbg"] = {
@@ -112,7 +209,7 @@ export async function loadWasm(
         console.log(`${a}: ${b} #x${c.toString(16).padStart(5, "0")} `);
       },
     };
-    imports["file"] = {
+    imports["file"] = modules.file || {
       read: (filenamePtr: number) => {
         console.log(`file-read ${filenamePtr.toString(16)}`);
         return filenamePtr;
@@ -127,10 +224,31 @@ export async function loadWasm(
   }
 }
 
+export function pokeMemory(
+  exports: CommonTestExports,
+  ptr: number,
+  data: ArrayBuffer
+) {
+  const byteArray = new Uint8Array(data);
+  const view = new Uint8Array(exports.memory.buffer);
+  view.set(byteArray, ptr);
+}
+
 export function createString(exports: CommonTestExports, str: string): number {
   const ptr = createStringImpl(exports, str);
   checkMemory(exports);
   return ptr;
+}
+
+export function createHeapError(
+  exports: CommonTestExports,
+  symbol: string,
+  message: string
+) {
+  return exports.heapAllocError(
+    createString(exports, symbol),
+    createString(exports, message)
+  );
 }
 
 export function createStringImpl(
@@ -493,6 +611,118 @@ export class IoTest {
     return {
       read: () => this.read(),
       write: (ptr) => this.write(ptr),
+    };
+  }
+}
+
+export class FileTest {
+  private exports_: CommonTestExports | null = null;
+  private readonly promises_: Record<number, (ptr: number) => void> = {};
+
+  constructor() {}
+
+  get exports(): CommonTestExports | null {
+    return this.exports_;
+  }
+  set exports(value: CommonTestExports | null) {
+    this.exports_ = value;
+  }
+
+  async waitFor(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  heapItem(ptr: number): Uint32Array {
+    if (!this.exports_) {
+      throw new Error("FileTest object not initialized");
+    }
+    return new Uint32Array(this.exports_.memory.buffer.slice(ptr, ptr + 12));
+  }
+
+  addImportPromise(ptr: number): Promise<number> {
+    return new Promise((resolve) => (this.promises_[ptr] = resolve));
+  }
+
+  isImportPromise(ptr: number) {
+    const heapWords = this.heapItem(ptr);
+    if ((heapWords[0] & SchemeType.Mask) != SchemeType.Cont) {
+      return false;
+    }
+
+    const continuation = this.heapItem(heapWords[1]);
+    return continuation[0] == 204;
+  }
+
+  pokeMemory(ptr: number, data: ArrayBuffer) {
+    if (!this.exports_) {
+      throw new Error("FileTest object not initialized");
+    }
+    pokeMemory(this.exports_, ptr, data);
+  }
+
+  settleImportPromise(promise: number, value: number): boolean {
+    for (const ptrStr of Object.keys(this.promises_)) {
+      const ptr = Number(ptrStr);
+      if (isNaN(ptr)) {
+        continue;
+      }
+      if (!this.isImportPromise(ptr)) {
+        console.error("Expecting Import promise");
+      }
+
+      const heapWords = this.heapItem(ptr);
+      const continuation = this.heapItem(heapWords[1]);
+      if (continuation[2] === promise) {
+        continuation[0] = 0;
+        continuation[2] = value;
+        this.pokeMemory(heapWords[1], continuation.buffer);
+
+        const resolver = this.promises_[ptr];
+        delete this.promises_[ptr];
+        resolver(ptr);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async doRead(filenamePtr: number): Promise<void> {
+    if (!this.exports_) {
+      throw new Error("FileTest object not initialized");
+    }
+    try {
+      const filename = getString(this.exports_, filenamePtr);
+      const fullpath = path.resolve(__dirname, "../src/scheme", filename);
+      const response = await fs.readFile(fullpath, "utf-8");
+      while (
+        !this.settleImportPromise(
+          filenamePtr,
+          createHeapString(this.exports_, response)
+        )
+      ) {
+        await this.waitFor(100);
+      }
+    } catch (err) {
+      console.error(err);
+      this.settleImportPromise(
+        filenamePtr,
+        createHeapError(
+          this.exports_,
+          "file-read",
+          err instanceof Error ? err.message : (err as any).toString()
+        )
+      );
+    }
+  }
+
+  read(filenamePtr: number): number {
+    this.doRead(filenamePtr);
+    return filenamePtr;
+  }
+
+  get module(): FileModule {
+    return {
+      read: (filenamePtr: number) => this.read(filenamePtr),
     };
   }
 }

@@ -1,36 +1,49 @@
 (define (display-all . x) (for-each display x))
 
+(define verbose-asserts #f)
+
+(define (verbose-display-all . x)
+  (if verbose-asserts (for-each display x)))
+
 (define-syntax assert
   (syntax-rules ()
     ((assert x) (assert x ""))
     ((assert x m ...) 
-      (if (not x) (error "Assert failed" x m ..)))))
+      (begin
+        (verbose-display-all "\x1b;[90massert " 'x "\x1b;[0m" #\newline)
+        (if (not x) (error "Assert failed" x m ..))))))
 
 (define-syntax assert-not
   (syntax-rules ()
     ((assert-not x) (assert-not x ""))
     ((assert-not x m ...)
-      (if x (error "Assert failed" 'x m ...)))))
+      (begin
+        (verbose-display-all "\x1b;[90massert (not " 'x ")\x1b;[0m" #\newline)
+        (if x (error "Assert failed" 'x m ...))))))
 
 (define-syntax assert-equal
   (syntax-rules ()
     ((assert-equal x y) (assert-equal x y ""))
     ((assert-equal x y m ...)
-      (if (not (equal? x y)) 
-          (error "Assert failed" 'x " should equal " 'y ", " m ...)))))
+      (begin
+        (verbose-display-all "\x1b;[90massert (equal? " 'x " " 'y ")\x1b;[0m" #\newline)
+        (if (not (equal? x y)) 
+            (error "Assert failed" 'x " should equal " 'y ", " m ...))))))
 
 (define-syntax assert-error
   (syntax-rules ()
     ((assert-error x) (assert-error x ""))
     ((assert-error x m ...)
-      (if 
-        (call/cc 
-          (lambda (cont)
-            (with-exception-handler
-              (lambda (ex) (cont #f))
-              (lambda () x))
-            (cont #t)))
-        (error "Assert failed" 'x " should have raised an exception " m ...)))))
+      (begin
+        (verbose-display-all "\x1b;[90massert (throws " 'x ")\x1b;[0m" #\newline)
+        (if 
+          (call/cc 
+            (lambda (cont)
+              (with-exception-handler
+                (lambda (ex) (cont #f))
+                (lambda () x))
+              (cont #t)))
+          (error "Assert failed" 'x " should have raised an exception " m ...))))))
 
 (define (run-tests name . tests)
   (let ((passed 0)
@@ -53,7 +66,7 @@
                 (set! failed (+ 1 failed))
                 (cont #f))
               (cadr test))
-            (display-all "    " #\escape "[0;32m" #\x2714 #\escape "[94m " (car test) #\newline)
+            (display-all "    " #\escape "[0;32m" #\x2714 #\escape "[90m " (car test) #\newline)
             (set! passed (+ 1 passed))
             (cont #t))))
       tests)

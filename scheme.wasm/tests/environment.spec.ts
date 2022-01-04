@@ -57,7 +57,7 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
 
 describe("environment wasm", () => {
   const io = new IoTest();
-  const wasm = loadWasm(io.module);
+  const wasm = loadWasm({ io: io.module });
   let exports: TestExports;
 
   before(async () => {
