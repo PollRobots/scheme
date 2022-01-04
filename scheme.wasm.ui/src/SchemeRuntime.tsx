@@ -434,7 +434,7 @@ export class SchemeRuntime {
         this.env_ = this.environmentInit(this.gHeap, 0);
         this.registerBuiltins(this.gHeap, this.env_);
         this.initialized_ = true;
-        this.lines_.push('(include "prolog.scm")\n');
+        this.lines_.push('(include "prelude.scm")\n');
       }
       this.lines_.push(str);
       while (this.lines_.length) {

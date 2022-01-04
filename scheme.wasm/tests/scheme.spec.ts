@@ -111,7 +111,7 @@ describe("scheme", () => {
   });
 
   const testFile = async (filename: string) => {
-    const inputs = [`(include \"prolog.scm\" \"${filename}\")`];
+    const inputs = [`(include \"prelude.scm\" \"${filename}\")`];
     const readHandler = (evt: IoEvent) => {
       evt.data = inputs.shift();
       return false;
