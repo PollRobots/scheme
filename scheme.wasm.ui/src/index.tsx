@@ -4,7 +4,6 @@ import { About } from "./components/About";
 import { Burger } from "./components/Burger";
 import { Flyout } from "./components/Flyout";
 import { HeapInspector } from "./components/HeapInspector";
-import { useOnClickOutside } from "./components/hooks";
 import { SchemeRuntimeProvider } from "./components/SchemeRuntimeProvider";
 import { Settings, SettingsBase } from "./components/Settings";
 import { SettingsMenu } from "./components/SettingsMenu";
@@ -16,6 +15,7 @@ import { reference } from "./util";
 
 import fonts from "./styles/fonts.module.css";
 import css from "./styles/page.module.css";
+import { DataLine } from "./components/TerminalData";
 
 reference(fonts, css);
 
@@ -30,7 +30,7 @@ interface AppState {
   first: boolean;
   inspector: boolean;
   persist: boolean;
-  output: string[];
+  output: DataLine[];
 }
 
 const kPartialPrompt = "~    ";
@@ -118,7 +118,7 @@ function clearSettings() {
 class App extends React.Component<{}, AppState> {
   private readonly ref = React.createRef<HTMLDivElement>();
   private runtime?: SchemeRuntime;
-  private readonly pending: string[] = [];
+  private readonly pending: DataLine[] = [];
   private writing: boolean = false;
 
   constructor(props: {}) {
@@ -149,54 +149,100 @@ class App extends React.Component<{}, AppState> {
     this.setState({ open: false, about: false });
   }
 
-  onWrite(str: string) {
+  onWrite(
+    mode: "raw" | "datum" | "prompted",
+    str: string,
+    prompt?: string,
+    first?: boolean
+  ) {
     if (this.writing) {
-      this.pending.push(str);
+      this.pending.push({
+        type: mode,
+        text: str,
+        prompt: prompt,
+        first: first,
+      });
       return;
     }
 
-    if (this.pending.length > 0) {
-      this.pending.push(str);
-      str = this.pending.join("");
-      this.pending.splice(0, this.pending.length);
+    if (this.pending.length == 0 && str.length == 0) {
+      return;
     }
 
-    const parts = str.split("\n");
+    this.pending.push({ type: mode, text: str, prompt: prompt, first: first });
+    let curr: DataLine;
+    const parts: DataLine[] = [];
+    this.pending.forEach((el) => {
+      if (
+        !curr ||
+        curr.type != el.type ||
+        curr.prompt != el.prompt ||
+        curr.first != el.first
+      ) {
+        curr = el;
+        parts.push(curr);
+      } else {
+        curr.text += el.text;
+      }
+      if (curr.text.indexOf("\n") >= 0) {
+        const lines = curr.text.split("\n");
+        curr.text = lines[0];
+        lines.shift();
+        lines.forEach((line) => {
+          curr = {
+            ...curr,
+            text: line,
+            first: curr.first === undefined ? undefined : false,
+          };
+          parts.push(curr);
+        });
+      }
+    });
+    this.pending.splice(0, this.pending.length);
+
     if (!parts.length) {
       return;
     }
     const output = [...this.state.output];
     if (output.length == 0) {
       output.push(parts[0]);
+    } else if (
+      output[output.length - 1].type === parts[0].type &&
+      output[output.length - 1].prompt === parts[0].prompt &&
+      output[output.length - 1].first === parts[0].first
+    ) {
+      output[output.length - 1].text += parts[0].text;
     } else {
-      output[output.length - 1] += parts[0];
+      output.push(parts[0]);
     }
     parts.shift();
-    output.push(...parts);
+    parts.forEach((el) => output.push(el));
     this.writing = true;
     this.setState({ output: output }, () => {
       this.writing = false;
       if (this.pending.length) {
-        window.requestAnimationFrame(() => this.onWrite(""));
+        window.requestAnimationFrame(() => this.onWrite("raw", ""));
       }
     });
   }
 
   async onInput(str: string): Promise<void> {
-    this.onWrite("\n" + this.getPrompt() + str + "\n");
+    this.onWrite("prompted", str, this.getPrompt(), true);
     try {
       if (!this.runtime) {
         this.runtime = await SchemeRuntime.load();
-        this.runtime.addEventListener("write", (str) => this.onWrite(str));
+        this.runtime.addEventListener("write", (str) =>
+          this.onWrite("raw", str)
+        );
         this.setState({ first: false, stopped: false }, () =>
-          this.onWrite("\x1B[0;94mStarted runtime.\x1B[0m\n")
+          this.onWrite("raw", "\x1B[0;94mStarted runtime.\x1B[0m\n")
         );
         this.runtime.processLine("\n");
         return;
       } else if (!this.runtime || this.runtime.stopped) {
         await this.runtime.start();
         this.setState({ stopped: false }, () =>
-          this.onWrite("\x1B[0;94mRestarted.\x1B[0m\n")
+          this.onWrite("raw", "\x1B[0;94mRestarted.\x1B[0m\n")
         );
       } else if (this.runtime.waiting) {
         return;
@@ -211,10 +257,13 @@ class App extends React.Component<{}, AppState> {
       }
       return; //result;
     } catch (err) {
-      this.onWrite(`\x1B[0;31m${err}
+      this.onWrite(
+        "raw",
+        `\x1B[0;31m${err}
 
 \x1B[0;94mIt's unlikely that trying again will help ‾\\_(シ)_/‾ \x1B[0m
-`);
+`
+      );
     }
   }
 

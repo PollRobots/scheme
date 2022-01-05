@@ -1,8 +1,9 @@
 import React from "react";
 import ContentEditable from "react-contenteditable";
-import { render } from "react-dom";
 import sanitizeHtml from "sanitize-html";
-import { useOnClickOutside } from "./hooks";
+import Prism from "prismjs";
+import "prismjs/components/prism-scheme";
+import "prismjs/themes/prism-solarizedlight.css";
 
 interface TerminalInputProps {
   value: string;
@@ -64,7 +65,12 @@ export class TerminalInput extends React.Component<
   componentDidUpdate(prevProps: TerminalInputProps) {
     if (prevProps.value != this.props.value) {
       if (this.ref.current) {
-        this.ref.current.innerHTML = this.props.value;
+        this.ref.current.innerHTML = Prism.highlight(
+          this.props.value,
+          Prism.languages.scheme,
+          "scheme"
+        );
+        Prism.highlightElement(this.ref.current);
       }
     }
     if (prevProps.parent !== this.props.parent) {
@@ -77,14 +83,17 @@ export class TerminalInput extends React.Component<
     }
   }
 
-  getValue() {
-    return sanitizeHtml(
-      this.ref.current ? this.ref.current.innerHTML : this.state.text,
-      kSanitizeConfig
-    )
+  cleanHtml(dirty: string) {
+    return sanitizeHtml(dirty, kSanitizeConfig)
       .replaceAll("&gt;", ">")
       .replaceAll("&lt;", "<")
       .replaceAll("&amp;", "&");
+  }
+
+  getValue() {
+    return this.cleanHtml(
+      this.ref.current ? this.ref.current.innerHTML : this.state.text
+    );
   }
 
   onKeyDown(e: React.KeyboardEvent) {
@@ -130,9 +139,15 @@ export class TerminalInput extends React.Component<
           }}
           title="Open editor with Ctrl+E, or Escape"
           innerRef={this.ref}
-          html={sanitizeHtml(this.state.text, kSanitizeConfig)}
+          html={Prism.highlight(
+            this.state.text,
+            Prism.languages.scheme,
+            "scheme"
+          )}
           spellCheck={false}
-          onChange={(e) => this.setState({ text: e.target.value })}
+          onChange={(e) =>
+            this.setState({ text: this.cleanHtml(e.target.value) })
+          }
           onKeyDown={(e) => this.onKeyDown(e)}
         />
       </div>

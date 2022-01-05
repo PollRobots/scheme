@@ -1,5 +1,5 @@
 import React from "react";
-import { TerminalData } from "./TerminalData";
+import { DataLine, TerminalData } from "./TerminalData";
 import { TerminalInput } from "./TerminalInput";
 import { ThemeContext } from "./ThemeProvider";
 
@@ -10,7 +10,7 @@ const TerminalEditor = React.lazy(async () => {
 
 interface TerminalProps {
   welcomeMessage?: React.ReactNode;
-  output: string[];
+  output: DataLine[];
   prompt: string;
   pause: boolean;
   fontSize: number;

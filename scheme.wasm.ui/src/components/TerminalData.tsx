@@ -1,35 +1,76 @@
 import React from "react";
+import Prism from "prismjs";
+
+export interface DataLine {
+  type: "raw" | "datum" | "prompted";
+  text: string;
+  prompt?: string;
+  first?: boolean;
+}
 
 interface TerminalDataProps {
-  text: string[];
+  text: DataLine[];
 }
 
 export const TerminalData: React.FunctionComponent<TerminalDataProps> = (
   props
-) => {
+) => (
+  <div>
+    {props.text.map((el, i) => {
+      return <TerminalDataLine key={`line${i}`} {...el} />;
+    })}
+  </div>
+);
+
+const TerminalDataLine: React.FunctionComponent<DataLine> = (props) => {
+  if (!props.text.length) {
+    return (
+      <div>
+        <span
+          style={{
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-all",
+            userSelect: "none",
+          }}
+        >
+          {" "}
+        </span>
+      </div>
+    );
+  }
+
+  if (props.type === "prompted") {
+    const prompt = props.prompt || "";
+    return (
+      <div>
+        <span
+          style={{
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-all",
+            userSelect: "none",
+          }}
+        >
+          {props.first ? prompt : "".padEnd(prompt?.length, " ")}
+        </span>
+        <span
+          style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}
+          dangerouslySetInnerHTML={{
+            __html: Prism.highlight(
+              props.text,
+              Prism.languages.scheme,
+              "scheme"
+            ),
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div>
-      {props.text.map((el, i) => {
-        return (
-          <div key={`line${i}`}>
-            {el.length ? (
-              <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-                {AnsiEscaper(el)}
-              </span>
-            ) : (
-              <span
-                style={{
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-all",
-                  userSelect: "none",
-                }}
-              >
-                {" "}
-              </span>
-            )}
-          </div>
-        );
-      })}
+      <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+        {AnsiEscaper(props.text)}
+      </span>
     </div>
   );
 };

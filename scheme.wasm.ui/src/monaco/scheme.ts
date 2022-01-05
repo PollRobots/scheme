@@ -233,6 +233,7 @@ const kSpecial = [
   "syntax-error",
   "call/cc",
   "call-with-current-continuation",
+  "define-values",
 ];
 const kConf: monaco.languages.LanguageConfiguration = {
   comments: {
