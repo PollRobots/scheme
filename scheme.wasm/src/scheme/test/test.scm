@@ -11,7 +11,7 @@
     ((assert x m ...) 
       (begin
         (verbose-display-all "\x1b;[90massert " 'x "\x1b;[0m" #\newline)
-        (if (not x) (error "Assert failed" x m ..))))))
+        (if (not x) (error "Assert failed" 'x m ...))))))
 
 (define-syntax assert-not
   (syntax-rules ()
@@ -19,7 +19,7 @@
     ((assert-not x m ...)
       (begin
         (verbose-display-all "\x1b;[90massert (not " 'x ")\x1b;[0m" #\newline)
-        (if x (error "Assert failed" 'x m ...))))))
+        (if x (error "Assert failed" "not " 'x m ...))))))
 
 (define-syntax assert-equal
   (syntax-rules ()

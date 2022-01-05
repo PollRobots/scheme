@@ -228,9 +228,7 @@ export class SchemeRuntime {
   pokeMemory(ptr: number, data: ArrayBuffer) {
     const byteArray = new Uint8Array(data);
     const view = new Uint8Array(this.memory.buffer);
-    for (let i = 0; i < byteArray.length; i++) {
-      view[i + ptr] = byteArray[i];
-    }
+    view.set(byteArray, ptr);
   }
 
   isError(ptr: number) {
@@ -342,9 +340,7 @@ export class SchemeRuntime {
     const byteArray = new Uint8Array(codePoints.buffer);
     const ptr = this.malloc(codePoints.length * 4);
     const view = new Uint8Array(this.memory.buffer);
-    for (let i = 0; i < byteArray.length; i++) {
-      view[i + ptr] = byteArray[i];
-    }
+    view.set(byteArray, ptr);
     const strPtr = this.strFromCodePoints(ptr, codePoints.length);
     this.free(ptr);
     return strPtr;

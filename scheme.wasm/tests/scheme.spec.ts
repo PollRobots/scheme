@@ -158,4 +158,8 @@ describe("scheme", () => {
   it("test/char.spec.scm", async () => {
     expect(await testFile("test/char.spec.scm")).to.be.true;
   });
+
+  it("test/equivalence.spec.scm", async () => {
+    expect(await testFile("test/equivalence.spec.scm")).to.be.true;
+  });
 });

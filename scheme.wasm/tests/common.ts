@@ -1,7 +1,8 @@
 import { expect } from "chai";
 import fs from "fs/promises";
 import path from "path";
-import zlib from "zlib"
+import zlib from "zlib";
+import crypto from "crypto";
 
 export interface CommonTestExports {
   memory: WebAssembly.Memory;
@@ -124,16 +125,16 @@ export class TestUnicode {
   }
 
   async loadUnicodeBlocks() {
-    const fullpath = path.resolve(__dirname, '../dist/unicode/blocks.json.gz');
+    const fullpath = path.resolve(__dirname, "../dist/unicode/blocks.json.gz");
     const compressed = await fs.readFile(fullpath);
     const decompressed = await new Promise<string>((resolve, reject) => {
       zlib.gunzip(compressed, (err, buf) => {
         if (err) {
-          reject (err);
+          reject(err);
         } else {
-          resolve(buf.toString('utf-8'))
+          resolve(buf.toString("utf-8"));
         }
-      })
+      });
     });
 
     const data = JSON.parse(decompressed);
@@ -142,7 +143,7 @@ export class TestUnicode {
       if (isNaN(blockIndex)) {
         continue;
       }
-      const blockData = Buffer.from(data[key], 'base64');
+      const blockData = Buffer.from(data[key], "base64");
       this.unicodeData_[blockIndex] = blockData;
     }
   }
@@ -263,9 +264,7 @@ export function createStringImpl(
     const byteArray = new Uint8Array(codePoints.buffer);
     const ptr = exports.malloc(codePoints.length * 4);
     const view = new Uint8Array(exports.memory.buffer);
-    for (let i = 0; i < byteArray.length; i++) {
-      view[i + ptr] = byteArray[i];
-    }
+    view.set(byteArray, ptr);
     const strPtr = exports.strFromCodePoints(ptr, codePoints.length);
     exports.mallocFree(ptr);
     return strPtr;
@@ -315,7 +314,7 @@ export function createHeapSymbol(
   str: string
 ): number {
   const ptr = createString(exports, str);
-  return exports.heapAlloc(exports.gHeap(), 6, ptr, 0);
+  return exports.heapAlloc(exports.gHeap(), SchemeType.Symbol, ptr, 0);
 }
 
 export function createHeapString(
@@ -323,7 +322,7 @@ export function createHeapString(
   str: string
 ): number {
   const ptr = createString(exports, str);
-  return exports.heapAlloc(exports.gHeap(), 7, ptr, 0);
+  return exports.heapAlloc(exports.gHeap(), SchemeType.Str, ptr, 0);
 }
 
 export function checkMemory(
@@ -686,17 +685,27 @@ export class FileTest {
     return false;
   }
 
-  async doRead(filenamePtr: number): Promise<void> {
+  doRead(filenamePtr: number): number {
+    const word = new Uint32Array(crypto.randomBytes(8).buffer);
+    const promise = word[0];
+
+    this.doReadImpl(promise, filenamePtr).catch((err) => console.error(err));
+
+    return promise;
+  }
+
+  async doReadImpl(promise: number, filenamePtr: number): Promise<void> {
     if (!this.exports_) {
       throw new Error("FileTest object not initialized");
     }
+
     try {
       const filename = getString(this.exports_, filenamePtr);
       const fullpath = path.resolve(__dirname, "../src/scheme", filename);
       const response = await fs.readFile(fullpath, "utf-8");
       while (
         !this.settleImportPromise(
-          filenamePtr,
+          promise,
           createHeapString(this.exports_, response)
         )
       ) {
@@ -705,7 +714,7 @@ export class FileTest {
     } catch (err) {
       console.error(err);
       this.settleImportPromise(
-        filenamePtr,
+        promise,
         createHeapError(
           this.exports_,
           "file-read",
@@ -716,8 +725,7 @@ export class FileTest {
   }
 
   read(filenamePtr: number): number {
-    this.doRead(filenamePtr);
-    return filenamePtr;
+    return this.doRead(filenamePtr);
   }
 
   get module(): FileModule {

@@ -299,6 +299,16 @@
   (block $b_end
     (loop $b_start
       (br_if $b_end (i32.le_s (local.get $byte-len) (i32.const 0)))
+
+      ;; if (offset >= 32) {
+      (if (i32.ge_u (local.get $offset) (i32.const 32)) (then
+          ;; ptr += 4
+          (%plus-eq $ptr 4)
+          ;; word = *ptr
+          (local.set $word (i32.load (local.get $ptr)))
+          ;; offset -= 32
+          (%minus-eq $offset 32)))
+
       ;; byte = (word >> offset)
       (local.set $byte (i32.shr_u (local.get $word) (local.get $offset)))
 
@@ -433,19 +443,6 @@
 
       ;; cp-len++
       (%inc $cp-len)
-
-      ;; if (offset >= 32) {
-      (if (i32.ge_u (local.get $offset) (i32.const 32))
-        (then
-          ;; ptr += 4
-          (%plus-eq $ptr 4)
-          ;; word = *ptr
-          (local.set $word (i32.load (local.get $ptr)))
-          ;; offset -= 32
-          (%minus-eq $offset 32)
-        )
-      ;; }
-      )
 
       (br $b_start)
     )
