@@ -10,7 +10,7 @@
     ((assert x) (assert x ""))
     ((assert x m ...) 
       (begin
-        (verbose-display-all "\x1b;[90massert " 'x "\x1b;[0m" #\newline)
+        (verbose-display-all "\x1b;[94massert " 'x "\x1b;[0m" #\newline)
         (if (not x) (error "Assert failed" 'x m ...))))))
 
 (define-syntax assert-not
@@ -18,7 +18,7 @@
     ((assert-not x) (assert-not x ""))
     ((assert-not x m ...)
       (begin
-        (verbose-display-all "\x1b;[90massert (not " 'x ")\x1b;[0m" #\newline)
+        (verbose-display-all "\x1b;[94massert (not " 'x ")\x1b;[0m" #\newline)
         (if x (error "Assert failed" "not " 'x m ...))))))
 
 (define-syntax assert-equal
@@ -26,7 +26,7 @@
     ((assert-equal x y) (assert-equal x y ""))
     ((assert-equal x y m ...)
       (begin
-        (verbose-display-all "\x1b;[90massert (equal? " 'x " " 'y ")\x1b;[0m" #\newline)
+        (verbose-display-all "\x1b;[94massert (equal? " 'x " " 'y ")\x1b;[0m" #\newline)
         (if (not (equal? x y)) 
             (error "Assert failed" 'x " should equal " 'y ", " m ...))))))
 
@@ -35,7 +35,7 @@
     ((assert-error x) (assert-error x ""))
     ((assert-error x m ...)
       (begin
-        (verbose-display-all "\x1b;[90massert (throws " 'x ")\x1b;[0m" #\newline)
+        (verbose-display-all "\x1b;[94massert (throws " 'x ")\x1b;[0m" #\newline)
         (if 
           (call/cc 
             (lambda (cont)
@@ -66,7 +66,7 @@
                 (set! failed (+ 1 failed))
                 (cont #f))
               (cadr test))
-            (display-all "    " #\escape "[0;32m" #\x2714 #\escape "[90m " (car test) #\newline)
+            (display-all "    " #\escape "[0;32m" #\x2714 #\escape "[94m " (car test) #\newline)
             (set! passed (+ 1 passed))
             (cont #t))))
       tests)
