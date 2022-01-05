@@ -702,6 +702,22 @@ function expandBuiltinArg(
   }
 }
 
+function getVersion() {
+  try {
+    return child_process
+      .execSync("git describe --tags")
+      .toString("utf-8")
+      .trim();
+  } catch (err) {
+    console.log(
+      `unable to get version information from git: ${
+        err instanceof Error ? err.message : (err as any)
+      }`
+    );
+    return "v0.0-0-00000000";
+  }
+}
+
 export function emit(parsed: ParsedWat[]) {
   const scope = new ExpansionScope();
   scope.add({
@@ -731,9 +747,7 @@ export function emit(parsed: ParsedWat[]) {
       }),
     ],
   });
-  const version = child_process
-    .execSync("git describe --tags")
-    .toString("utf-8").trim();
+  const version = getVersion();
   scope.add({
     name: "%version",
     args: [],
