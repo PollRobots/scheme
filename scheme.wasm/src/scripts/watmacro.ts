@@ -1,4 +1,5 @@
 import * as fluent from "./fluent";
+import child_process from "child_process";
 
 interface Token {
   type: string;
@@ -213,9 +214,43 @@ export function* tokenize(input: string): Generator<Token> {
 }
 
 abstract class ParsedWat {
-  abstract get type(): "list" | "atom";
+  abstract get type(): "list" | "atom" | "builtin";
   abstract toString(): string;
   abstract expand(scope: ExpansionScope): ParsedWat | ParsedWat[];
+}
+
+type BuiltinFn = (
+  scope: ExpansionScope,
+  args: Map<string, ParsedWat>
+) => ParsedWat[];
+
+class Builtin extends ParsedWat {
+  private readonly fn_: BuiltinFn;
+
+  constructor(fn: BuiltinFn) {
+    super();
+    this.fn_ = fn;
+  }
+  get type(): "list" | "atom" | "builtin" {
+    return "builtin";
+  }
+  toString(): string {
+    throw new Error("Method not implemented.");
+  }
+  expand(scope: ExpansionScope): ParsedWat | ParsedWat[] {
+    throw new Error("Method not implemented.");
+  }
+
+  expandBuiltin(
+    scope: ExpansionScope,
+    args: Map<string, ParsedWat>
+  ): ParsedWat[] {
+    return this.fn_(scope, args);
+  }
+}
+
+function isBuiltin(value: any): value is Builtin {
+  return value && value.type === "builtin";
 }
 
 interface MacroDefinition {
@@ -243,6 +278,35 @@ class ExpansionScope {
 
     return this.parent_?.lookup(name);
   }
+}
+
+function convertStr(bits: number, str: string): string {
+  if (bits != 32 && bits != 64 && bits != 128 && bits != 192) {
+    throw new Error(
+      `Unknown bit length while converting string: ${bits} ${JSON.stringify(
+        str
+      )}`
+    );
+  }
+
+  const buffer = Buffer.from(str, "utf-8");
+  if (buffer.length * 8 > bits) {
+    throw new Error(
+      `String is too long for number of bits: ${bits} ${JSON.stringify(str)}`
+    );
+  }
+
+  const fullBuffer = new Uint8Array(bits / 8);
+  fullBuffer.set(buffer);
+
+  if (bits == 32) {
+    const words = new Uint32Array(fullBuffer);
+    return `0x${words[0].toString(16)} ${buffer.length}`;
+  }
+  const dwords = new BigUint64Array(fullBuffer.buffer);
+  const array = Array.from(dwords).map((el) => "0x" + el.toString(16));
+  array.push(buffer.length.toString());
+  return array.join(" ");
 }
 
 class List extends ParsedWat {
@@ -338,16 +402,28 @@ class List extends ParsedWat {
     return arr.slice(first, last + 1);
   }
 
-  expandMacro(macroDefinition: MacroDefinition): ParsedWat[] {
+  expandMacro(
+    scope: ExpansionScope,
+    macroDefinition: MacroDefinition
+  ): ParsedWat[] {
     const args = Array.from(fluent.skip(this.getSignificantElements(), 1));
     if (args.length != macroDefinition.args.length) {
       throw new Error(
-        `Macro ${this.macroName} called with ${args.length} args, expecting ${macroDefinition.args.length}`
+        `Macro ${this.macroName} called with ${args.length} args ${args
+          .map((el) => el.toString())
+          .join(" ")}, expecting ${macroDefinition.args.length}`
       );
     }
     const argMap: Map<string, ParsedWat> = new Map();
     for (let i = 0; i != args.length; i++) {
       argMap.set(macroDefinition.args[i], args[i]);
+    }
+
+    if (macroDefinition.body.length == 1) {
+      const first = macroDefinition.body[0];
+      if (isBuiltin(first)) {
+        return first.expandBuiltin(scope, argMap);
+      }
     }
 
     return macroDefinition.body.map((el) => List.expandMacroItem(el, argMap));
@@ -446,7 +522,7 @@ class List extends ParsedWat {
       const name = this.macroName;
       const defn = scope.lookup(name);
       if (defn) {
-        return this.expandMacro(defn)
+        return this.expandMacro(scope, defn)
           .map((el) => {
             if (isList(el)) {
               const twoex = el.expand(scope);
@@ -460,6 +536,12 @@ class List extends ParsedWat {
             }
           })
           .flat();
+      } else {
+        throw new Error(
+          `Unknown macro ${name} at line ${
+            this.firstSignificantAtom()?.token.line
+          }`
+        );
       }
     }
 
@@ -592,8 +674,81 @@ export function parse(input: string): ParsedWat[] {
   return parsed;
 }
 
+function expandBuiltinArg(
+  scope: ExpansionScope,
+  arg: ParsedWat | undefined,
+  name: string
+): Atom {
+  if (!arg) {
+    throw new Error(`Missing arg: ${name}`);
+  }
+  if (isAtom(arg)) {
+    return arg;
+  }
+  const expanded = arg.expand(scope);
+  if (Array.isArray(expanded)) {
+    if (expanded.length == 1 && isAtom(expanded[0])) {
+      return expanded[0];
+    }
+    throw new Error(
+      `Invalid expansion of ${name}: ${expanded
+        .map((el) => el.toString())
+        .join(" ")}`
+    );
+  } else if (isAtom(expanded)) {
+    return expanded;
+  } else {
+    throw new Error(`Invalid expansion of ${name}: ${expanded.toString()}`);
+  }
+}
+
 export function emit(parsed: ParsedWat[]) {
   const scope = new ExpansionScope();
+  scope.add({
+    name: "%str",
+    args: ["%next", "%bits", "%str"],
+    body: [
+      new Builtin((scope, args) => {
+        const bits = expandBuiltinArg(scope, args.get("%bits"), "%bits");
+        const str = expandBuiltinArg(scope, args.get("%str"), "%str");
+        const converted = convertStr(
+          Number(bits.token.content),
+          JSON.parse(str.token.content)
+        );
+        return [
+          new List([
+            args.get("%next") as ParsedWat,
+            ...converted.split(" ").map(
+              (el) =>
+                new Atom({
+                  content: el,
+                  type: "element",
+                  line: str.token.line,
+                })
+            ),
+          ]),
+        ];
+      }),
+    ],
+  });
+  const version = child_process
+    .execSync("git describe --tags")
+    .toString("utf-8").trim();
+  scope.add({
+    name: "%version",
+    args: [],
+    body: [
+      new Builtin((scope, args) => {
+        return [
+          new Atom({
+            content: JSON.stringify(version),
+            type: "string",
+            line: 0,
+          }),
+        ];
+      }),
+    ],
+  });
 
   const output: string[] = [];
 

@@ -214,8 +214,9 @@
 (%define %cont-apply-def ()                   (i32.const 209))
 (%define %special-define-values ()            (i32.const 210))
 (%define %cont-env-add-values ()              (i32.const 211))
+(%define %builtin-version ()                  (i32.const 212))
 
-(table $table-builtin 212 anyfunc)
+(table $table-builtin 213 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
   (local $quote i32)
@@ -399,7 +400,7 @@
   (%add-builtin (%sym-64  0x6564756c636e69 7) (%builtin-include)) ;; 'include'
   (%add-builtin (%sym-128 0x616d2D6563617274 0x3F736f7263 13) (%builtin-trace-macros?)) ;; 'trace-macros?'
   (%add-builtin (%sym-192 0x616d2D6563617274 0x7465732D736f7263 0x21 17) (%builtin-trace-macros-set!)) ;; 'trace-macros-set!'
-
+  (%add-builtin (%str %sym-64 64 "version") (%builtin-version))
 
   (%add-special (%sym-32 0x6669 2) (%special-if))               ;; 'if'
   (%add-special (global.get $g-let) (%special-let))             ;; 'let'
@@ -421,7 +422,7 @@
   (%add-special (%sym-32 0x6e656877 4) (%special-when))         ;; 'when'
   (%add-special (%sym-64 0x7373656c6e75 6) (%special-unless))   ;; 'unless'
   (%add-special (%sym-64 0x6e69676562 5) (%special-begin))      ;; 'begin'
-  (%add-special (%sym-128 0x732D656e69666564 0x7861746e79 13) (%special-define-syntax)) ;; 'define-syntax'
+  (%add-special (%str %sym-128 128 "define-syntax") (%special-define-syntax)) ;; 'define-syntax'
 )
 
 (elem $table-builtin (%special-if) $if)
@@ -635,3 +636,4 @@
 (elem $table-builtin (%builtin-include) $include)
 (elem $table-builtin (%builtin-trace-macros?) $trace-macros?)
 (elem $table-builtin (%builtin-trace-macros-set!) $trace-macros-set!)
+(elem $table-builtin (%builtin-version) $version)

@@ -31,3 +31,9 @@
 
   (return (global.get $g-nil))
 )
+
+(func $version (param $env i32) (param $args i32) (result i32)
+  (if (i32.ne (local.get $args) (global.get $g-nil)) (then
+      (return (call $argument-error (local.get $args)))))
+
+  (return (global.get $g-curr-version)))

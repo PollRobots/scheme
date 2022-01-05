@@ -53,6 +53,7 @@
 (global $g-syntax-error  (mut i32) (i32.const 0))
 (global $g-lambda     (mut i32) (i32.const 0))
 (global $g-quote      (mut i32) (i32.const 0))
+(global $g-curr-version    (mut i32) (i32.const 0))
 
 (global $g-eval-count (mut i32) (i32.const 0))
 (%define %gc-threshold () (i32.const 256))
@@ -112,6 +113,7 @@
   (global.set $g-syntax-error (%sym-128 0x652D7861746e7973 0x726f7272 12)) ;; 'syntax-error'
   (global.set $g-lambda (%sym-64 0x6164626d616c 6)) ;; 'lambda'
   (global.set $g-quote (%sym-64 0x65746f7571 5)) ;; 'quote'
+  (global.set $g-curr-version (%str %sym-192 192 (%version)))
 
   ;; global reader is attached to stdin
   (global.set $g-reader (call $reader-init (i32.const 0)))
