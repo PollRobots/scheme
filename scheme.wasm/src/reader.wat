@@ -545,30 +545,21 @@
   (local $old-size i32)
   (local $new-accum i32)
   (local $new-size i32)
-  (local $src-ptr i32)
-  (local $dest-ptr i32)
 
-  (local.set $src-ptr (local.tee $old-accum (i32.load offset=8 (local.get $reader))))
+  (local.set $old-accum (i32.load offset=8 (local.get $reader)))
   (local.set $old-size (i32.load offset=12 (local.get $reader)))
 
-  (local.set $new-size (i32.shl (local.get $old-size) (i32.const 1)))
-  (local.set $dest-ptr (local.tee $new-accum (call $malloc (%word-size-l $new-size))))
+  ;; new size is old-size * 1.5
+  (local.set $new-size (i32.shr_u 
+      (i32.mul (local.get $old-size) (i32.const 3)) 
+      (i32.const 1)))
+  (local.tee $new-accum (call $malloc (%word-size-l $new-size)))
 
-  (block $b_end
-    (loop $b_start
-      (br_if $b_end (i32.eqz (local.get $old-size)))
-
-      (i32.store 
-        (local.get $dest-ptr) 
-        (i32.load (local.get $src-ptr))
-      )
-
-      (%plus-eq $src-ptr 4)
-      (%plus-eq $dest-ptr 4)
-      (%dec $old-size)
-      (br $b_start)
-    )
-  )
+  (call $memcpy 
+    (local.get $new-accum)
+    (local.get $old-accum)
+    (%word-size-l $old-size))
+  (call $malloc-free (local.get $old-accum))
 
   (i32.store offset=8 (local.get $reader) (local.get $new-accum))
   (i32.store offset=12 (local.get $reader) (local.get $new-size))
@@ -614,7 +605,10 @@
       ;; if (reader.external)
       (if (i32.ne (i32.load offset=24 (local.get $reader)) (i32.const -1)) (then
           ;; input = io-read()
-          (local.set $input (call $io-read))))))
+          (if (local.tee $input (call $io-read)) (then
+              ;; check input string for validity
+              (if (i32.eqz (call $str-is-valid (local.get $input))) (then
+                  (unreachable)))))))))
 
   (if (local.get $input)
     (then

@@ -364,89 +364,86 @@
      ;; byte = *ptr
       (local.set $byte (i32.load8_u (local.get $ptr)))
 
-      (block $code-point
-        ;; if ((byte & 0x80) == 0) {
-        (if (i32.eqz (i32.and (local.get $byte) (i32.const 0x80))) (then
-            ;; single byte
-            ;; no special validation needed
-            (%inc $ptr)
-            (%minus-eq $byte-len 1)
-            (br $code-point)))
+      ;; if ((byte & 0x80) == 0) {
+      (if (i32.eqz (i32.and (local.get $byte) (i32.const 0x80))) (then
+          ;; single byte
+          ;; no special validation needed
+          (%inc $ptr)
+          (%minus-eq $byte-len 1)
+          (br $b_start)))
 
-        ;; if ((byte & 0xE0) == 0xC0) {
-        (if (i32.eq (i32.and (local.get $byte) (i32.const 0xE0)) (i32.const 0xC0))
-          (then
-            ;; double byte
-            ;; if (byte-len < 2) {
-            (if (i32.lt_s (local.get $byte-len) (i32.const 2)) (then
-                ;; return 0
-                (return (i32.const 0))))
+      ;; if ((byte & 0xE0) == 0xC0) {
+      (if (i32.eq (i32.and (local.get $byte) (i32.const 0xE0)) (i32.const 0xC0))
+        (then
+          ;; double byte
+          ;; if (byte-len < 2) {
+          (if (i32.lt_s (local.get $byte-len) (i32.const 2)) (then
+              ;; return 0
+              (return (i32.const 0))))
 
-            (local.set $char (i32.load16_u (local.get $ptr)))
+          (local.set $char (i32.load16_u (local.get $ptr)))
 
-            ;; 0b110xxxxx 0b10xxxxxx
-            ;; if ((char & 0xFFFFC0E0) != 0x80C0) {
-            (if (i32.ne (i32.and (local.get $char) (i32.const 0xFFFFC0E0)) (i32.const 0x80C0))
-              (then (return (i32.const 0))))
+          ;; 0b110xxxxx 0b10xxxxxx
+          ;; if ((char & 0xFFFFC0E0) != 0x80C0) {
+          (if (i32.ne (i32.and (local.get $char) (i32.const 0xFFFFC0E0)) (i32.const 0x80C0))
+            (then (return (i32.const 0))))
 
-            (%plus-eq $ptr 2)
-            (%minus-eq $byte-len 2)
-            (br $code-point)))
+          (%plus-eq $ptr 2)
+          (%minus-eq $byte-len 2)
+          (br $b_start)))
 
-        ;; if ((byte & 0xF0) == 0xE0) {
-        (if (i32.eq (i32.and (local.get $byte) (i32.const 0xF0)) (i32.const 0xE0))
-          (then
-            ;; triple byte
-            ;; if (byte-len < 3) {
-            (if (i32.lt_s (local.get $byte-len) (i32.const 3)) (then
-                (return (i32.const 0))))
+      ;; if ((byte & 0xF0) == 0xE0) {
+      (if (i32.eq (i32.and (local.get $byte) (i32.const 0xF0)) (i32.const 0xE0))
+        (then
+          ;; triple byte
+          ;; if (byte-len < 3) {
+          (if (i32.lt_s (local.get $byte-len) (i32.const 3)) (then
+              (return (i32.const 0))))
 
-            ;; char = byte << 16 | (uint16 *)ptr[1]
-            (local.set $char (i32.or
-                (i32.shl (local.get $byte) (i32.const 16))
-                (i32.load16_u offset=1 (local.get $ptr))))
+          ;; char = byte  | (uint16 *)ptr[1] << 8
+          (local.set $char (i32.or
+              (local.get $byte)
+              (i32.shl (i32.load16_u offset=1 (local.get $ptr)) (i32.const 8))))
 
-            ;; 0b1110xxxx 0b10xxxxxx 0b10xxxxxx
-            ;; if ((char & 0xFFC0C0F0) != 0x80l80E0) {
-            (if (i32.ne (i32.and (local.get $char) (i32.const 0xFFC0C0F0)) (i32.const 0x8080E0))
-              (then (return (i32.const 0))))
+          ;; 0b1110xxxx 0b10xxxxxx 0b10xxxxxx
+          ;; if ((char & 0xFFC0C0F0) != 0x80l80E0) {
+          (if (i32.ne (i32.and (local.get $char) (i32.const 0xFFC0C0F0)) (i32.const 0x8080E0))
+            (then (return (i32.const 0))))
 
-            (%plus-eq $ptr 3)
-            (%minus-eq $byte-len 3)
-            (br $code-point)))
+          (%plus-eq $ptr 3)
+          (%minus-eq $byte-len 3)
+          (br $b_start)))
 
-        ;; if ((byte & 0xF8) == 0xF0) {
-        (if (i32.eq (i32.and (local.get $byte) (i32.const 0xF8)) (i32.const 0xF0))
-          (then
-            ;; quad byte
-            ;; if (byte-len < 4) {
-            (if (i32.lt_s (local.get $byte-len) (i32.const 4)) (then
-                (return (i32.const 0))))
+      ;; if ((byte & 0xF8) == 0xF0) {
+      (if (i32.eq (i32.and (local.get $byte) (i32.const 0xF8)) (i32.const 0xF0))
+        (then
+          ;; quad byte
+          ;; if (byte-len < 4) {
+          (if (i32.lt_s (local.get $byte-len) (i32.const 4)) (then
+              (return (i32.const 0))))
 
-            ;; char = *(uint32 *)ptr
-            (local.set $char (i32.load (local.get $ptr)))
+          ;; char = *(uint32 *)ptr
+          (local.set $char (i32.load (local.get $ptr)))
 
-            ;; 0b11110xxx 0b10xxxxxx 0b10xxxxxx 0b10xxxxxx
-            ;; if ((char & 0xC0C0C0F8) != 0x808080F0) {
-            (if (i32.ne (i32.and (local.get $char) (i32.const 0xC0C0C0F8)) (i32.const 0x808080F0))
-              (then (return (i32.const 0))))
+          ;; 0b11110xxx 0b10xxxxxx 0b10xxxxxx 0b10xxxxxx
+          ;; if ((char & 0xC0C0C0F8) != 0x808080F0) {
+          (if (i32.ne (i32.and (local.get $char) (i32.const 0xC0C0C0F8)) (i32.const 0x808080F0))
+            (then (return (i32.const 0))))
 
-            ;; top 5 bits should be lte 0x10
-            ;; if (((char & 0x7) << 2) | ((char & 0x3000)>>12)> 0x10)
-            (if (i32.gt_u
-                  (i32.or 
-                    (i32.shl (i32.and (local.get $char) (i32.const 0x7)) (i32.const 2))
-                    (i32.shr_u (i32.and (local.get $char) (i32.const 0x3000)) (i32.const 12)))
-                  (i32.const 0x10))
-              (then (return (i32.const 0))))
+          ;; top 5 bits should be lte 0x10
+          ;; if (((char & 0x7) << 2) | ((char & 0x3000)>>12)> 0x10)
+          (if (i32.gt_u
+                (i32.or 
+                  (i32.shl (i32.and (local.get $char) (i32.const 0x7)) (i32.const 2))
+                  (i32.shr_u (i32.and (local.get $char) (i32.const 0x3000)) (i32.const 12)))
+                (i32.const 0x10))
+            (then (return (i32.const 0))))
 
-          (%plus-eq $ptr 4)
-          (%minus-eq $byte-len 4)
-          (br $code-point)))
+        (%plus-eq $ptr 4)
+        (%minus-eq $byte-len 4)
+        (br $b_start)))
                       
-        (return (i32.const 0)))
-
-     (br $b_start)))
+      (return (i32.const 0))))
 
   ;; if (byte-len < 0) {
   (if (i32.lt_s (local.get $byte-len) (i32.const 0))
@@ -972,10 +969,10 @@
           (then
             ;; triple byte
             (br_if $b_end (i32.le_s (local.get $left-byte-len) (i32.const 2)))
-            ;; char = (byte << 16) | (uint16 *)ptr[1]
+            ;; char = byte  | (uint16 *)ptr[1] << 8
             (local.set $char (i32.or
-              (i32.shl (local.get $left-byte) (i32.const 16))
-              (i32.load16_u offset=1 (local.get $left-ptr))))
+              (local.get $left-byte) 
+              (i32.shl (i32.load16_u offset=1 (local.get $left-ptr)) (i32.const 8))))
 
             ;; 0b1110xxxx 0b10xxxxxx 0b10xxxxxx
             ;; *dest = ((char & 0xF) << 12) | ((char & 0x3f00) >> 2) | ((char & 0x3f0000) >> 16)
@@ -1050,10 +1047,10 @@
           (then
             ;; triple byte
             (br_if $b_end (i32.le_s (local.get $right-byte-len) (i32.const 2)))
-            ;; char = (byte << 16) | (uint16 *)ptr[1]
+            ;; char = byte | (uint16 *)ptr[1] << 8
             (local.set $char (i32.or
-              (i32.shl (local.get $right-byte) (i32.const 16))
-              (i32.load16_u offset=1 (local.get $right-ptr))))
+              (local.get $right-byte)
+              (i32.shl (i32.load16_u offset=1 (local.get $right-ptr)) (i32.const 8))))
 
             ;; 0b1110xxxx 0b10xxxxxx 0b10xxxxxx
             ;; *dest = ((char & 0xF) << 12) | ((char & 0x3f00) >> 2) | ((char & 0x3f0000) >> 16)

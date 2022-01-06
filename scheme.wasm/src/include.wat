@@ -42,12 +42,26 @@
 ;; (cont-include-read <contents> <string_1> ...)
 (func $cont-include-read (param $env i32) (param $args i32) (result i32)
   (local $contents i32)
+  (local $contents-type i32)
   (local $reader i32)
   (local $datum i32)
 
   (%pop-l $contents $args)
-  (if (i32.eq (%get-type $contents) (%error-type)) (then
+  (local.set $contents-type (%get-type $contents))
+
+  (if (i32.eq (local.get $contents-type) (%error-type)) (then
       (return (local.get $contents))))
+
+  (if (i32.ne (local.get $contents-type) (%str-type)) (then
+      (return (%alloc-error-cons 
+          (%str %sym-64 64 "bad-read") 
+          (global.get $g-nil)))))
+
+  ;; validate that input from the host is well formed.
+  (if (i32.eqz (call $str-is-valid (%car-l $contents))) (then
+      (return (%alloc-error-cons 
+          (%str %sym-128 128 "invalid-string") 
+          (global.get $g-nil)))))
 
   ;; Crease a string reader.
   (local.set $reader (call $reader-init (i32.const -1)))
