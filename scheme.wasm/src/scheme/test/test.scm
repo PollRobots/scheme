@@ -8,7 +8,7 @@
 (define-syntax assert
   (syntax-rules ()
     ((assert x) (assert x ""))
-    ((assert x m ...) 
+    ((assert x m ...)
       (begin
         (verbose-display-all "\x1b;[94massert " 'x "\x1b;[0m" #\newline)
         (if (not x) (error "Assert failed" 'x m ...))))))
@@ -27,7 +27,7 @@
     ((assert-equal x y m ...)
       (begin
         (verbose-display-all "\x1b;[94massert (equal? " 'x " " 'y ")\x1b;[0m" #\newline)
-        (if (not (equal? x y)) 
+        (if (not (equal? x y))
             (error "Assert failed" 'x " should equal " 'y ", " m ...))))))
 
 (define-syntax assert-error
@@ -36,8 +36,8 @@
     ((assert-error x m ...)
       (begin
         (verbose-display-all "\x1b;[94massert (throws " 'x ")\x1b;[0m" #\newline)
-        (if 
-          (call/cc 
+        (if
+          (call/cc
             (lambda (cont)
               (with-exception-handler
                 (lambda (ex) (cont #f))
@@ -49,11 +49,11 @@
   (let ((passed 0)
         (failed 0))
     (display-all name #\newline)
-    (for-each 
+    (for-each
       (lambda (test)
         (call/cc (lambda (cont)
-            (with-exception-handler 
-              (lambda (ex) 
+            (with-exception-handler
+              (lambda (ex)
                 (display-all "    " #\escape "[0;31m" #\x2718 #\escape "[94m " (car test) #\newline)
                 (display "\x1B;[0;31mfailed: ")
                 (if (error-object? ex)
@@ -76,12 +76,11 @@
         (display-all "\x1B;[0;31m" failed " failing.\x1B;[0m" #\newline)))))
 
   (define (test-case name fn)
-    (cond 
+    (cond
       ((and (string? name) (procedure? fn)) (list name fn))
-      ((string? name) 
+      ((string? name)
         (list name (lambda () (error "test-case fn is not a procedure" name))))
-      (else 
-        (list 
-          "unknown" 
+      (else
+        (list
+          "unknown"
           (lambda () (error "test-case name is not a string" name))))))
-    

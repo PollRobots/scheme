@@ -4,6 +4,7 @@ import "mocha";
 
 import {
   checkForLeaks,
+  checkMemory,
   commonExportsFromInstance,
   CommonTestExports,
   createHeapSymbol,
@@ -106,8 +107,8 @@ describe("scheme", () => {
     if (written.length) {
       console.log(written.splice(0, written.length).join(""));
     }
-    //exports.runtimeCleanup();
-    //checkForLeaks(exports);
+    exports.runtimeCleanup();
+    // checkForLeaks(exports);
   });
 
   const testFile = async (filename: string) => {
@@ -123,14 +124,18 @@ describe("scheme", () => {
 
     let expr = exports.read();
 
-    while (true) {
-      const result = exports.eval(env, expr);
-      if (file.isImportPromise(result)) {
-        expr = await file.addImportPromise(result);
-      } else {
-        exports.print(result);
-        break;
+    try {
+      while (true) {
+        const result = exports.eval(env, expr);
+        if (file.isImportPromise(result)) {
+          expr = await file.addImportPromise(result);
+        } else {
+          exports.print(result);
+          break;
+        }
       }
+    } catch (err) {
+      console.error(err);
     }
 
     const output = written.join("");
@@ -144,22 +149,28 @@ describe("scheme", () => {
       return true;
     }
     console.log(output);
-    return false;
+    checkMemory(exports);
+
+    throw new Error(`scheme tests in ${filename} failed`);
   };
 
   it("test/pair.spec.scm", async () => {
-    expect(await testFile("test/pair.spec.scm")).to.be.true;
+    await testFile("test/pair.spec.scm");
   });
 
   it("test/symbol.spec.scm", async () => {
-    expect(await testFile("test/symbol.spec.scm")).to.be.true;
+    await testFile("test/symbol.spec.scm");
   });
 
   it("test/char.spec.scm", async () => {
-    expect(await testFile("test/char.spec.scm")).to.be.true;
+    await testFile("test/char.spec.scm");
   });
 
   it("test/equivalence.spec.scm", async () => {
-    expect(await testFile("test/equivalence.spec.scm")).to.be.true;
+    await testFile("test/equivalence.spec.scm");
+  });
+
+  it("test/number.spec.scm", async () => {
+    await testFile("test/number.spec.scm");
   });
 });

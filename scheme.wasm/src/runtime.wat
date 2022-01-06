@@ -160,11 +160,11 @@
       (return (i32.const 0))))
 
   ;; return string->datum(token-str)
-  (local.set $result (call $string->datum-with-reader 
-      (local.get $token-str) 
+  (local.set $result (call $string->datum-with-reader
+      (local.get $token-str)
       (local.get $reader)))
-  (if (i32.eq (%get-type $result) (%error-type)) (then 
-      (if (i32.eq (global.get $g-eof) (%car-l $result)) (then 
+  (if (i32.eq (%get-type $result) (%error-type)) (then
+      (if (i32.eq (global.get $g-eof) (%car-l $result)) (then
           (call $reader-rollback (local.get $reader))
           (return (local.get $result))))))
 
@@ -172,7 +172,7 @@
   (return (local.get $result)))
 
 (func $string->datum (param $token-str i32) (result i32)
-  (return (call $string->datum-with-reader 
+  (return (call $string->datum-with-reader
       (local.get $token-str)
       (global.get $g-reader))))
 
@@ -187,20 +187,20 @@
   (local $list-vector i32)
 
   (%define %check-str (%str) (if (i32.eqz (local.get %str)) (then
-        (return (%alloc-error-cons 
-            (global.get $g-eof) 
+        (return (%alloc-error-cons
+            (global.get $g-eof)
             (global.get $g-nil))))))
-  
-  (%define %check-datum (%datum) 
+
+  (%define %check-datum (%datum)
     (if (i32.eq (%get-type %datum) (%error-type)) (then
         (return (local.get %datum)))))
 
   (%check-str $token-str)
 
   (block $b_lv (block $b_list (block $b_vector (block $b_byte_vector
-          (br_if $b_list 
+          (br_if $b_list
             (call $short-str-eq (local.get $token-str) (i32.const 0x28) (i32.const 1)))
-          (br_if $b_vector 
+          (br_if $b_vector
             (call $short-str-eq (local.get $token-str) (i32.const 0x2823) (i32.const 2)))
           (br_if $b_byte_vector
             (call $short-str-eq (local.get $token-str) (i32.const 0x28387523) (i32.const 4)))
@@ -235,12 +235,12 @@
 
       ;; car = string->datum(car-str)
       (local.set $car (call $string->datum-with-reader
-          (local.get $car-str) 
+          (local.get $car-str)
           (local.get $reader)))
       (%check-datum $car)
       ;; curr = head = heap-alloc(3, car, g-nil)
-      (local.set $curr (local.tee $head (%alloc-cons 
-            (local.get $car) 
+      (local.set $curr (local.tee $head (%alloc-cons
+            (local.get $car)
             (global.get $g-nil))))
       (%set-flags $curr (i32.const 2))
 
@@ -274,7 +274,7 @@
             (%check-str $cdr-str)
             ;; cdr = string->datum(cdr-str)
             (local.set $cdr (call $string->datum-with-reader
-                (local.get $cdr-str) 
+                (local.get $cdr-str)
                 (local.get $reader)))
             (%check-datum $cdr)
             ;; curr[8] = cdr
@@ -296,7 +296,7 @@
 
         ;; cdr = string->datum(cdr-str)
         (local.set $cdr (call $string->datum-with-reader
-            (local.get $cdr-str) 
+            (local.get $cdr-str)
             (local.get $reader)))
         (%check-datum $cdr)
 
@@ -355,8 +355,8 @@
   (local.set $len (call $list-len (local.get $list)))
   (local.set $ptr (call $malloc (%word-size-l $len)))
 
-  (local.set $vec 
-    (call $heap-alloc 
+  (local.set $vec
+    (call $heap-alloc
       (global.get $g-heap)
       (%vector-type)
       (local.get $ptr)
@@ -368,7 +368,7 @@
 
     (i32.store (local.get $ptr) (%car-l $list))
 
-    (local.set $list (%cdr-l $list)) 
+    (local.set $list (%cdr-l $list))
     (%plus-eq $ptr 4)
     (br $forever))
 
@@ -385,8 +385,8 @@
   (local.set $len (call $list-len (local.get $list)))
   (local.set $ptr (call $malloc (local.get $len)))
 
-  (local.set $byte-vec 
-    (call $heap-alloc 
+  (local.set $byte-vec
+    (call $heap-alloc
       (global.get $g-heap)
       (%bytevector-type)
       (local.get $ptr)
@@ -430,23 +430,23 @@
     (then (return (global.get $g-true))))
 
   ;; if (token-str == '#f') {
-  (if (call $short-str-eq 
-      (local.get $token-str) 
-      (i32.const 0x6623) 
+  (if (call $short-str-eq
+      (local.get $token-str)
+      (i32.const 0x6623)
       (i32.const 2))
     (then (return (global.get $g-false))))
 
   ;; if token-str.startsWith('str ')
   ;; if (short-str-start-with(token-str, 0, 'str ', 4)) {
-  (if (call $short-str-start-with 
-      (local.get $token-str) 
-      (i32.const 0) 
-      (i32.const 0x20727473) 
+  (if (call $short-str-start-with
+      (local.get $token-str)
+      (i32.const 0)
+      (i32.const 0x20727473)
       (i32.const 4))
     (then
       (local.set $str-len (i32.load (local.get $token-str)))
-      (i32.store offset=4 
-        (local.get $token-str) 
+      (i32.store offset=4
+        (local.get $token-str)
         (i32.sub (local.get $str-len) (i32.const 4)))
       (local.set $atom-str (call $str-dup (i32.add (local.get $token-str) (i32.const 4))))
       (i32.store offset=4 (local.get $token-str) (i32.const 0x20727473))
@@ -454,9 +454,9 @@
 
   ;; if token.str.startsWith('#\')
   (if (call $short-str-start-with
-      (local.get $token-str) 
-      (i32.const 0) 
-      (i32.const 0x5c23) 
+      (local.get $token-str)
+      (i32.const 0)
+      (i32.const 0x5c23)
       (i32.const 2))
     (then (return (call $read-char (local.get $token-str)))))
 
@@ -482,7 +482,7 @@
   )
 )
 
-(func $short-str-eq 
+(func $short-str-eq
   (param $str i32)            ;; a string pointer
   (param $short-str i32)      ;; 32bit value containing utf8 encoded short string
   (param $short-str-len i32)  ;; byte length of the short string
@@ -525,18 +525,18 @@
       ;; return 0;
       (return (i32.const 0))))
 
-  ;; word = str[4 + offset] 
+  ;; word = str[4 + offset]
   (local.set $word (i32.load offset=4 (i32.add (local.get $str) (local.get $offset))))
   ;; mask = -1 >> (4-len) << 3
-  (local.set $mask 
-    (i32.shr_u 
-      (i32.const -1) 
-      (i32.shl 
+  (local.set $mask
+    (i32.shr_u
+      (i32.const -1)
+      (i32.shl
         (i32.sub (i32.const 4) (local.get $short-str-len))
         (i32.const 3))))
 
-  (return 
-    (i32.eq 
+  (return
+    (i32.eq
       (i32.and (local.get $mask) (local.get $word))
       (local.get $short-str))))
 
@@ -583,9 +583,9 @@
     ;; else
     (return (i32.const -1)))
 
-  (return (select 
-      (local.get $digit) 
-      (i32.const -1) 
+  (return (select
+      (local.get $digit)
+      (i32.const -1)
       (i32.lt_u (local.get $digit) (local.get $radix)))))
 
 (func $string->number-impl (param $str i32) (param $radix i32) (result i32)
@@ -615,7 +615,7 @@
   (local $real f64)
 
 
-  (if (i32.ne (%get-type $str) (%str-type)) (then 
+  (if (i32.ne (%get-type $str) (%str-type)) (then
       (return (global.get $g-false))))
 
   (local.set $str-ptr (%car-l $str))
@@ -660,7 +660,7 @@
           (local.set $real (f64.reinterpret_i64 (i64.const 0xFFF0_0000_0000_0001)))
           (br $b_real_special)))
       (br $b_no_real_special))
-    
+
     (return (%alloc-f64 (local.get $real))))
 
   ;; look for prefix elements #e #i #b #d #o #x
@@ -766,7 +766,7 @@
     (then
       (local.set $negative (i32.const 1))
       (%inc $offset))
-    (else 
+    (else
       (if (%sssw 0x2B 1) ;; '+'
         (then (%inc $offset)))))
 
@@ -786,10 +786,10 @@
             (i64.mul (local.get $integer) (i64.extend_i32_u (local.get $radix)))
             (i64.extend_i32_u (local.get $digit)))))
 
-      ;; check for overflow, if it is detected then a big int conversion 
+      ;; check for overflow, if it is detected then a big int conversion
       ;; will be done below
-      (if 
-        (i64.eq 
+      (if
+        (i64.eq
           (i64.and (local.get $integer) (i64.const 0x8000_0000_0000_0000))
           (i64.const 0x8000_0000_0000_0000))
         (then (local.set $integer-overflow (i32.const 1))))
@@ -830,14 +830,14 @@
             (then
               (local.set $neg-exp (i32.const 1))
               (%inc $offset))
-            (else 
+            (else
               (if (%sssw 0x2B 1) ;; '+'
                 (then (%inc $offset)))))
 
           (block $b_exp_end (loop $b_exp
               ;; break if offset >= str-len
-              (br_if $b_exp_end (i32.ge_u 
-                  (local.get $offset) 
+              (br_if $b_exp_end (i32.ge_u
+                  (local.get $offset)
                   (local.get $str-len)))
 
               (local.set $digit (call $get-radix-digit
@@ -865,7 +865,7 @@
   (if (i32.ne (local.get $offset) (local.get $str-len))
     (then (return (global.get $g-false))))
 
-  ;; There are no integer or fractional digits, not a valid number. 
+  ;; There are no integer or fractional digits, not a valid number.
   (if (i32.eqz (i32.add (local.get $integer-digits) (local.get $fraction-digits)))
     (then (return (global.get $g-false))))
 
@@ -880,7 +880,7 @@
         (then
           (if (local.get $negative)
             (then
-              (local.set $integer (i64.sub (i64.const 0) (local.get $integer))))) 
+              (local.set $integer (i64.sub (i64.const 0) (local.get $integer)))))
           (local.set $num (%alloc-i64 (local.get $integer))))
         (else
           (local.set $big-int (call $mp-string->mp
@@ -895,15 +895,15 @@
       (return (local.get $num))))
 
   ;; apply the exponent sign
-  (if (local.get $neg-exp) (then 
+  (if (local.get $neg-exp) (then
       (local.set $exponent (i32.sub (i32.const 0) (local.get $exponent)))))
 
   ;; create a big-int containing both the integer and fractional parts
   (if (local.get $integer-overflow)
     (then (local.set $big-int (call $mp-string->mp
-          (i32.add 
-            (i32.add 
-              (local.get $str-ptr) 
+          (i32.add
+            (i32.add
+              (local.get $str-ptr)
               (local.get $integer-start))
 
             (i32.const 4))
@@ -913,61 +913,65 @@
 
   (if (local.get $fraction-digits) (then
       (local.set $big-int-fraction (call $mp-string->mp
-              (i32.add (i32.add 
-                  (local.get $str-ptr) 
-                  (local.get $fraction-start)) 
+              (i32.add (i32.add
+                  (local.get $str-ptr)
+                  (local.get $fraction-start))
                 (i32.const 4))
               (local.get $fraction-digits)
               (local.get $radix)))
-      (local.set $big-int (call $mp-times-eq 
-          (local.get $big-int) 
+      (local.set $big-int (call $mp-times-eq
+          (local.get $big-int)
           (call $mp-10-pow (local.get $fraction-digits))))
       (local.set $big-int (call $mp-plus-eq
-          (local.get $big-int) 
+          (local.get $big-int)
           (local.get $big-int-fraction)))
       (local.set $exponent (i32.sub
-          (local.get $exponent) 
+          (local.get $exponent)
           (local.get $fraction-digits)))
       (call $malloc-free (local.get $big-int-fraction))))
 
-  (if (local.get $exact) (then 
-      ;; should not exactify a fraction
-      (if (i32.lt_s (local.get $exponent) (i32.const 0)) (then
-          (return (%alloc-error (%sym-64 0x786966657270 6) (local.get $str)))))
+  (if (local.get $exact) (then
+      ;; we don't support rationals yet, so the best we can to is to exactify
+      ;; fractions as the nearest int.
+      (if (i32.ge_s (local.get $exponent) (i32.const 0)) (then
+          ;; apply the exponent
+          (if (i32.gt_s (local.get $exponent) (i32.const 0)) (then
+              (local.set $big-int (call $mp-times-eq
+                  (local.get $big-int)
+                  (call $mp-10-pow (local.get $exponent))))))
 
-      ;; apply the exponent
-      (if (i32.gt_s (local.get $exponent) (i32.const 0)) (then
-          (local.set $big-int (call $mp-times-eq
-              (local.get $big-int)
-              (call $mp-10-pow (local.get $exponent))))))
+          (if (local.get $negative) (then
+              (call $mp-neg (local.get $big-int))))
 
-      (if (local.get $negative) (then 
-          (call $mp-neg (local.get $big-int)))
+          (return (%alloc-big-int (local.get $big-int)))))))
 
-      (return (%alloc-big-int (local.get $big-int))))))
-
-  (local.set $real (call $mp-algorithm-m 
-      (local.get $big-int) 
+  (local.set $real (call $mp-algorithm-m
+      (local.get $big-int)
       (local.get $exponent)))
   (call $malloc-free (local.get $big-int))
 
-  (if (local.get $negative) (then 
+  (if (local.get $negative) (then
           (local.set $real (f64.neg (local.get $real)))))
 
-  (return (%alloc-f64 (local.get $real))))
+  (local.set $num (%alloc-f64 (local.get $real)))
+
+  (if (local.get $exact) (then
+      (return (call $exact-impl (local.get $num)))))
+
+  (return (local.get $num)))
 
 (func $should-collect (result i32)
   ;; If there is currently a collection, then incremental collection should be
   ;; quite frequent
-  (if (global.get $g-gc-collecting?) 
+  (if (global.get $g-gc-collecting?)
     (then
       (if (i32.ge_u (global.get $g-eval-count) (%gc-small-threshold)) (then
         (return (i32.const 1))))
       (return (i32.const 0))))
 
   ;; collect more often while memory is growing
-  (if (i32.ge_u 
-      (global.get $g-eval-count) 
+  (if (i32.ge_u
+      (global.get $g-eval-count)
       (i32.shr_u (%gc-threshold) (global.get $g-gc-heap-slabs))) (then
         (return (i32.const 1))))
 
@@ -992,7 +996,7 @@
     (then
       (local.set $cont-stack (local.get $args))
       (local.set $curr-cont (%car-l $cont-stack))
-      
+
       (local.set $fn (i32.load offset=0 (local.get $curr-cont)))
       (local.set $env (i32.load offset=4 (local.get $curr-cont)))
       (local.set $args (i32.load offset=8 (local.get $curr-cont))))
@@ -1022,10 +1026,10 @@
           (then
             ;; root for gc must include cont stack, args, and env. If there is already
             ;; a collection, simply allocating these will add them to the touched set
-            ;; otherwise they are passed into the call to gc-run (and thence to 
+            ;; otherwise they are passed into the call to gc-run (and thence to
             ;; gc-init)
-            (local.set $roots (%alloc-list-3 
-                (local.get $env) 
+            (local.set $roots (%alloc-list-3
+                (local.get $env)
                 (local.get $args)
                 (local.get $cont-stack)))
 
@@ -1034,29 +1038,29 @@
             (global.set $g-eval-count (i32.const 0))))
 
         ;; this is a call to eval. So pass to eval inner
-        (local.set $result (call $eval-inner 
-            (local.get $fn) 
-            (local.get $env) 
+        (local.set $result (call $eval-inner
+            (local.get $fn)
+            (local.get $env)
             (local.get $args)))
         (br $b_eval_cont))
 
       (if (i32.eq (local.get $fn) (%guard-fn)) (then
-          ;; executing a guard fn is a no-op, with no return value, if the args 
+          ;; executing a guard fn is a no-op, with no return value, if the args
           ;; stack has a value simply pop it and set it as the result, otherwise
           ;; set result to 0
-          (if (i32.eq 
-              (local.get $args) 
-              (i32.load offset=8 (local.get $cont-stack))) 
+          (if (i32.eq
+              (local.get $args)
+              (i32.load offset=8 (local.get $cont-stack)))
             (then
               ;; args is the same as included in the buffer, set result to 0
               (local.set $result (i32.const 0)))
             (else
               ;; there is an argument to pass to the next continuation
               (local.set $result (%car-l $args))))
-          
+
           (br $b_eval_cont)))
 
-      ;; this is a promise from the "other-side" (the host), so we will return 
+      ;; this is a promise from the "other-side" (the host), so we will return
       ;; this, and resume when the host sends it back to us.
       (if (i32.eq (local.get $fn) (%cont-import-promise)) (then
           (global.set $g-curr-cont (i32.const 0))
@@ -1075,7 +1079,7 @@
     (block $b_done
       (local.set $result-type (%get-type $result))
       (if (i32.eq (local.get $result-type) (%cont-proc-type)) (then
-          ;; Result is a continuation proc,  check if it is populated 
+          ;; Result is a continuation proc,  check if it is populated
           ;; (i.e. it has been "called")
           (if (%cdr-l $result) (then
               ;; result is populated, so set contintuation stack, and the result
@@ -1083,8 +1087,8 @@
               (local.set $result (%car (%cdr-l $result)))
               (local.set $result-type (%get-type $result))))))
 
-      (if (i32.eq (local.get $result-type) (%cont-type)) (then 
-          ;; result is a continuation (or list of), place them on the top of the 
+      (if (i32.eq (local.get $result-type) (%cont-type)) (then
+          ;; result is a continuation (or list of), place them on the top of the
           ;; continuation stack
           (local.set $temp-cont (local.get $result))
           (block $t_end
@@ -1103,7 +1107,7 @@
 
           (if (i32.eq (local.get $res-mode) (i32.const 1)) (then
               ;; result is an raised exception
-              ;; pop from the cont stack until a guard is found, or the stack 
+              ;; pop from the cont stack until a guard is found, or the stack
               ;; is empty
               (block $b_raise_end (loop $b_raise_start
                   (if (i32.eqz (local.get $cont-stack)) (then
@@ -1114,8 +1118,8 @@
                   (local.set $curr-cont (%car-l $cont-stack))
 
                   ;; if this stack frame is a guard function, then stop here
-                  (br_if $b_raise_end (i32.eq 
-                      (i32.load (local.get $curr-cont)) 
+                  (br_if $b_raise_end (i32.eq
+                      (i32.load (local.get $curr-cont))
                       (%guard-fn)))
 
                   (local.set $cont-stack (%cdr-l $cont-stack))
@@ -1146,7 +1150,7 @@
 
               (br $b_done)))
 
-          ;; A continuable exception was thrown 
+          ;; A continuable exception was thrown
           (if (i32.eq (local.get $res-mode) (i32.const 2)) (then
               ;; result is an raised, continuable, exception
 
@@ -1158,8 +1162,8 @@
                   (local.set $curr-cont (%car-l $cont-stack))
 
                   ;; if this stack frame is a guard function, then stop here
-                  (br_if $b_raise_end (i32.eq 
-                      (i32.load (local.get $curr-cont)) 
+                  (br_if $b_raise_end (i32.eq
+                      (i32.load (local.get $curr-cont))
                       (%guard-fn)))
 
                   (local.set $temp-cont (%cdr-l $temp-cont))
@@ -1199,7 +1203,7 @@
         )))
 
     (local.set $curr-cont (%car-l $cont-stack))
-    
+
     (local.set $fn (i32.load offset=0 (local.get $curr-cont)))
     (local.set $env (i32.load offset=4 (local.get $curr-cont)))
     (if (local.get $result)
@@ -1263,13 +1267,13 @@
   (return (local.get $args)))
 
 (func $cont-apply (param $env i32) (param $args i32) (result i32)
-  (return (call $cont-apply-impl 
+  (return (call $cont-apply-impl
       (i32.const 0)
       (local.get $env)
       (local.get $args))))
 
 (func $cont-apply-def (param $env i32) (param $args i32) (result i32)
-  (return (call $cont-apply-impl 
+  (return (call $cont-apply-impl
       (i32.const 1)
       (local.get $env)
       (local.get $args))))
@@ -1279,8 +1283,8 @@
   (local $result i32)
 
   (%pop-l $op $args)
-  (local.set $result (call $apply 
-      (local.get $allow-def) 
+  (local.set $result (call $apply
+      (local.get $allow-def)
       (local.get $env)
       (local.get $op)
       (local.get $args)))
@@ -1288,8 +1292,8 @@
   (if (global.get $g-dump-eval)
     (then
       (%gdec $g-dump-eval-indent)
-      (call $print-symbol-rep 
-        (global.get $g-space) 
+      (call $print-symbol-rep
+        (global.get $g-space)
         (i32.add (global.get $g-dump-eval-indent) (i32.const 6)))
       (call $print-symbol (global.get $g-arrow))
       (call $print-symbol (global.get $g-space))
@@ -1318,8 +1322,8 @@
           (br_if $chk-define-fail (i32.eq (local.get $fn) (%special-define-syntax)))
           (br $chk-define))
 
-        (return (%alloc-raise (%alloc-error-cons 
-              (%cdr-l $op) 
+        (return (%alloc-raise (%alloc-error-cons
+              (%cdr-l $op)
               (local.get $args)))))
 
       (local.get $env)
@@ -1338,8 +1342,8 @@
       (return (call $cont-alloc
           (%cont-apply-form)
           (local.get $env)
-          (%alloc-cons 
-            (global.get $g-nil) 
+          (%alloc-cons
+            (global.get $g-nil)
             (%alloc-cons (local.get $op) (global.get $g-nil)))
           (i32.const 0)))))
 
@@ -1376,9 +1380,9 @@
       (return)))
 
   (if (i32.eq (local.get $op-type (%lambda-type))) (then
-      (return (call $apply-lambda 
-        (local.get $env) 
-        (local.get $op) 
+      (return (call $apply-lambda
+        (local.get $env)
+        (local.get $op)
         (local.get $args)))))
 
   (if (i32.eq (local.get $op-type) (%cont-proc-type)) (then
@@ -1387,8 +1391,8 @@
           (local.get $args)))))
 
   ;;   any other type:
-  (return (%alloc-error-cons 
-      (global.get $g-apply) 
+  (return (%alloc-error-cons
+      (global.get $g-apply)
       (%alloc-cons (local.get $op) (local.get $args)))))
 
 ;; (cont-expr-list val stack args ...)
@@ -1431,9 +1435,9 @@
 
     ;; case %lambda-type:
     (if (i32.eq (local.get $op-type) (%lambda-type)) (then
-        (return (call $apply-lambda 
-            (local.get $env) 
-            (local.get $op) 
+        (return (call $apply-lambda
+            (local.get $env)
+            (local.get $op)
             (local.get $args)))))
 
     ;; case %cont-proc-type:
@@ -1451,8 +1455,8 @@
     ;; default:
     ;;   any other type:
     (return
-      (%alloc-raise (%alloc-error-cons 
-        (global.get $g-apply) 
+      (%alloc-raise (%alloc-error-cons
+        (global.get $g-apply)
         (%alloc-cons (local.get $op) (local.get $args))))))
 
   (local.set $fn (%car-l $op))
@@ -1462,8 +1466,8 @@
       (br_if $chk-define-fail (i32.eq (local.get $fn) (%special-define-syntax)))
       (br $chk-define))
 
-    (return (%alloc-raise (%alloc-error-cons 
-          (%cdr-l $op) 
+    (return (%alloc-raise (%alloc-error-cons
+          (%cdr-l $op)
           (local.get $args)))))
 
   (local.get $env)
@@ -1509,16 +1513,16 @@
 
 (func $eval-body (param $allow-def i32) (param $env i32) (param $args i32) (result i32)
   ;; If the argument list (body) is empty, simply return nil
-  (if (i32.eq (local.get $args) (global.get $g-nil)) (then 
+  (if (i32.eq (local.get $args) (global.get $g-nil)) (then
       (return (global.get $g-nil))))
 
   ;; If the argument list has only one entry, simply evaluate it
-  (if (i32.eq (%cdr-l $args) (global.get $g-nil)) (then 
+  (if (i32.eq (%cdr-l $args) (global.get $g-nil)) (then
       ;; single body element, simply return its evaluation
-      (return (call $cont-alloc 
+      (return (call $cont-alloc
           (select (%eval-fn-def) (%eval-fn) (local.get $allow-def))
-          (local.get $env) 
-          (%car-l $args) 
+          (local.get $env)
+          (%car-l $args)
           (i32.const 0)))))
 
   (return (call $cont-alloc
@@ -1539,7 +1543,7 @@
   (%pop-l $val $args)
 
   (if (i32.eq (%get-type $args) (%nil-type))
-    ;; Nothing left to evaluate, 
+    ;; Nothing left to evaluate,
     ;; return the last thing that was evaluated.
     (then (return (local.get $val))))
 
@@ -1553,7 +1557,7 @@
   (%pop-l $val $args)
 
   (if (i32.eq (%get-type $args) (%nil-type))
-    ;; Nothing left to evaluate, 
+    ;; Nothing left to evaluate,
     ;; return the last thing that was evaluated.
     (then (return (local.get $val))))
 

@@ -2,11 +2,11 @@
 
 Multi-precision integer math
 
-numbers are represented as 
+numbers are represented as
 
 sign: u1        -- sign bit, 0 - positive, 1 (2^31) - negative
 size: u31       -- number of 32bit words in this number
-data: u32[size] -- the words of the number, words themselves are little 
+data: u32[size] -- the words of the number, words themselves are little
                    endian, but the array is big-endian, sorry.
 
 ;)
@@ -48,7 +48,7 @@ data: u32[size] -- the words of the number, words themselves are little
 
   (block $b_switch
     (if (i32.eq (local.get $base) (i32.const 10))
-      (then 
+      (then
         (local.set $buffer (call $mp-string10->mp (local.get $str) (local.get $str-len)))
         (if (i32.eq (local.get $buffer) (i32.const -1))
           (then (return (i32.const -1))))
@@ -73,7 +73,7 @@ data: u32[size] -- the words of the number, words themselves are little
         (local.set $digit-bits (i32.const 1))
         (local.set $digit-mask (i32.const 0x1))
         (br $b_switch)))
-    
+
     (return (i32.const -1)))
 
   ;; word-length = (bit-length + 31) / 32
@@ -91,22 +91,22 @@ data: u32[size] -- the words of the number, words themselves are little
   (local.set $ptr (i32.add (local.get $buffer) (i32.const 4)))
   (local.set $str-ptr (local.get $str))
 
-  (block $b_end 
+  (block $b_end
     (block $b_error
-      (loop $b_start 
+      (loop $b_start
         (br_if $b_end (i32.ge_u (local.get $i) (local.get $str-len)))
 
-        (local.set $digit (call $mp-char-base-digit 
-            (i32.load8_u (local.get $str-ptr)) 
+        (local.set $digit (call $mp-char-base-digit
+            (i32.load8_u (local.get $str-ptr))
             (local.get $base)))
         (br_if $b_error (i32.eq (local.get $digit) (i32.const -1)))
 
         ;; temp = (temp << digit-bits) | digit
-        (local.set $temp (i64.or 
+        (local.set $temp (i64.or
             (i64.shl (local.get $temp) (i64.extend_i32_u (local.get $digit-bits)))
             (i64.extend_i32_u (local.get $digit))))
         ;; offset += digit-bits
-        (local.set $offset (i32.add (local.get $offset) (local.get $digit-bits)))  
+        (local.set $offset (i32.add (local.get $offset) (local.get $digit-bits)))
 
         ;; if (offset >= 32)
         (if (i32.ge_u (local.get $offset) (i32.const 32))
@@ -114,10 +114,10 @@ data: u32[size] -- the words of the number, words themselves are little
             ;; offset -= 32
             (%minus-eq $offset 32)
             ;; *ptr = (temp >> offset) as i32
-            (i32.store 
+            (i32.store
               (local.get $ptr)
-              (i32.wrap_i64 (i64.shr_u 
-                  (local.get $temp) 
+              (i32.wrap_i64 (i64.shr_u
+                  (local.get $temp)
                   (i64.extend_i32_u (local.get $offset)))))
             ;; ptr += 4
             (%plus-eq $ptr 4)))
@@ -126,7 +126,7 @@ data: u32[size] -- the words of the number, words themselves are little
         (%inc $str-ptr)
         (br $b_start)))
 
-    (call $malloc-free (local.get $buffer)) 
+    (call $malloc-free (local.get $buffer))
     (return (i32.const -1)))
 
   (if (local.get $neg)
@@ -149,23 +149,23 @@ data: u32[size] -- the words of the number, words themselves are little
   (if (i32.eqz (local.get $ptr-log2))
     (then
       (return (call $str-from-32 (i32.const 1) (i32.const 0x30)))))
-  
+
   (block $b_switch
     (if (i32.eq (local.get $base) (i32.const 10))
       (then (return (call $mp-mp->string10 (local.get $ptr)))))
 
 
     (if (i32.eq (local.get $base) (i32.const 16)) (then
-        (local.set $str-len (i32.shr_u 
-            (i32.add (local.get $ptr-log2) (i32.const 3)) 
+        (local.set $str-len (i32.shr_u
+            (i32.add (local.get $ptr-log2) (i32.const 3))
             (i32.const 2)))
         (local.set $digit-bits (i32.const 4))
         (local.set $digit-mask (i32.const 0xF))
         (br $b_switch)))
 
     (if (i32.eq (local.get $base) (i32.const 8)) (then
-        (local.set $str-len (i32.div_u 
-            (i32.add (local.get $ptr-log2) (i32.const 2)) 
+        (local.set $str-len (i32.div_u
+            (i32.add (local.get $ptr-log2) (i32.const 2))
             (i32.const 3)))
         (local.set $digit-bits (i32.const 3))
         (local.set $digit-mask (i32.const 0x7))
@@ -176,7 +176,7 @@ data: u32[size] -- the words of the number, words themselves are little
         (local.set $digit-bits (i32.const 1))
         (local.set $digit-mask (i32.const 0x1))
         (br $b_switch)))
-    
+
     (return (i32.const 0)))
 
   (local.set $temp (call $mp-copy (local.get $ptr)))
@@ -186,8 +186,8 @@ data: u32[size] -- the words of the number, words themselves are little
       (local.set $str (call $malloc (i32.add (local.get $str-len) (i32.const 5))))
       (i32.store (local.get $str) (i32.add (local.get $str-len) (i32.const 1)))
       (i32.store8 offset=4 (local.get $str) (i32.const 0x2D)) ;; '-' 0x2D
-      (local.set $str-ptr (i32.add 
-          (i32.add 
+      (local.set $str-ptr (i32.add
+          (i32.add
             (local.get $str)
             (i32.const 4))
           (local.get $str-len)))
@@ -195,8 +195,8 @@ data: u32[size] -- the words of the number, words themselves are little
     (else
       (local.set $str (call $malloc (i32.add (local.get $str-len) (i32.const 4))))
       (i32.store (local.get $str) (local.get $str-len))
-      (local.set $str-ptr (i32.add 
-          (i32.add 
+      (local.set $str-ptr (i32.add
+          (i32.add
             (local.get $str)
             (i32.const 3))
           (local.get $str-len)))))
@@ -205,14 +205,14 @@ data: u32[size] -- the words of the number, words themselves are little
   (block $b_end (loop $b_start
       (br_if $b_end (i32.eqz (local.get $str-len)))
 
-      (local.set $digit (i32.and 
-          (i32.load (local.get $src-ptr)) 
+      (local.set $digit (i32.and
+          (i32.load (local.get $src-ptr))
           (local.get $digit-mask)))
 
       (if (i32.lt_u (local.get $digit) (i32.const 10))
         (then (%plus-eq $digit 0x30))
         (else (%plus-eq $digit 0x37))) ;; hex digit
-      
+
       (i32.store8 (local.get $str-ptr) (local.get $digit))
       (call $mp-shr-ip (local.get $temp) (local.get $digit-bits))
 
@@ -242,20 +242,20 @@ data: u32[size] -- the words of the number, words themselves are little
   (local.set $sign (%mp-sign-l $ptr))
   ;; log_2(10) is 3.3219, so we're going to assume that every 3 bits is another digit
   ;; and 1 for a possible minus sign
-  (local.set $max-digits (i32.add 
+  (local.set $max-digits (i32.add
       (i32.div_u
         (i32.add (local.get $log2) (i32.const 2))
         (i32.const 3))
       (i32.const 1)))
   (local.set $char-buffer (call $malloc (local.get $max-digits)))
-  (local.set $char-ptr (i32.sub 
+  (local.set $char-ptr (i32.sub
       (i32.add (local.get $char-buffer) (local.get $max-digits))
       (i32.const 1)))
 
   (local.set $quot (call $mp-copy (local.get $ptr)))
   (local.set $ten (call $mp-10-pow (i32.const 1)))
   (local.set $actual-len (i32.const 0))
-  (if (local.get $sign) 
+  (if (local.get $sign)
     (then (call $mp-neg (local.get $quot))))
 
   (block $b_end (loop $b_start
@@ -287,7 +287,7 @@ data: u32[size] -- the words of the number, words themselves are little
 
   (local.set $res (call $malloc (i32.add (local.get $actual-len) (i32.const 4))))
   (i32.store (local.get $res) (local.get $actual-len))
-  (call $memcpy 
+  (call $memcpy
       (i32.add (local.get $res) (i32.const 4))
       (i32.add (local.get $char-ptr) (i32.const 1))
       (local.get $actual-len))
@@ -297,7 +297,7 @@ data: u32[size] -- the words of the number, words themselves are little
 
 (func $mp-char-base-digit (param $char i32) (param $base i32) (result i32)
   (local $digit i32)
-  
+
   (block $b_digit
     (if (i32.ge_u (local.get $char) (i32.const 0x30))     ;; '0' 0x30
       (then
@@ -323,7 +323,7 @@ data: u32[size] -- the words of the number, words themselves are little
             ;; digit = char - 0x57
             (local.set $digit (i32.sub (local.get $char) (i32.const 0x57)))
             (br $b_digit)))))
-    
+
     ;; not a digit
     (return (i32.const -1)))
 
@@ -347,17 +347,17 @@ data: u32[size] -- the words of the number, words themselves are little
   (local.set $split (i32.shr_u (local.get $str-len) (i32.const 1)))
   (local.set $low-split (i32.sub (local.get $str-len) (local.get $split)))
 
-  (local.set $low (call $mp-string10->mp 
+  (local.set $low (call $mp-string10->mp
       (i32.add (local.get $str) (local.get $split))
       (local.get $low-split)))
   (if (i32.eq (local.get $low) (i32.const -1))
     (then (return (i32.const -1))))
 
-  (local.set $high (call $mp-string10->mp 
+  (local.set $high (call $mp-string10->mp
       (local.get $str)
       (local.get $split)))
   (if (i32.eq (local.get $high) (i32.const -1))
-    (then 
+    (then
       (call $mp-free (local.get $low))
       (return (i32.const -1))))
 
@@ -413,8 +413,8 @@ data: u32[size] -- the words of the number, words themselves are little
   (local.set $left-length (i32.load (local.get $left)))
   (local.set $right-length (i32.load (local.get $right)))
 
-  ;; check if signs differ 
-  (if (i32.and 
+  ;; check if signs differ
+  (if (i32.and
       (i32.xor (local.get $left-length) (local.get $right-length))
       (i32.const 0x8000_0000))
     (then
@@ -486,7 +486,7 @@ data: u32[size] -- the words of the number, words themselves are little
             (i64.load32_u (i32.add (local.get $right) (local.get $right-offset)))) ;; right word
           (local.get $temp-res))) ;; carry bit
 
-      (i64.store32 
+      (i64.store32
         (i32.add (local.get $res) (local.get $dest-offset))
         (local.get $temp-res))
       (local.set $temp-res (i64.shr_u (local.get $temp-res) (i64.const 32)))
@@ -496,16 +496,16 @@ data: u32[size] -- the words of the number, words themselves are little
       (%minus-eq $dest-offset 4)
       (br $b_start)))
 
-  ;; finish up any words that are just in the left, this could carry a bit all the way 
+  ;; finish up any words that are just in the left, this could carry a bit all the way
   (block $b_end (loop $b_start
       (br_if $b_end (i32.eqz (local.get $left-offset)))
       (br_if $b_end (i32.eqz (local.get $dest-offset)))
 
-      (local.set $temp-res (i64.add 
+      (local.set $temp-res (i64.add
           (i64.load32_u (i32.add (local.get $left) (local.get $left-offset))) ;; left word
           (local.get $temp-res))) ;; carry bit
 
-      (i64.store32 
+      (i64.store32
         (i32.add (local.get $res) (local.get $dest-offset))
         (local.get $temp-res))
       (local.set $temp-res (i64.shr_u (local.get $temp-res) (i64.const 32)))
@@ -517,7 +517,7 @@ data: u32[size] -- the words of the number, words themselves are little
   (if (i64.ne (local.get $temp-res) (i64.const 0))
     (then
       ;; there is still a carry bit to handle
-      (i64.store32 
+      (i64.store32
         (i32.add (local.get $res) (local.get $dest-offset))
         (local.get $temp-res))))
 
@@ -526,18 +526,18 @@ data: u32[size] -- the words of the number, words themselves are little
 (func $mp-neg (param $ptr i32)
   (i32.store
     (local.get $ptr)
-    (i32.xor 
+    (i32.xor
       (i32.load (local.get $ptr))
       (i32.const 0x8000_0000))))
 
 (func $mp-abs (param $ptr i32)
   (i32.store
     (local.get $ptr)
-    (i32.and 
+    (i32.and
       (i32.load (local.get $ptr))
       (i32.const 0x7FFF_FFFF))))
 
-;; returns the highest bit set in the abs number 
+;; returns the highest bit set in the abs number
 (func $mp-log2 (param $ptr i32) (result i32)
   (local $length i32)
   (local $clz i32)
@@ -584,17 +584,17 @@ data: u32[size] -- the words of the number, words themselves are little
   (local.set $left-length (%mp-len-l $left))
   (local.set $right-length (%mp-len-l $right))
 
-  (local.set $left-norm-length (i32.shr_u 
-      (i32.add (local.get $left-log2) (i32.const 31)) 
+  (local.set $left-norm-length (i32.shr_u
+      (i32.add (local.get $left-log2) (i32.const 31))
       (i32.const 5)))
-  (local.set $left (i32.add 
+  (local.set $left (i32.add
       (local.get $left)
       (%word-size (i32.sub (local.get $left-length) (local.get $left-norm-length)))))
 
-  (local.set $right-norm-length (i32.shr_u 
-      (i32.add (local.get $right-log2) (i32.const 31)) 
+  (local.set $right-norm-length (i32.shr_u
+      (i32.add (local.get $right-log2) (i32.const 31))
       (i32.const 5)))
-  (local.set $right (i32.add 
+  (local.set $right (i32.add
       (local.get $right)
       (%word-size (i32.sub (local.get $right-length) (local.get $right-norm-length)))))
 
@@ -637,8 +637,8 @@ data: u32[size] -- the words of the number, words themselves are little
   (local.set $left-length (i32.load (local.get $left)))
   (local.set $right-length (i32.load (local.get $right)))
 
-  ;; check if signs differ 
-  (if (i32.and 
+  ;; check if signs differ
+  (if (i32.and
       (i32.xor (local.get $left-length) (local.get $right-length))
       (i32.const 0x8000_0000))
     (then
@@ -691,17 +691,17 @@ data: u32[size] -- the words of the number, words themselves are little
 
       ;; temp-res = left[left-offset] - right[right-offset] - carry
       (local.set $temp-res (i64.sub
-          (i64.sub 
+          (i64.sub
             (i64.load32_u (i32.add (local.get $left) (local.get $left-offset)))
             (i64.load32_u (i32.add (local.get $right) (local.get $right-offset))))
           (local.get $temp-res)))
 
-      (i64.store32 
+      (i64.store32
         (i32.add (local.get $res) (local.get $left-offset))
         (local.get $temp-res))
 
-      (local.set $temp-res (i64.and 
-          (i64.shr_u (local.get $temp-res) (i64.const 32)) 
+      (local.set $temp-res (i64.and
+          (i64.shr_u (local.get $temp-res) (i64.const 32))
           (i64.const 1)))
 
       (%minus-eq $left-offset 4)
@@ -717,12 +717,12 @@ data: u32[size] -- the words of the number, words themselves are little
           (i64.load32_u (i32.add (local.get $left) (local.get $left-offset)))
           (local.get $temp-res)))
 
-      (i64.store32 
+      (i64.store32
         (i32.add (local.get $res) (local.get $left-offset))
         (local.get $temp-res))
 
-      (local.set $temp-res (i64.and 
-          (i64.shr_u (local.get $temp-res) (i64.const 32)) 
+      (local.set $temp-res (i64.and
+          (i64.shr_u (local.get $temp-res) (i64.const 32))
           (i64.const 1)))
 
       (%minus-eq $left-offset 4)
@@ -773,8 +773,8 @@ data: u32[size] -- the words of the number, words themselves are little
 
   (call $memcpy
     (i32.add (local.get $norm) (i32.const 4))
-    (i32.add 
-      (local.get $ptr) 
+    (i32.add
+      (local.get $ptr)
       (%word-size (i32.add (i32.sub (local.get $len) (local.get $norm-len)) (i32.const 1))))
     (%word-size-l $norm-len))
 
@@ -802,8 +802,8 @@ data: u32[size] -- the words of the number, words themselves are little
     (then (return (local.get $ptr))))
 
   ;; norm-len = 0x80000000 >> (clz(len) - 1)
-  (local.set $denorm-len (i32.shr_u 
-      (i32.const 0x8000_0000) 
+  (local.set $denorm-len (i32.shr_u
+      (i32.const 0x8000_0000)
       (i32.sub (i32.clz (local.get $len)) (i32.const 1))))
 
   (%mp-alloc-sign-l $denorm $denorm-len $sign)
@@ -863,18 +863,18 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local.set $right-sign (i32.and (local.get $right-len) (i32.const 0x8000_0000)))
   (local.set $right-len (i32.and (local.get $right-len) (i32.const 0x7FFF_FFFF)))
 
-  (local.set $res-len (i32.add 
-      (i32.add (local.get $left-len) (local.get $right-len)) 
+  (local.set $res-len (i32.add
+      (i32.add (local.get $left-len) (local.get $right-len))
       (i32.const 1)))
   (local.set $res (call $calloc (i32.add (local.get $res-len) (i32.const 1)) (i32.const 4)))
-  (i32.store (local.get $res) (i32.or 
-      (local.get $res-len) 
+  (i32.store (local.get $res) (i32.or
+      (local.get $res-len)
       (i32.xor (local.get $left-sign) (local.get $right-sign))))
   (local.set $res-end-ptr (i32.add (local.get $res) (%word-size-l $res-len)))
 
   (local.set $right-ptr (i32.add (local.get $right) (%word-size-l $right-len)))
 
-  (block $right_end (loop $right_start 
+  (block $right_end (loop $right_start
       (br_if $right_end (i32.eq (local.get $right-ptr) (local.get $right)))
 
       (local.set $carry (i64.const 0))
@@ -887,7 +887,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
 
           (local.set $res-word (i64.load32_u (local.get $res-ptr)))
           (local.set $left-word (i64.load32_u (local.get $left-ptr)))
-          (local.set $temp (i64.add 
+          (local.set $temp (i64.add
               (i64.add
                 (local.get $carry)
                 (local.get $res-word))
@@ -896,7 +896,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
                 (local.get $right-word))))
           (local.set $carry (i64.shr_u (local.get $temp) (i64.const 32)))
           (local.set $res-word (i64.and (local.get $temp) (i64.const 0xFFFF_FFFF)))
-          
+
           (i64.store32 (local.get $res-ptr) (local.get $res-word))
 
           (%minus-eq $left-ptr 4)
@@ -904,11 +904,11 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
           (br $left_start)))
 
       (i64.store32 (local.get $res-ptr) (local.get $carry))
-      
+
       (%minus-eq $right-ptr 4)
       (%minus-eq $res-end-ptr 4)
       (br $right_start)))
-  
+
   (return (call $mp-normalize (local.get $res))))
 
 (func $mp-10-pow (param $pow i32) (result i32)
@@ -919,6 +919,9 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local $accum i32)
   (local $smallest i32)
   (local $temp i32)
+
+  (if (i32.lt_s (local.get $pow) (i32.const 0)) (then
+      (unreachable)))
 
   ;; check the cache
   (if (local.tee $val (call $mp-10-cache-get (local.get $pow)))
@@ -935,11 +938,11 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
       ;; temp = 10^{n/2}
       (local.set $temp (call $mp-10-pow (i32.shr_u (local.get $pow) (i32.const 1))))
       ;; 10^n = temp·temp
-      (return (call $mp-10-cache-set! 
+      (return (call $mp-10-cache-set!
           (local.get $pow)
           (call $mp-mul (local.get $temp) (local.get $temp))))))
 
-  (local.set $bits (local.get $pow)) 
+  (local.set $bits (local.get $pow))
   (local.set $curr (i32.const 0))
   (local.set $accum (i32.const 0))
 
@@ -955,7 +958,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
 
       ;; check if we already have this in the cache
       (if (local.tee $temp (call $mp-10-cache-get (local.get $curr)))
-        (then 
+        (then
           (local.set $accum (local.get $temp))
           (br $b_start)))
 
@@ -967,7 +970,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
         (else
           (local.set $accum (local.get $temp))
           (local.set $curr (local.get $smallest))))
-      
+
       (br $b_start)))
 
   (return (local.get $accum)))
@@ -979,15 +982,20 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local $low i32)
   (local $res i32)
 
+  (if (i32.eqz (local.get $pow)) (then
+      (return (call $mp-10-cache-set!
+          (local.get $pow)
+          (call $mp-from-u64 (i64.const 1))))))
+
   (local.set $accum (i64.const 1))
   (local.set $count (local.get $pow))
-  (block $b_end (loop $b_start 
+  (block $b_end (loop $b_start
       (br_if $b_end (i32.eqz (local.get $count)))
       (local.set $accum (i64.mul (local.get $accum) (i64.const 10)))
       (%dec $count)
       (br $b_start)))
 
-  (local.set $low (i32.wrap_i64 (local.get $accum))) 
+  (local.set $low (i32.wrap_i64 (local.get $accum)))
   (local.set $high (i32.wrap_i64 (i64.shr_u (local.get $accum) (i64.const 32))))
 
   (if (local.get $high)
@@ -1000,7 +1008,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
       (local.set $res (call $malloc (i32.const 8)))
       (i32.store (local.get $res) (i32.const 1))
       (i32.store offset=4 (local.get $res) (local.get $low))))
-  
+
   (return (call $mp-10-cache-set! (local.get $pow) (local.get $res))))
 
 (global $g-mp-10-cache (mut i32) (i32.const 0))
@@ -1010,7 +1018,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (if (i32.lt_u (local.get $pow) (global.get $g-mp-10-cache-len))
     (then
       (return (i32.load (i32.add
-            (global.get $g-mp-10-cache) 
+            (global.get $g-mp-10-cache)
             (%word-size-l $pow))))))
 
   (return (i32.const 0)))
@@ -1022,26 +1030,26 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (if (i32.ge_u (local.get $pow) (global.get $g-mp-10-cache-len))
     (then
       ;; we need to resize the cache. make it pow, rounded up to next 32
-      (local.set $new-len (i32.and 
-          (i32.add (local.get $pow) (i32.const 0x20)) 
+      (local.set $new-len (i32.and
+          (i32.add (local.get $pow) (i32.const 0x20))
           (i32.const 0xFFFF_FFE0)))
-      (local.set $cache (call $calloc 
-          (local.get $new-len) 
+      (local.set $cache (call $calloc
+          (local.get $new-len)
           (i32.const 4)))
-      
+
       (if (global.get $g-mp-10-cache)
         (then
           ;; copy values from old cache, then delete it
-          (call $memcpy 
-            (local.get $cache) 
-            (global.get $g-mp-10-cache) 
+          (call $memcpy
+            (local.get $cache)
+            (global.get $g-mp-10-cache)
             (%word-size (global.get $g-mp-10-cache-len)))
           (call $malloc-free (global.get $g-mp-10-cache))
         ))
       (global.set $g-mp-10-cache (local.get $cache))
       (global.set $g-mp-10-cache-len (local.get $new-len))))
 
-  (i32.store 
+  (i32.store
     (i32.add (global.get $g-mp-10-cache) (%word-size-l $pow))
     (local.get $val))
 
@@ -1061,7 +1069,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
     (then (return)))
 
   (local.set $count (global.get $g-mp-10-cache-len))
-  (block $b_end (loop $b_start 
+  (block $b_end (loop $b_start
       (br_if $b_end (i32.eqz (local.get $count)))
 
       (if (local.tee $num (i32.load (local.get $ptr)))
@@ -1082,7 +1090,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (if (i32.eqz (local.tee $cache-ptr (global.get $g-mp-10-cache))) (then
     (return (i32.const 0))))
   (local.set $count (global.get $g-mp-10-cache-len))
-  
+
   (block $b_end (loop $b_start
       (br_if $b_end (i32.eqz (local.get $count)))
 
@@ -1137,7 +1145,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
 
 ;; Integer division.
 ;;
-;; Returns the quotient as the high word in an i64 and the remainder 
+;; Returns the quotient as the high word in an i64 and the remainder
 ;; as the low word
 (func $mp-div (param $dividend i32) (param $divisor i32) (result i64)
   (local $quot i32)
@@ -1163,27 +1171,27 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
       (i64.extend_i32_u %rem)))
 
   (if (call $mp-abs-gt? (local.get $divisor) (local.get $dividend))
-    ;; if dividend is greater than the divisor, then quotient is 0, 
+    ;; if dividend is greater than the divisor, then quotient is 0,
     ;; and the remainder is the dividend
-    (then (return (%div-result 
-          (call $mp-zero) 
+    (then (return (%div-result
+          (call $mp-zero)
           (call $mp-copy (local.get $dividend))))))
 
 
   ;; initial res-len is the same as dividend normalized len
-  (local.set $res-len (i32.shr_u 
-     (i32.add 
-        (call $mp-log2 (local.get $dividend)) 
-        (i32.const 0x1f)) 
+  (local.set $res-len (i32.shr_u
+     (i32.add
+        (call $mp-log2 (local.get $dividend))
+        (i32.const 0x1f))
       (i32.const 5)))
 
 
   ;; find number of significant words in dividend and divisor
-  (local.set $dvnd-sig (i32.shr_u 
+  (local.set $dvnd-sig (i32.shr_u
       (i32.add (call $mp-log2 (local.get $dividend)) (i32.const 0x1f))
       (i32.const 5)))
   (local.set $dvnd-sign (%mp-sign-l $dividend))
-  (local.set $dvsr-sig 
+  (local.set $dvsr-sig
       (i32.shr_u (i32.add (call $mp-log2 (local.get $divisor)) (i32.const 0x1f))
       (i32.const 5)))
   (local.set $dvsr-sign (%mp-sign-l $divisor))
@@ -1195,16 +1203,16 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
         (local.set $temp-high (call $mp-to-u64 (local.get $dividend)))
         (local.set $temp-low (call $mp-to-u64 (local.get $divisor)))
 
-        (local.set $quot (call $mp-from-u64 
-            (i64.div_u 
-              (local.get $temp-high) 
+        (local.set $quot (call $mp-from-u64
+            (i64.div_u
+              (local.get $temp-high)
               (local.get $temp-low))))
-        
+
         (local.set $rem (call $mp-from-u64
             (i64.rem_u
-              (local.get $temp-high) 
+              (local.get $temp-high)
               (local.get $temp-low))))
-        
+
         (br $d_done)))
 
     (local.set $rem (call $mp-copy (local.get $dividend)))
@@ -1212,8 +1220,8 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
       (then (call $mp-neg (local.get $rem))))
     (%mp-alloc-l $quot $res-len)
 
-    (local.set $shift (i32.sub 
-        (call $mp-log2 (local.get $dividend)) 
+    (local.set $shift (i32.sub
+        (call $mp-log2 (local.get $dividend))
         (call $mp-log2 (local.get $divisor))))
     (if (local.get $dvsr-sign)
       (then
@@ -1240,7 +1248,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
 
     (call $mp-free (local.get $testor)))
 
-  ;; The quotient has the xor of the signs (i.e if one is negative, 
+  ;; The quotient has the xor of the signs (i.e if one is negative,
   ;; the quotient is negative, otherwise positive).
   (if (i32.xor (local.get $dvnd-sign) (local.get $dvsr-sign))
     (then (call $mp-neg (local.get $quot))))
@@ -1248,7 +1256,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (if (local.get $dvnd-sign)
     (then (call $mp-neg (local.get $rem))))
 
-  (return (%div-result 
+  (return (%div-result
       (call $mp-normalize (local.get $quot))
       (call $mp-normalize (local.get $rem)))))
 
@@ -1260,11 +1268,11 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local.set $word-offset (i32.shr_u (local.get $bit) (i32.const 5)))
   (local.set $bit-offset (i32.and (local.get $bit) (i32.const 0x1f)))
 
-  (local.set $dest-ptr (i32.add 
+  (local.set $dest-ptr (i32.add
       (local.get $ptr)
       (%word-size (i32.sub (%mp-len-l $ptr) (local.get $word-offset)))))
 
-  (i32.store 
+  (i32.store
     (local.get $dest-ptr)
     (i32.or
       (i32.load (local.get $dest-ptr))
@@ -1278,15 +1286,15 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local.set $word-offset (i32.shr_u (local.get $bit) (i32.const 5)))
   (local.set $bit-offset (i32.and (local.get $bit) (i32.const 0x1f)))
 
-  (local.set $src-ptr (i32.add 
+  (local.set $src-ptr (i32.add
       (local.get $ptr)
       (%word-size (i32.sub (%mp-len-l $ptr) (local.get $word-offset)))))
 
   (if (i32.le_u (local.get $src-ptr) (local.get $ptr))
     (then (return (i32.const 0))))
 
-  (return (i32.and 
-      (i32.shr_u 
+  (return (i32.and
+      (i32.shr_u
         (i32.load (local.get $src-ptr))
         (local.get $bit-offset))
       (i32.const 1))))
@@ -1306,11 +1314,11 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local.set $small-shift-inv (i32.sub (i32.const 0x20) (local.get $small-shift)))
 
   ;; dest-ptr = (add ptr (word-size (len ptr)))
-  (local.set $dest-ptr (i32.add 
-      (local.get $ptr) 
+  (local.set $dest-ptr (i32.add
+      (local.get $ptr)
       (%word-size (%mp-len-l $ptr))))
   ;; src-ptr = (sub dest-ptr (word-size (add word-offset 1)))
-  (local.set $src-ptr (i32.sub 
+  (local.set $src-ptr (i32.sub
       (local.get $dest-ptr)
       (%word-size (i32.add (local.get $word-offset) (i32.const 1)))))
 
@@ -1361,14 +1369,14 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
 
   (if (i32.ge_u (local.get $shift) (i32.const 32))
     (then
-      (local.set $partial (call $mp-shl-32 
-          (local.get $ptr) 
+      (local.set $partial (call $mp-shl-32
+          (local.get $ptr)
           (i32.shr_u (local.get $shift) (i32.const 5))))
       (if (i32.eqz (local.get $small-shift))
         (then (return (local.get $partial)))
-        (else 
-          (local.set $res (call $mp-shl 
-              (local.get $partial) 
+        (else
+          (local.set $res (call $mp-shl
+              (local.get $partial)
               (local.get $small-shift)))
           (call $mp-free (local.get $partial))
           (return (local.get $res))))))
@@ -1378,13 +1386,13 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
 
   (local.set $init-log (call $mp-log2 (local.get $ptr)))
   (local.set $init-len (%mp-len-l $ptr))
-  (local.set $init-norm-len (i32.shr_u 
-      (i32.add (local.get $init-log) (i32.const 0x1F)) 
+  (local.set $init-norm-len (i32.shr_u
+      (i32.add (local.get $init-log) (i32.const 0x1F))
       (i32.const 5)))
 
   (local.set $res-log (i32.add (local.get $init-log) (local.get $shift)))
-  (local.set $res-len (i32.shr_u 
-      (i32.add (local.get $res-log) (i32.const 0x1F)) 
+  (local.set $res-len (i32.shr_u
+      (i32.add (local.get $res-log) (i32.const 0x1F))
       (i32.const 5)))
 
   (local.set $init-sign (%mp-sign-l $ptr))
@@ -1395,10 +1403,10 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
 
   (local.set $dest-ptr (i32.add (local.get $res) (%word-size-l $res-len)))
   (local.set $src-ptr (i32.sub
-      (i32.add 
+      (i32.add
         (local.get $ptr)
         (%word-size-l $init-len))
-      (%word-size (i32.sub 
+      (%word-size (i32.sub
           (i32.shr_u (i32.add (local.get $shift) (i32.const 0x1F)) (i32.const 5))
           (i32.const 1)))))
 
@@ -1428,7 +1436,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
                 (i32.shl (i32.load offset=0 (local.get $src-ptr)) (local.get $small-shift)))
             (br $b_shifted))))
 
-      (%minus-eq $src-ptr 4) 
+      (%minus-eq $src-ptr 4)
       (%minus-eq $dest-ptr 4)
       (%plus-eq $dest-idx 32)
       (%plus-eq $src-idx 32)
@@ -1459,11 +1467,11 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
 
 (func $mp-from-i64 (param $value i64) (result i32)
   (local $mp i32)
-  
+
   (if (i64.ge_s (local.get $value) (i64.const 0))
     (then (return (call $mp-from-u64 (local.get $value)))))
 
-  (call $mp-neg (local.tee $mp 
+  (call $mp-neg (local.tee $mp
       (call $mp-from-u64 (i64.sub (i64.const 0) (local.get $value)))))
   (return (local.get $mp)))
 
@@ -1472,15 +1480,15 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local $value i64)
 
   (local.set $len (%mp-len-l $ptr))
-  (local.set $value (i64.load32_u (i32.add 
+  (local.set $value (i64.load32_u (i32.add
         (local.get $ptr)
         (%word-size (local.get $len)))))
   (%dec $len)
   (if (local.get $len)
-    (then 
-      (local.set $value (i64.or 
+    (then
+      (local.set $value (i64.or
         (local.get $value)
-        (i64.shl 
+        (i64.shl
           (i64.load32_u (i32.add
               (local.get $ptr)
               (%word-size (local.get $len))))
@@ -1501,22 +1509,22 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local.set $ptr-len (%mp-len-l $ptr))
   (local.set $ptr-sign (%mp-sign-l $ptr))
   (local.set $ptr-log2 (call $mp-log2 (local.get $ptr)))
-  (local.set $dest-log2 (i32.add 
+  (local.set $dest-log2 (i32.add
       (local.get $ptr-log2)
       (i32.shl (local.get $shift) (i32.const 5))))
 
-  (local.set $dest-len (i32.shr_u 
-      (i32.add (local.get $dest-log2) (i32.const 0x1f)) 
+  (local.set $dest-len (i32.shr_u
+      (i32.add (local.get $dest-log2) (i32.const 0x1f))
       (i32.const 5)))
-  (local.set $min-ptr-len (i32.shr_u 
-      (i32.add (local.get $ptr-log2) (i32.const 0x1f)) 
+  (local.set $min-ptr-len (i32.shr_u
+      (i32.add (local.get $ptr-log2) (i32.const 0x1f))
       (i32.const 5)))
-  
+
   (%mp-alloc-sign-l $dest $dest-len $ptr-sign)
 
   (call $memcpy
     (i32.add (local.get $dest) (i32.const 4))
-    (i32.add 
+    (i32.add
       (i32.add (local.get $ptr) (i32.const 4))
       (%word-size (i32.sub (local.get $ptr-len) (local.get $min-ptr-len))))
     (%word-size-l $min-ptr-len))
@@ -1527,22 +1535,22 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (return (i32.eqz (call $mp-cmp (local.get $a) (local.get $b)))))
 
 (func $mp-gt? (param $a i32) (param $b i32) (result i32)
-  (return (i32.gt_s 
+  (return (i32.gt_s
       (call $mp-cmp (local.get $a) (local.get $b))
       (i32.const 0))))
 
 (func $mp-ge? (param $a i32) (param $b i32) (result i32)
-  (return (i32.ge_s 
+  (return (i32.ge_s
       (call $mp-cmp (local.get $a) (local.get $b))
       (i32.const 0))))
 
 (func $mp-lt? (param $a i32) (param $b i32) (result i32)
-  (return (i32.lt_s 
+  (return (i32.lt_s
       (call $mp-cmp (local.get $a) (local.get $b))
       (i32.const 0))))
 
 (func $mp-le? (param $a i32) (param $b i32) (result i32)
-  (return (i32.le_s 
+  (return (i32.le_s
       (call $mp-cmp (local.get $a) (local.get $b))
       (i32.const 0))))
 
@@ -1625,7 +1633,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
         ;; temp is not zero
         ;; return -1 if left is less than right (temp is < 0), 1 otherwise
         (then (return (select
-              (i32.const -1)  
+              (i32.const -1)
               (i32.const 1)
               (i32.lt_u (local.get $word-left) (local.get $word-right))))))
 
@@ -1677,13 +1685,13 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local $copy i32)
 
   (local.set $len (%mp-len-l $ptr))
-  (local.set $dest-ptr (i32.add (local.get $ptr) (%word-size-l $len))) 
+  (local.set $dest-ptr (i32.add (local.get $ptr) (%word-size-l $len)))
 
   (local.set $carry (i32.const 1))
   (block $b_end (loop $b_start
     (br_if $b_end (i32.eq (local.get $dest-ptr) (local.get $ptr)))
-    
-    (local.set $temp (i64.add 
+
+    (local.set $temp (i64.add
         (i64.load32_u (local.get $dest-ptr))
         (i64.extend_i32_u (local.get $carry))))
     (i64.store32 (local.get $dest-ptr) (local.get $temp))
@@ -1700,7 +1708,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (%mp-alloc-sign-l $copy $len $sign)
 
   (i32.store offset=4 (local.get $copy) (local.get $carry))
-  (call $memcpy 
+  (call $memcpy
     (i32.add (local.get $copy) (i32.const 8))
     (i32.add (local.get $ptr) (i32.const 4))
     (%word-size (i32.sub (local.get $len) (i32.const 1))))
@@ -1709,13 +1717,13 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
 
 (;
 
-  From: Clinger, William D. "How to read floating point numbers accurately." 
+  From: Clinger, William D. "How to read floating point numbers accurately."
         ACM SIGPLAN Notices 25.6 (1990): 92-101.
 
   https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.45.4152&rep=rep1&type=pdf
 
   ; Given exact integers f and e, with f nonnegative,
-  ; returns the floating point number closest to 
+  ; returns the floating point number closest to
   ; f * delta^e
 
   (define (AlgorithmM (f e))
@@ -1791,7 +1799,6 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local $v-rem i32)
   (local $z f64)
   (local $rem-cmp i32)
-  (local $v-free i32)
   (local $kdiff i32)
   (local $sign i32)
 
@@ -1802,15 +1809,14 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
     (then (call $mp-neg (local.get $f))))
 
   (if (i32.le_s (local.get $e) (i32.const 0))
-    (then 
+    (then
       (local.set $u (call $mp-copy (local.get $f)))
       (local.set $v (call $mp-10-pow (i32.sub (i32.const 0) (local.get $e)))))
     (else
-      (local.set $u (call $mp-mul 
+      (local.set $u (call $mp-mul
           (local.get $f)
           (call $mp-10-pow (local.get $e))))
       (local.set $v (call $mp-10-pow (i32.const 0)))))
-  (local.set $v-free (i32.const 0))
   (local.set $k (i32.const 52))
 
   (if (local.get $sign) (then (call $mp-neg (local.get $f))))
@@ -1823,7 +1829,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
     (local.set $rem (i32.wrap_i64 (local.get $quot-rem)))
 
     (local.set $log2-quot (i32.sub
-        (call $mp-log2 (local.get $quot)) 
+        (call $mp-log2 (local.get $quot))
         (i32.const 1)))
 
     (if (i32.eq (local.get $log2-quot) (i32.const 52)) (then
@@ -1832,14 +1838,14 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
           (local.set $z (call $mp-make-float (local.get $quot) (local.get $k)))
           (local.set $rem-cmp (call $mp-cmp (local.get $rem) (local.get $v-rem)))
           (call $mp-free (local.get $v-rem))
-        
+
           (br_if $b-ratio->float (i32.lt_s (local.get $rem-cmp) (i32.const 0)))
           (if (i32.gt_s (local.get $rem-cmp) (i32.const 0))
             (then
               (local.set $z (call $mp-next-float (local.get $z)))
               (br $b-ratio->float)))
-          (br_if $b-ratio->float (i32.eqz (call $mp-bit-get 
-                (local.get $quot) 
+          (br_if $b-ratio->float (i32.eqz (call $mp-bit-get
+                (local.get $quot)
                 (i32.const 0))))
           (local.set $z (call $mp-next-float (local.get $z))))
 
@@ -1847,23 +1853,18 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
         (call $mp-free (local.get $quot))
         (call $mp-free (local.get $u))
         (call $mp-free (local.get $v))
-        (if (local.get $sign) (then 
+        (if (local.get $sign) (then
             (local.set $z (f64.neg (local.get $z)))))
         (return (local.get $z))))
-    
-    (if (i32.lt_s (local.get $log2-quot) (i32.const 52)) 
+
+    (if (i32.lt_s (local.get $log2-quot) (i32.const 52))
       (then
         (local.set $kdiff (i32.sub (i32.const 52) (local.get $log2-quot)))
         (local.set $u (call $mp-shl-eq (local.get $u) (local.get $kdiff)))
         (local.set $k (i32.sub (local.get $k) (local.get $kdiff))))
       (else
         (local.set $kdiff (i32.sub (local.get $log2-quot) (i32.const 52)))
-        (if (local.get $v-free)
-          (then
-            (local.set $v (call $mp-shl-eq (local.get $v) (local.get $kdiff))))
-          (else
-            (local.set $v (call $mp-shl (local.get $v) (local.get $kdiff)))
-            (local.set $v-free (i32.const 1))))
+        (local.set $v (call $mp-shl-eq (local.get $v) (local.get $kdiff)))
         (local.set $k (i32.add (local.get $k) (local.get $kdiff)))))
 
     (call $mp-free (local.get $rem))
@@ -1873,15 +1874,15 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (unreachable))
 
 (func $mp-make-float (param $num i32) (param $exp i32) (result f64)
-  (return (call $mp-make-float-64 
+  (return (call $mp-make-float-64
       (call $mp-to-u64 (local.get $num))
       (local.get $exp))))
 
 (func $mp-make-float-64 (param $int64 i64) (param $exp i32) (result f64)
   (%plus-eq $exp 0x3FF)
-  (if (i32.ge_s (local.get $exp) (i32.const 0x7FF)) (then 
+  (if (i32.ge_s (local.get $exp) (i32.const 0x7FF)) (then
       (return (f64.const inf))))
-  (if (i32.lt_s (local.get $exp) (i32.const 0)) (then 
+  (if (i32.lt_s (local.get $exp) (i32.const 0)) (then
       (return (f64.const 0))))
 
   (return (f64.reinterpret_i64 (i64.or
@@ -1892,7 +1893,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local $m i64)
   (local $k i32)
 
-  (local.set $m (i64.or 
+  (local.set $m (i64.or
       (i64.and
         (i64.reinterpret_f64 (local.get $z))
         (i64.const 0x000F_FFFF_FFFF_FFFF))
@@ -1904,11 +1905,11 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
           (i64.const 52)))
       (i32.const 0x3FF)))
 
-  (if (i64.eq (local.get $m) (i64.const 0x001F_FFFF_FFFF_FFFF)) (then 
+  (if (i64.eq (local.get $m) (i64.const 0x001F_FFFF_FFFF_FFFF)) (then
       (return (call $mp-make-float-64
           (i64.const 0x0010_0000_0000_0000)
           (i32.add (local.get $k) (i32.const 1))))))
-  
+
   (return (call $mp-make-float-64
       (i64.add (local.get $m) (i64.const 1))
       (local.get $k))))

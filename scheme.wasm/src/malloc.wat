@@ -4,7 +4,7 @@
 
 ;; malloc free list entry
 ;;   next: i32 (ptr)
-;;   size: i32 (size) -- size of the entry not including this header 
+;;   size: i32 (size) -- size of the entry not including this header
 
 ;; initializes malloc to point to all of available memory
 (func $malloc-init
@@ -15,7 +15,7 @@
   (local.set $size (i32.shl (memory.size) (i32.const 16)))
 
   ;; first = malloc-hdr_offset + malloc-hdr_size
-  (local.set $first (i32.add (global.get $malloc-hdr-offset) (i32.const 8))) 
+  (local.set $first (i32.add (global.get $malloc-hdr-offset) (i32.const 8)))
 
   ;; free list entry
   ;; malloc-store-list(first, 0, size - first - 8)
@@ -88,7 +88,7 @@
               ;; use the end of the block,
               ;; rem = f_size - size - 8
               (local.set $rem (i32.sub (i32.sub (local.get $f_size) (local.get $size)) (i32.const 8)))
-              
+
               ;; malloc-store-list(free, f_next, rem)
               (call $malloc-store-list (local.get $free) (local.get $f_next) (local.get $rem))
 
@@ -161,7 +161,7 @@
 
   ;; if (ptr < malloc-hdr_offset + 8)
   (if (i32.lt_u (local.get $ptr) (i32.add (global.get $malloc-hdr-offset) (i32.const 8)))
-    (then 
+    (then
       local.get $ptr
       global.get $malloc-hdr-offset
       unreachable
@@ -184,7 +184,7 @@
   ;; if (h_next != hdr)
   (if (i32.ne (local.get $h_next) (local.get $hdr))
     ;; trap
-    (then 
+    (then
       local.get $h_next
       local.get $hdr
       unreachable
@@ -204,7 +204,7 @@
       ;; if (hdr == curr)
       (if (i32.eq (local.get $hdr) (local.get $curr))
         ;; trap, double free
-        (then 
+        (then
           local.get $hdr
           local.get $curr
           unreachable
@@ -222,22 +222,22 @@
           ;; if (fend > curr)
           (if (i32.gt_u (local.get $fend) (local.get $curr))
             ;; trap, blocks overlap
-            (then 
+            (then
               local.get $fend
               local.get $curr
               unreachable
             )
           )
 
-          ;; if (fend == curr) 
+          ;; if (fend == curr)
           (if (i32.eq (local.get $fend) (local.get $curr))
             (then
               ;; merge blocks
               ;; i.e. extend current block at front
               ;; malloc-store-list(hdr, c_next, h_size + c_size + 8)
               (call $malloc-store-list
-                (local.get $hdr) 
-                (local.get $c_next) 
+                (local.get $hdr)
+                (local.get $c_next)
                 (i32.add (i32.add (local.get $h_size) (local.get $c_size)) (i32.const 8))
               )
               ;; malloc-store-list(curr, BAADF00D, BAADF00D)
@@ -267,7 +267,7 @@
           (i32.add (i32.add (local.get $curr) (local.get $c_size)) (i32.const 8))
           (local.get $hdr)
         )
-        (then 
+        (then
           ;; the free block is immediately adjacent (after) to the current block
 
           ;; if (c_next != 0 && fend > c_next)
@@ -275,7 +275,7 @@
             (then
               (if (i32.gt_u (local.get $fend) (local.get $c_next))
                 ;; trap, blocks overlap
-                (then 
+                (then
                   local.get $fend
                   local.get $c_next
                   unreachable
@@ -288,7 +288,7 @@
           ;; if (fend == c_next)
           (if (i32.eq (local.get $fend) (local.get $c_next)
             )
-            (then 
+            (then
               ;; merge with current and next
               ;; n_next, n_size = malloc-load-list(c_next)
               (local.set $entry (call $malloc-load-list (local.get $c_next)))
@@ -303,7 +303,7 @@
               ;; return
               (return)
             )
-            (else 
+            (else
               ;; merge with current block (i.e. extend current block)
               ;; malloc-store-list(curr, c_next, c_size + h_size + 8)
               (call $malloc-store-list
@@ -356,8 +356,8 @@
   ;; end = ptr + size
   (local.set $end (i32.add (local.get $ptr) (local.get $size)))
   ;; rounded = (ptr + 7) & 0xFFFFFFF8
-  (local.set $rounded (i32.and 
-      (i32.add (local.get $ptr) (i32.const 7)) 
+  (local.set $rounded (i32.and
+      (i32.add (local.get $ptr) (i32.const 7))
       (i32.const 0xFFFF_FFF8)))
 
   (block $p_end (loop $p_start
@@ -374,8 +374,8 @@
 
   (block $b_end (loop $b_start
       ;; break if ptr + 8 >= end
-      (br_if $b_end (i32.ge_u 
-          (i32.add (local.get $ptr) (i32.const 8)) 
+      (br_if $b_end (i32.ge_u
+          (i32.add (local.get $ptr) (i32.const 8))
           (local.get $end)))
 
       (i64.store (local.get $ptr) (i64.const 0))
@@ -459,7 +459,7 @@
       (return)))
 
   ;; if the src and dest don't overlap, then memcpy is safe
-  (if (i32.le_u 
+  (if (i32.le_u
       (i32.add (local.get $src) (local.get $len))
       (local.get $dest)) (then
       (call $memcpy (local.get $dest) (local.get $src) (local.get $len))
@@ -542,6 +542,3 @@
       (%inc $ptr)
       (%dec $len)
       (br $b_start))))
-
-
-   

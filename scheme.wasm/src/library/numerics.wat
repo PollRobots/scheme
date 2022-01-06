@@ -1,6 +1,7 @@
 ;; (integer? obj)
 (func $integer? (param $env i32) (param $args i32) (result i32)
   (local $obj i32)
+  (local $temp64 f64)
 
   (if (i32.ne (call $list-len (local.get $args)) (i32.const 1))
     (then (return (call $argument-error (local.get $args)))))
@@ -13,19 +14,34 @@
   (if (i32.eq (%get-type $obj) (%big-int-type))
     (then (return (global.get $g-true))))
 
+  (if (i32.eq (%get-type $obj) (%f64-type)) (then
+      (local.set $temp64 (f64.load offset=4 (local.get $obj)))
+      (if (f64.eq (local.get $temp64) (f64.nearest (local.get $temp64))) (then
+          (if (call $ieee-inf? (local.get $temp64)) (then
+              (return (global.get $g-false))))
+          (if (call $ieee-nan? (local.get $temp64)) (then
+              (return (global.get $g-false))))
+          (return (global.get $g-true))))))
+
   (return (global.get $g-false)))
 
 ;; (real? obj)
 (func $real? (param $env i32) (param $args i32) (result i32)
   (local $obj i32)
 
-  (if (i32.ne (call $list-len (local.get $args)) (i32.const 1)) (then 
+  (if (i32.ne (call $list-len (local.get $args)) (i32.const 1)) (then
       (return (call $argument-error (local.get $args)))))
 
   (local.set $obj (%car-l $args))
 
-  (if (i32.eq (%get-type $obj) (%f64-type)) (then 
+  (if (i32.eq (%get-type $obj) (%f64-type)) (then
       (return (global.get $g-true))))
+
+  (if (i32.eq (%get-type $obj) (%i64-type))
+    (then (return (global.get $g-true))))
+
+  (if (i32.eq (%get-type $obj) (%big-int-type))
+    (then (return (global.get $g-true))))
 
   (return (global.get $g-false)))
 
@@ -59,9 +75,9 @@
         (return (i32.const 0)))
 
       (local.set $args (%cdr-l $args))
-      (br $b_start))) 
+      (br $b_start)))
 
-  (return (i32.const 1))) 
+  (return (i32.const 1)))
 
 (func $list-len (param $args i32) (result i32)
   (local $len i32)
@@ -142,10 +158,10 @@
     (return (call $argument-error (local.get $args))))
 
   (local.set $num (%car-l $args))
-  (if (i32.eq (%get-type $num) (%big-int-type)) (then 
+  (if (i32.eq (%get-type $num) (%big-int-type)) (then
       (return (local.get $num))))
 
-  (if (i32.eq (%get-type $num) (%i64-type)) (then 
+  (if (i32.eq (%get-type $num) (%i64-type)) (then
       (return (local.get $num))))
 
   (return (call $exact-impl (local.get $num))))
@@ -159,12 +175,12 @@
       (return (local.get $num))))
 
   (if (i32.eq (local.get $num-type) (%i64-type)) (then
-      (return (%alloc-f64 (f64.convert_i64_s 
+      (return (%alloc-f64 (f64.convert_i64_s
             (i64.load offset=4 (local.get $num)))))))
 
   (if (i32.eq (local.get $num-type) (%big-int-type)) (then
-      (return (%alloc-f64 (call $mp-algorithm-m 
-            (%car-l $num) 
+      (return (%alloc-f64 (call $mp-algorithm-m
+            (%car-l $num)
             (i32.const 0))))))
 
   (unreachable))
@@ -186,7 +202,7 @@
       (br_if $b_fail (call $ieee-nan? (local.get $v)))
       (br $b_check))
 
-    (return (call $argument-error 
+    (return (call $argument-error
         (%alloc-cons (local.get $num) (global.get $g-nil)))))
 
   (local.set $v (f64.nearest (local.get $v)))
@@ -197,17 +213,17 @@
 
   (local.set $neg (call $ieee-negative? (local.get $v)))
 
-  (local.set $e (i32.sub 
+  (local.set $e (i32.sub
       (i32.wrap_i64 (call $ieee-exponent-bits (local.get $v)))
       (i32.const 0x433)))
-  (local.set $f (i64.add 
-      (i64.const 0x0010_0000_0000_0000) 
+  (local.set $f (i64.add
+      (i64.const 0x0010_0000_0000_0000)
       (call $ieee-significand-bits (local.get $v))))
 
   ;; number is less than 53 bits
   (if (i32.lt_s (local.get $e) (i32.const 0)) (then
-      (local.set $f (i64.shr_u 
-          (local.get $f) 
+      (local.set $f (i64.shr_u
+          (local.get $f)
           (i64.extend_i32_u (i32.sub (i32.const 0) (local.get $e)))))
       (local.set $e (i32.const 0))))
 
@@ -330,12 +346,12 @@
       (block $b_cmp_check
         (block $b_cmp_fail
 
-          (local.set $cmp-res (call $num-core-cmp 
-              (local.get $left) 
+          (local.set $cmp-res (call $num-core-cmp
+              (local.get $left)
               (local.get $right)))
 
           ;; case 0:  =
-          (if (i32.eq (local.get $cmp-op) (i32.const 0)) 
+          (if (i32.eq (local.get $cmp-op) (i32.const 0))
             (then
               (br_if $b_cmp_fail (i32.ne (local.get $cmp-res) (i32.const 0)))
               (br $b_cmp_check)))
@@ -346,7 +362,7 @@
               (br_if $b_cmp_fail (i32.le_s (local.get $cmp-res) (i32.const 0)))
               (br $b_cmp_check)))
 
-          ;; case 2:  >= 
+          ;; case 2:  >=
           (if (i32.eq (local.get $cmp-op) (i32.const 2)) ;; >=
             (then
               (br_if $b_cmp_fail (i32.lt_s (local.get $cmp-res) (i32.const 0)))
@@ -386,9 +402,9 @@
       (br_if $b_end (i32.eq (%get-type $args) (%nil-type)))
 
       (%pop-l $num $args)
-      
-      (local.set $accum (call $num-core-add 
-          (local.get $accum) 
+
+      (local.set $accum (call $num-core-add
+          (local.get $accum)
           (local.get $num)))
 
       (br $b_start)))
@@ -411,9 +427,9 @@
       (br_if $b_end (i32.eq (%get-type $args) (%nil-type)))
 
       (%pop-l $num $args)
-      
+
       (local.set $accum (call $num-core-mul
-          (local.get $accum) 
+          (local.get $accum)
           (local.get $num)))
 
       (br $b_start)))
@@ -485,7 +501,7 @@
   (%pop-l $dividend $args)
   (%pop-l $divisor $args)
 
-  (local.set $res-64 (call $num-core-div 
+  (local.set $res-64 (call $num-core-div
       (local.get $dividend)
       (local.get $divisor)
       (i32.const 0)))
@@ -514,7 +530,7 @@
   (%pop-l $dividend $args)
   (%pop-l $divisor $args)
 
-  (local.set $res-64 (call $num-core-div 
+  (local.set $res-64 (call $num-core-div
       (local.get $dividend)
       (local.get $divisor)
       (i32.const 0)))
@@ -525,7 +541,7 @@
           (global.get $g-nil)))))
 
   (return (%unpack-64-lo-l $res-64)))
- 
+
 (func $num-truncate/ (param $env i32) (param $args i32) (result i32)
   (local $dividend i32)
   (local $divisor i32)
@@ -543,7 +559,7 @@
   (%pop-l $dividend $args)
   (%pop-l $divisor $args)
 
-  (local.set $res-64 (call $num-core-div 
+  (local.set $res-64 (call $num-core-div
       (local.get $dividend)
       (local.get $divisor)
       (i32.const 0)))
@@ -575,7 +591,7 @@
   (%pop-l $dividend $args)
   (%pop-l $divisor $args)
 
-  (local.set $res-64 (call $num-core-div 
+  (local.set $res-64 (call $num-core-div
       (local.get $dividend)
       (local.get $divisor)
       (i32.const 1)))
@@ -604,7 +620,7 @@
   (%pop-l $dividend $args)
   (%pop-l $divisor $args)
 
-  (local.set $res-64 (call $num-core-div 
+  (local.set $res-64 (call $num-core-div
       (local.get $dividend)
       (local.get $divisor)
       (i32.const 1)))
@@ -615,7 +631,7 @@
           (global.get $g-nil)))))
 
   (return (%unpack-64-lo-l $res-64)))
- 
+
 (func $num-floor/ (param $env i32) (param $args i32) (result i32)
   (local $dividend i32)
   (local $divisor i32)
@@ -633,7 +649,7 @@
   (%pop-l $dividend $args)
   (%pop-l $divisor $args)
 
-  (local.set $res-64 (call $num-core-div 
+  (local.set $res-64 (call $num-core-div
       (local.get $dividend)
       (local.get $divisor)
       (i32.const 1)))
@@ -647,7 +663,7 @@
     (%alloc-values
       (%unpack-64-hi-l $res-64)
       (%alloc-list-1 (%unpack-64-lo-l $res-64)))))
- 
+
 (func $num-exact-integer-sqrt (param $env i32) (param $args i32) (result i32)
   (local $num i32)
   (local $res i32)
@@ -689,8 +705,8 @@
       (local.set $radix (%car (%cdr-l $args)))
       (%chk-type $b_fail $radix %i64-type)
       (br_if $b_fail (i32.ne (%get-type $radix) (%i64-type)))
-      (br_if $b_fail (i64.gt_u (local.tee $temp64 (i64.load offset=4 
-              (local.get $radix)) 
+      (br_if $b_fail (i64.gt_u (local.tee $temp64 (i64.load offset=4
+              (local.get $radix))
               (i64.const 16))))
       (local.set $radix (i32.wrap_i64 (local.get $temp64)))
       (br_if $b_check (i32.eq (local.get $radix) (i32.const 16)))
@@ -722,8 +738,8 @@
       (br_if $b_fail (i32.ne (local.get $args-len) (i32.const 2)))
       (local.set $radix (%car (%cdr-l $args)))
       (%chk-type $b_fail $radix %i64-type)
-      (br_if $b_fail (i64.gt_u (local.tee $temp64 (i64.load offset=4 
-              (local.get $radix)) 
+      (br_if $b_fail (i64.gt_u (local.tee $temp64 (i64.load offset=4
+              (local.get $radix))
               (i64.const 16))))
       (local.set $radix (i32.wrap_i64 (local.get $temp64)))
       (br_if $b_check (i32.eq (local.get $radix) (i32.const 16)))
@@ -737,8 +753,8 @@
     (local.set $num-type (%get-type $num))
     (if (i32.eq (local.get $num-type) (%i64-type))
       (then
-        (local.set $str (call $integer->string-impl 
-            (i64.load offset=4 (local.get $num)) 
+        (local.set $str (call $integer->string-impl
+            (i64.load offset=4 (local.get $num))
             (local.get $radix)))
         (br $b_convert)))
 

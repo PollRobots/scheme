@@ -21,7 +21,7 @@
     (let ((p (lambda (x) x)))
       (assert (eqv? p p) " p <== (lambda (x) x)"))
     (assert-not (eqv? #f 'nil))
-    
+
     (define gen-counter
       (lambda ()
         (let ((n 0))
@@ -47,7 +47,7 @@
     (assert-not (eq? (cons 1 2) (cons 1 2)))
     (let ((p (lambda (x) x)))
       (assert (eq? p p) " p <== (lambda (x) x)"))
-    
+
     (let ((x '(a)))
       (assert (eq? x x)))))
 
@@ -61,6 +61,5 @@
     ; TODO implement labels
     ; (assert (equal? '#1=(a b . #1#) '#2=(a b a b . #2#)))
     (assert (equal? (lambda (x) x) (lambda (x) x)))
-
   ))
 )

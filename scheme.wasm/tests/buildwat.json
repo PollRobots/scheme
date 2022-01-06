@@ -154,6 +154,16 @@
       "index": "$g-gc-not-collected-count"
     },
     {
+      "name": "gMp10Cache",
+      "type": "global",
+      "index": "$g-mp-10-cache"
+    },
+    {
+      "name": "gMp10CacheLen",
+      "type": "global",
+      "index": "$g-mp-10-cache-len"
+    },
+    {
       "name": "mallocZero",
       "type": "func",
       "index": "$malloc-zero"
