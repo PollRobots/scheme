@@ -174,16 +174,6 @@
       "index": "$malloc-init"
     },
     {
-      "name": "mallocStoreList",
-      "type": "func",
-      "index": "$malloc-store-list"
-    },
-    {
-      "name": "mallocLoadList",
-      "type": "func",
-      "index": "$malloc-load-list"
-    },
-    {
       "name": "malloc",
       "type": "func",
       "index": "$malloc"

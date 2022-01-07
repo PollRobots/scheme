@@ -6,8 +6,6 @@ interface TestExports extends CommonTestExports {
   memory: WebAssembly.Memory;
   mallocZero: (ptr: number, len: number) => void;
   mallocInit: () => void;
-  mallocLoadList: (ptr: number) => bigint;
-  mallocStoreList: (ptr: number, next: number, size: number) => void;
   malloc: (size: number) => number;
   mallocFree: (ptr: number) => void;
 }
@@ -20,12 +18,6 @@ function exportsFromInstance(instance: WebAssembly.Instance): TestExports {
       len: number
     ) => void,
     mallocInit: instance.exports.mallocInit as () => void,
-    mallocLoadList: instance.exports.mallocLoadList as (ptr: number) => bigint,
-    mallocStoreList: instance.exports.mallocStoreList as (
-      ptr: number,
-      next: number,
-      size: number
-    ) => void,
     malloc: instance.exports.malloc as (size: number) => number,
     mallocFree: instance.exports.mallocFree as (ptr: number) => void,
   };
@@ -92,25 +84,6 @@ describe("malloc wasm", () => {
     expect(view[10]).to.equal(0);
     // free block size = memsize - offset (40) - hdrsize(8)
     expect(view[11]).to.equal(exports.memory.buffer.byteLength - 48);
-  });
-
-  it("should round trip through load list and store list", async () => {
-    const instance = await wasm;
-    const exports = exportsFromInstance(instance);
-
-    expect(instance.exports).has.property("mallocLoadList");
-    expect(instance.exports.mallocLoadList).is.instanceOf(Function);
-    expect(instance.exports).has.property("mallocStoreList");
-    expect(instance.exports.mallocStoreList).is.instanceOf(Function);
-
-    exports.mallocStoreList(128, 256, 1234);
-    const memview = new Uint32Array(exports.memory.buffer);
-    expect(memview[128 / 4]).to.equal(256);
-    expect(memview[132 / 4]).to.equal(1234);
-
-    const res = exports.mallocLoadList(128);
-    expect(Number(BigInt.asUintN(32, res >> 32n))).to.equal(256);
-    expect(Number(BigInt.asUintN(32, res))).to.equal(1234);
   });
 
   it("should panic when freeing an invalid ptr", async () => {

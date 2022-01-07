@@ -72,7 +72,9 @@ function isDelimiterChars(char: string, next: string): boolean {
   return (
     char === "(" ||
     char === ")" ||
-    (char === ";" && (next == ";" || next == ")"))
+    (char === ";" && (next == ";" || next == ")")) ||
+    (char === "%" && next === "(") ||
+    (char === ")" && next === "%")
   );
 }
 
@@ -137,6 +139,12 @@ export function* tokenize(input: string): Generator<Token> {
           i++;
         } else if (char == ";" && next == ")") {
           yield { type: "delimiter", content: ";)", line: line };
+          i++;
+        } else if (char == "%" && next == "(") {
+          yield { type: "delimiter", content: "%(", line: line };
+          i++;
+        } else if (char == ")" && next == "%") {
+          yield { type: "delimiter", content: ")%", line: line };
           i++;
         } else if (char == "(") {
           yield { type: "delimiter", content: "(", line: line };
@@ -309,14 +317,21 @@ function convertStr(bits: number, str: string): string {
   return array.join(" ");
 }
 
+interface ListOptions {
+  isComment?: boolean;
+  isMacroScope?: boolean;
+}
+
 class List extends ParsedWat {
   private readonly elements_: ParsedWat[];
   private readonly isComment_: boolean;
+  private readonly isMacroScope_: boolean;
 
-  constructor(elements: ParsedWat[], isComment?: boolean) {
+  constructor(elements: ParsedWat[], { isComment, isMacroScope }: ListOptions) {
     super();
     this.elements_ = elements;
     this.isComment_ = !!isComment;
+    this.isMacroScope_ = !!isMacroScope;
   }
 
   get type(): "list" | "atom" {
@@ -450,7 +465,7 @@ class List extends ParsedWat {
     const expanded = list.elements.map((el) =>
       List.expandMacroItem(el, argMap)
     );
-    return new List(expanded);
+    return new List(expanded, {});
   }
 
   private isArgList(): boolean {
@@ -504,6 +519,17 @@ class List extends ParsedWat {
   toString(): string {
     if (this.isComment) {
       return `(;${this.elements.map((el) => el.toString()).join("")};)`;
+    } else if (this.isMacroScope_) {
+      const atom = this.firstSignificantAtom();
+      if (!atom || !atom.token.content.match(/^\w+$/)) {
+        throw new Error("Macro Scope must start with a name");
+      }
+      const content = this.elements.slice(this.elements.indexOf(atom) + 1);
+      const name = atom.token.content.toUpperCase();
+
+      return `(; %( begin macro scope ${name} ;)${content
+        .map((el) => el.toString())
+        .join("")}(; end macro scope ${name} )% ;)`;
     } else {
       return `(${this.elements.map((el) => el.toString()).join("")})`;
     }
@@ -517,7 +543,7 @@ class List extends ParsedWat {
     if (this.isDefinition) {
       const defn = this.buildDefinition();
       scope.add(defn);
-      return new List([this], true);
+      return new List([this], { isComment: true });
     } else if (this.isMacro) {
       const name = this.macroName;
       const defn = scope.lookup(name);
@@ -557,7 +583,7 @@ class List extends ParsedWat {
       }
     }
 
-    return new List(expandedElements);
+    return new List(expandedElements, { isMacroScope: this.isMacroScope_ });
   }
 }
 
@@ -594,13 +620,15 @@ function isAtom(value: any): value is Atom {
   return value && value.type === "atom";
 }
 
+type ListDelimType = "(" | "(;" | "%(" | "NONE";
+
 export function parse(input: string): ParsedWat[] {
   const parsed: ParsedWat[] = [];
 
   const listStack: ParsedWat[][] = [];
-  const typeStack: string[] = [];
+  const typeStack: ListDelimType[] = [];
   let curr = parsed;
-  let currType = "";
+  let currType: ListDelimType = "NONE";
 
   for (const token of tokenize(input)) {
     if (!isDelimiterToken(token)) {
@@ -614,9 +642,9 @@ export function parse(input: string): ParsedWat[] {
       currType = "(";
     } else if (token.content === ")") {
       if (currType === "(") {
-        const list = new List(curr);
+        const list = new List(curr, {});
         curr = listStack.pop() || [];
-        currType = typeStack.pop() || "";
+        currType = typeStack.pop() || "NONE";
         curr.push(list);
       } else {
         throw new Error(
@@ -632,9 +660,27 @@ export function parse(input: string): ParsedWat[] {
       currType = "(";
     } else if (token.content === ";)") {
       if (currType === "(;") {
-        const list = new List(curr, true);
+        const list = new List(curr, { isComment: true });
         curr = listStack.pop() || [];
-        currType = typeStack.pop() || "";
+        currType = typeStack.pop() || "NONE";
+        curr.push(list);
+      } else {
+        throw new Error(
+          `Unmatched '${currType}', got ${JSON.stringify(
+            token.content
+          )}, at line ${token.line}`
+        );
+      }
+    } else if (token.content === "%(") {
+      listStack.push(curr);
+      typeStack.push(currType);
+      curr = [];
+      currType = "%(";
+    } else if (token.content === ")%") {
+      if (currType === "%(") {
+        const list = new List(curr, { isMacroScope: true });
+        curr = listStack.pop() || [];
+        currType = typeStack.pop() || "NONE";
         curr.push(list);
       } else {
         throw new Error(
@@ -654,9 +700,9 @@ export function parse(input: string): ParsedWat[] {
 
   if (listStack.length) {
     while (listStack.length) {
-      const list = new List(curr);
+      const list = new List(curr, {});
       curr = listStack.pop() || [];
-      currType = typeStack.pop() || "";
+      currType = typeStack.pop() || "NONE";
       curr.push(list);
     }
     // const top = listStack.pop() || [];
@@ -732,17 +778,20 @@ export function emit(parsed: ParsedWat[]) {
           JSON.parse(str.token.content)
         );
         return [
-          new List([
-            args.get("%next") as ParsedWat,
-            ...converted.split(" ").map(
-              (el) =>
-                new Atom({
-                  content: el,
-                  type: "element",
-                  line: str.token.line,
-                })
-            ),
-          ]),
+          new List(
+            [
+              args.get("%next") as ParsedWat,
+              ...converted.split(" ").map(
+                (el) =>
+                  new Atom({
+                    content: el,
+                    type: "element",
+                    line: str.token.line,
+                  })
+              ),
+            ],
+            {}
+          ),
         ];
       }),
     ],
