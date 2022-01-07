@@ -1,7 +1,7 @@
 (;
 GC process
 
-All objects are considered to start as unrooted 
+All objects are considered to start as unrooted
 the working set is initialized with the known rooted objects
   this includes:
     - root environment
@@ -15,7 +15,7 @@ while the working set is non-empty:
 
 ;)
 
-;; Indicates whether there is on ongoing collection. 
+;; Indicates whether there is on ongoing collection.
 ;; While this is true all new allocations must be added to the working set.
 (global $g-gc-collecting? (mut i32) (i32.const 0))
 ;; The number of items to process from the working set on a single cycle
@@ -31,7 +31,7 @@ while the working set is non-empty:
 ;; The number of items not-collected in the last/current collection
 (global $g-gc-not-collected-count (mut i32) (i32.const 0))
 
-;; The number of heap slabs created, used to guide how large/frequent gc's 
+;; The number of heap slabs created, used to guide how large/frequent gc's
 ;; should be.
 (global $g-gc-heap-slabs (mut i32) (i32.const 0))
 
@@ -111,7 +111,7 @@ while the working set is non-empty:
     (if (i32.eqz (local.get $curr)) (then
       (call $print-symbol (global.get $g-gc-run))
       (call $print-symbol (global.get $g-space))
-      (call $print-integer 
+      (call $print-integer
         (i64.extend_i32_s (i32.load offset=16 (local.get $ptr)))
         (i32.const 10))
       (call $print-symbol (global.get $g-newline))
@@ -191,7 +191,7 @@ while the working set is non-empty:
           (call $gc-maybe-touched-push (%car-l $curr))
           (call $gc-maybe-touched-push (%cdr-l $curr))
           (br $b_switch)))
-          
+
       ;; }
     )
 
@@ -216,9 +216,9 @@ while the working set is non-empty:
   (loop $forever
     (if (i32.eqz (local.get $count))
       (then (return)))
-    
+
     (call $gc-maybe-touched-push (i32.load (local.get $ptr)))
-    
+
     (%plus-eq $ptr 4)
     (%dec $count)
     (br $forever)))
@@ -250,7 +250,7 @@ while the working set is non-empty:
 
     ;; while (size) {
     (block $w_end
-      (loop $w_start 
+      (loop $w_start
         (br_if $w_end (i32.eqz (local.get $size)))
 
         ;; type = get-type(ptr)
@@ -263,7 +263,7 @@ while the working set is non-empty:
           (block $if_b_or_s_done
             (block $if_b_or_s_else
               (block $if_b_or_s_then
-                ;; if (gc-is-safe(ptr) || 
+                ;; if (gc-is-safe(ptr) ||
                 (br_if $if_b_or_s_then (call $gc-is-safe (local.get $ptr)))
                 ;; type == (%symbol-type)) {
                 (br_if $if_b_or_s_then (i32.eq (local.get $type) (%symbol-type)))
@@ -308,8 +308,11 @@ while the working set is non-empty:
             )
             ;; } else if (type == %vector-type) {
             (if (i32.eq (local.get $type) (%vector-type))
-              (then (call $malloc-free (%car-l $ptr)))
-            )
+              (then (call $malloc-free (%car-l $ptr))))
+
+            ;; } else if (type == %bytevector-type) {
+            (if (i32.eq (local.get $type) (%bytevector-type))
+              (then (call $malloc-free (%car-l $ptr))))
             ;; }
             (if (i32.eq (local.get $type) (%cont-type)) (then
                 (call $cont-free (%car-l $ptr))))
@@ -382,7 +385,7 @@ while the working set is non-empty:
             (then
               ;; gc-maybe-touched-push(slot.data)
               ;; gc-maybe-touched-push(slot[12])
-              (call $gc-maybe-touched-push 
+              (call $gc-maybe-touched-push
                 (i32.load offset=12 (local.get $slot))
               )
             )
@@ -430,7 +433,7 @@ while the working set is non-empty:
   (if (i32.eqz (call $gc-is-untouched (local.get $item))) (then
     (if (call $gc-is-touched (local.get $item)) (then
       (if (i32.eqz (call $in-touched-queue? (local.get $item))) (then
-        ;; item is marked as touched, but isn't in the touched queue. This is a 
+        ;; item is marked as touched, but isn't in the touched queue. This is a
         ;; bug, but we'll simply mark it as untouched and try again
         (call $gc-mark-untouched (local.get $item))
         (call $gc-maybe-touched-push (local.get $item))))))
@@ -536,15 +539,15 @@ while the working set is non-empty:
       (%assert (i32.eqz (local.get $prev)))
       (return (i32.const 0))))
 
-  (local.set $val (i32.load offset=4 (i32.add 
-        (local.get $array) 
+  (local.set $val (i32.load offset=4 (i32.add
+        (local.get $array)
         (%word-size-l $count))))
 
   (%dec $count)
   (i32.store offset=4 (local.get $array) (local.get $count))
 
   ;; decrement the total count
-  (i32.store offset=4 
+  (i32.store offset=4
     (local.get $ptr)
     (i32.sub (i32.load offset=4 (local.get $ptr)) (i32.const 1)))
 
@@ -586,7 +589,7 @@ while the working set is non-empty:
       (i32.store offset=0 (local.get $array) (local.get $next))
       (local.set $array (local.get $next))))
 
-  (i32.store offset=8 
+  (i32.store offset=8
     (i32.add (local.get $array) (%word-size-l $count))
     (local.get $val))
   (%inc $count)

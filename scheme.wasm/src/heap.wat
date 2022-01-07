@@ -6,8 +6,8 @@
 ;;                            -----+-----------+----------------+---------------
 ;;                            0b00 | untouched | unvisited      | can be freed
 ;;                            0b01 | touched   | to be checked  | error
-;;                            0b10 | safe      | in-use         | must be kept 
-;;  flags: i8       other flags   flag | meaning 
+;;                            0b10 | safe      | in-use         | must be kept
+;;  flags: i8       other flags   flag | meaning
 ;;                                -----+----------------------------------
 ;;                                0b01 | visited in list circularity check
 ;;                                0b02 | considered immutable
@@ -33,7 +33,7 @@
 ;;   values = 14
 ;;   vector = 15
 ;;   bytevector = 16
-;;   cont(inuation) = 17 
+;;   cont(inuation) = 17
 ;;   big-int = 18
 ;;   exception = 19
 ;;   cont-proc = 20
@@ -202,20 +202,21 @@
       ;; switch (type)
       (block $b_switch
 
-        ;; if this is a string or a symbol or a big-ing
-        ;; case %symbol-type:
-        ;; case %string-type:
-        ;; case %big-int-type:
+        ;; if this is a string, symbol, big-int, vector, bytevector
         (block $b_str_or_sym_else
           (block $b_str_or_sym
             (if (i32.eq (local.get $type) (%symbol-type))
               (then (br $b_str_or_sym)))
             (if (i32.eq (local.get $type) (%str-type))
-              (then (br $b_str_or_sym))
+              (then (br $b_str_or_sym)))
             (if (i32.eq (local.get $type) (%big-int-type))
-              (then (br $b_str_or_sym))
-            (br $b_str_or_sym_else))))
-          ;; free the underlying string
+              (then (br $b_str_or_sym)))
+            (if (i32.eq (local.get $type) (%vector-type))
+              (then (br $b_str_or_sym)))
+            (if (i32.eq (local.get $type) (%bytevector-type))
+              (then (br $b_str_or_sym)))
+            (br $b_str_or_sym_else))
+          ;; free the underlying allocation
           ;; malloc-free(entry-ptr[4])
           (call $malloc-free (%car-l $entry-ptr))
           ;; }
@@ -235,13 +236,12 @@
             ;; delete the continuation
             (call $cont-free (%car-l $entry-ptr))))
 
-
       ;; entry-ptr += 12
       (%plus-eq $entry-ptr 12)
       ;; size--;
       (%dec $size)
       (br $b_start)))
-  
+
   ;; malloc-free(heap)
   (call $malloc-free (local.get $heap)))
 
@@ -290,9 +290,9 @@
 
       ;; return heap-alloc(next-heap-ptr, type, data1, data2);
       (return (call $heap-alloc
-        (local.get $next-heap-ptr) 
-        (local.get $type) 
-        (local.get $data1) 
+        (local.get $next-heap-ptr)
+        (local.get $type)
+        (local.get $data1)
         (local.get $data2)))))
 
   ;; if (type == 0) {
@@ -339,8 +339,8 @@
   (return (%alloc-str (local.get $str))))
 
 (func $heap-alloc-error (param $sym i32) (param $str i32) (result i32)
-  (return (%alloc-error 
-      (%alloc-symbol (local.get $sym)) 
+  (return (%alloc-error
+      (%alloc-symbol (local.get $sym))
       (%alloc-str (local.get $str)))))
 
 (func $get-interned-symbol (param $str i32) (result i32)
@@ -411,7 +411,7 @@
       (i32.add (local.get $heap) (i32.const 4))
       (local.get $ptr)
     )
-  
+
     ;; return;
     (return)
   ;; }

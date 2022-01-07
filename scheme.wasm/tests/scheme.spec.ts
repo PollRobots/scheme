@@ -108,7 +108,7 @@ describe("scheme", () => {
       console.log(written.splice(0, written.length).join(""));
     }
     exports.runtimeCleanup();
-    // checkForLeaks(exports);
+    checkForLeaks(exports);
   });
 
   const testFile = async (filename: string) => {

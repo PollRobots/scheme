@@ -757,6 +757,7 @@ data: u32[size] -- the words of the number, words themselves are little
 
   ;; log2 = mp-log2(ptr)
   (local.set $log2 (call $mp-log2 (local.get $ptr)))
+
   ;; norm-len = (log2 + 0x1F) >>> 5
   (local.set $norm-len (i32.shr_u (i32.add (local.get $log2) (i32.const 0x1F)) (i32.const 5)))
 
@@ -1450,6 +1451,9 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (local $high i32)
   (local $ptr i32)
 
+  (if (i64.eqz (local.get $value)) (then
+      (return (call $mp-zero))))
+
   (local.set $low (i32.wrap_i64 (local.get $value)))
   (local.set $high (i32.wrap_i64 (i64.shr_u (local.get $value) (i64.const 32))))
   (if (local.get $high)
@@ -1467,6 +1471,9 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
 
 (func $mp-from-i64 (param $value i64) (result i32)
   (local $mp i32)
+
+  (if (i64.eqz (local.get $value)) (then
+      (return (call $mp-zero))))
 
   (if (i64.ge_s (local.get $value) (i64.const 0))
     (then (return (call $mp-from-u64 (local.get $value)))))
