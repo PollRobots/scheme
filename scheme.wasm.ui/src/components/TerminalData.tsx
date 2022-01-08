@@ -23,7 +23,7 @@ export const TerminalData: React.FunctionComponent<TerminalDataProps> = (
 );
 
 const TerminalDataLine: React.FunctionComponent<DataLine> = (props) => {
-  if (!props.text.length) {
+  if (!props.text.length && props.type !== "prompted") {
     return (
       <div>
         <span

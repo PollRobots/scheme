@@ -291,8 +291,9 @@
                 ;; return head
                 (return (local.get $head)))
               ;; } else {
-                ;; TODO return error
-              (else (unreachable)))))
+              (else (return (%alloc-error
+                    (%str %sym-128 128 "expect ) not")
+                    (%alloc-str (local.get $cdr-str))))))))
 
         ;; cdr = string->datum(cdr-str)
         (local.set $cdr (call $string->datum-with-reader
@@ -313,13 +314,15 @@
 
   ;; if (token-str == ')') {
   (if (call $short-str-eq (local.get $token-str) (i32.const 0x29) (i32.const 1))
-    ;;  TODO: return error
-    (then (unreachable)))
+    (then (return (%alloc-error
+          (%str %sym-128 128 "unexpected")
+          (%alloc-str (local.get $token-str))))))
 
   ;; if (token-str == '.') 0x2E {
   (if (call $short-str-eq (local.get $token-str) (i32.const 0x2E) (i32.const 1))
-    ;;  TODO: return error
-    (then (unreachable)))
+    (then (return (%alloc-error
+          (%str %sym-128 128 "unexpected")
+          (%alloc-str (local.get $token-str))))))
 
   ;; }
   ;; if (token-str == "'") 0x27 {

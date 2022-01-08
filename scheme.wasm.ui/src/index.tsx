@@ -165,7 +165,7 @@ class App extends React.Component<{}, AppState> {
       return;
     }
 
-    if (this.pending.length == 0 && str.length == 0) {
+    if (this.pending.length == 0 && str.length == 0 && mode !== "prompted") {
       return;
     }
 
