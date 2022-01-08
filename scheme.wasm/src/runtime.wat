@@ -1244,6 +1244,11 @@
     (then
       (%ginc $g-eval-count)
 
+      (if (i32.eqz (call $is-list-impl (local.get $args))) (then
+          (return (%alloc-raise (%alloc-error 
+                (%str %sym-128 128 "improper list")
+                (local.get $args))))))
+
       (if (global.get $g-dump-eval)
         (then
           (call $print-symbol (global.get $g-eval))
