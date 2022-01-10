@@ -1,5 +1,5 @@
 #|
- |  Test numerical operations. 
+ |  Test numerical operations.
  |
  |  per § 6.2.6 of the r7rs spec.
  |#
@@ -14,6 +14,9 @@
     (assert (number? #xfabc0de))
     (assert (number? #o755))
     (assert (number? #b1001011001))
+    (assert (number? 1/2))
+    (assert (number? 7/19))
+    (assert (number? #e1.23))
     (assert (number? #d1234))
     (assert (number? +inf.0))
     (assert (number? -inf.0))
@@ -27,7 +30,7 @@
     (assert-not (number? #u8(1 2 3)))
     (assert-not (number? (lambda (x) x)))))
 
-  ; Complex numbers are not currently supported, 
+  ; Complex numbers are not currently supported,
   ; so complex? is equivalent to number?
   (test-case "(complex? <obj>)" (lambda ()
     (assert (complex? 1))
@@ -36,6 +39,9 @@
     (assert (complex? #xfabc0de))
     (assert (complex? #o755))
     (assert (complex? #b1001011001))
+    (assert (complex? 1/2))
+    (assert (complex? 7/19))
+    (assert (complex? #e1.23))
     (assert (complex? #d1234))
     (assert (complex? +inf.0))
     (assert (complex? -inf.0))
@@ -57,6 +63,9 @@
     (assert (real? #o755))
     (assert (real? #b1001011001))
     (assert (real? #d1234))
+    (assert (real? 1/2))
+    (assert (real? 7/19))
+    (assert (real? #e1.23))
     (assert (real? +inf.0))
     (assert (real? -inf.0))
     (assert (real? +nan.0))
@@ -69,8 +78,6 @@
     (assert-not (real? #u8(1 2 3)))
     (assert-not (real? (lambda (x) x)))))
 
-  ; Rational numbers are not currently supported, 
-  ; so rational? is equivalent to integer?
   (test-case "(rational? <obj>)" (lambda ()
     (assert (rational? 1))
     (assert-not (rational? 2.3))
@@ -79,6 +86,9 @@
     (assert (rational? #o755))
     (assert (rational? #b1001011001))
     (assert (rational? #d1234))
+    (assert (rational? 1/2))
+    (assert (rational? 7/19))
+    (assert (rational? #e1.23))
     (assert-not (rational? +inf.0))
     (assert-not (rational? -inf.0))
     (assert-not (rational? +nan.0))
@@ -100,6 +110,9 @@
     (assert (integer? #o755))
     (assert (integer? #b1001011001))
     (assert (integer? #d1234))
+    (assert-not (integer? 1/2))
+    (assert-not (integer? 7/19))
+    (assert-not (integer? #e1.23))
     (assert-not (integer? +inf.0))
     (assert-not (integer? -inf.0))
     (assert-not (integer? +nan.0))

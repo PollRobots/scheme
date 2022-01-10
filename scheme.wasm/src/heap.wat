@@ -38,7 +38,8 @@
 ;;   exception = 19
 ;;   cont-proc = 20
 ;;   syntax-rules = 21
-;; kMaxType = 21
+;;   rational = 22
+;; kMaxType = 22
 
 ;;  Empty cell
 ;;    next-empty: i32 ptr
@@ -96,6 +97,10 @@
 ;;  SyntaxRules
 ;;    car: i32 ptr - list literals (first item is always the ellipsis symbol)
 ;;    cdr: i32 ptr - (<syntax-rule> ...)
+
+;;  Rational
+;;    car: i32 ptr - numerator
+;;    cdr: i32 ptr - denominator
 
 ;; Heap
 ;;   Size:      i32
@@ -209,8 +214,6 @@
               (then (br $b_str_or_sym)))
             (if (i32.eq (local.get $type) (%str-type))
               (then (br $b_str_or_sym)))
-            (if (i32.eq (local.get $type) (%big-int-type))
-              (then (br $b_str_or_sym)))
             (if (i32.eq (local.get $type) (%vector-type))
               (then (br $b_str_or_sym)))
             (if (i32.eq (local.get $type) (%bytevector-type))
@@ -235,6 +238,10 @@
         (if (i32.eq (local.get $type) (%cont-type)) (then
             ;; delete the continuation
             (call $cont-free (%car-l $entry-ptr))))
+
+        (if (i32.eq (local.get $type) (%big-int-type)) (then
+            ;; delete the big-int
+            (call $mp-free (%car-l $entry-ptr))))
 
       ;; entry-ptr += 12
       (%plus-eq $entry-ptr 12)

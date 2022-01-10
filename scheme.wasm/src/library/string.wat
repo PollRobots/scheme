@@ -54,7 +54,7 @@
 
   (if (i32.eq (call $utf8-code-point-size (local.get $code-point)) (i32.const 1))
     (then
-      (local.set $str (call $malloc (i32.add (local.get $str-len) (i32.const 4)))) 
+      (local.set $str (call $malloc (i32.add (local.get $str-len) (i32.const 4))))
       (i32.store (local.get $str) (local.get $str-len))
       (local.set $str-ptr (i32.add (local.get $str) (i32.const 4)))
 
@@ -70,7 +70,7 @@
           (br $b_start)
         )
       )
-      (block $b_done 
+      (block $b_done
         (br_if $b_done (i32.eqz (local.get $str-len)))
         (i32.store8 (local.get $str-ptr) (local.get $code-point))
         (%inc $str-ptr)
@@ -87,8 +87,8 @@
     )
   )
 
-  (local.set $str-ptr 
-    (local.tee $char-buffer 
+  (local.set $str-ptr
+    (local.tee $char-buffer
       (call $malloc (%word-size-l $str-len))
     )
   )
@@ -105,9 +105,9 @@
     )
   )
 
-  (local.set $str 
-    (call $str-from-code-points 
-      (local.get $char-buffer) 
+  (local.set $str
+    (call $str-from-code-points
+      (local.get $char-buffer)
       (i32.wrap_i64 (local.get $len))
     )
   )
@@ -146,7 +146,7 @@
 
   (local.set $str (call $str-from-code-points (local.get $char-buffer) (local.get $len)))
   (call $malloc-free (local.get $char-buffer))
-  
+
   (return (%alloc-str (local.get $str)))
 )
 
@@ -233,17 +233,17 @@
 
 
   (local.set $cp-buffer (call $malloc (%word-size-l $cp-len)))
-  (local.set $check-len 
-    (call $str-to-code-points  
-      (local.get $str-ptr) 
-      (local.get $cp-buffer) 
+  (local.set $check-len
+    (call $str-to-code-points
+      (local.get $str-ptr)
+      (local.get $cp-buffer)
       (local.get $cp-len)
     )
   )
   (if (i32.ne (local.get $check-len) (local.get $cp-len))
     (then unreachable)
   )
-  (i32.store 
+  (i32.store
     (i32.add (local.get $cp-buffer) (%word-size-l $offset))
     (local.get $code-point)
   )
@@ -299,14 +299,14 @@
   (local $temp i32)
   (local $temp-type i32)
 
-  (block $done 
+  (block $done
     (loop $forever
       (br_if $done (i32.eq (%get-type $args) (%nil-type)))
 
       (local.set $temp (%car-l $args))
       (local.set $temp-type (%get-type $temp))
 
-      (if (i32.ne (local.get $temp-type) (%str-type)) 
+      (if (i32.ne (local.get $temp-type) (%str-type))
         (then (return (i32.const 0)))
       )
 
@@ -413,14 +413,14 @@
 
   (local.set $cp-len (call $str-code-point-len (local.get $str)))
   (local.set $ptr
-    (local.tee $cp-buffer 
+    (local.tee $cp-buffer
       (call $malloc (%word-size-l $cp-len))
     )
   )
-  (local.set $i 
-    (call $str-to-code-points 
-      (local.get $str) 
-      (local.get $cp-buffer) 
+  (local.set $i
+    (call $str-to-code-points
+      (local.get $str)
+      (local.get $cp-buffer)
       (local.get $cp-len)
     )
   )
@@ -439,7 +439,7 @@
       (br $b_start)
     )
   )
-  
+
   (local.set $result (call $str-from-code-points (local.get $cp-buffer) (local.get $cp-len)))
   (call $malloc-free (local.get $cp-buffer))
 
@@ -468,14 +468,14 @@
 
   (local.set $cp-len (call $str-code-point-len (local.get $str)))
   (local.set $ptr
-    (local.tee $cp-buffer 
+    (local.tee $cp-buffer
       (call $malloc (%word-size-l $cp-len))
     )
   )
-  (local.set $i 
-    (call $str-to-code-points 
-      (local.get $str) 
-      (local.get $cp-buffer) 
+  (local.set $i
+    (call $str-to-code-points
+      (local.get $str)
+      (local.get $cp-buffer)
       (local.get $cp-len)
     )
   )
@@ -494,7 +494,7 @@
       (br $b_start)
     )
   )
-  
+
   (local.set $result (call $str-from-code-points (local.get $cp-buffer) (local.get $cp-len)))
   (call $malloc-free (local.get $cp-buffer))
 
@@ -507,7 +507,7 @@
 
   (local.set $src-buffer (call $malloc (%word-size-l $end)))
   (call $str-to-code-points (local.get $str) (local.get $src-buffer) (local.get $end))
-  (local.set $dest-str 
+  (local.set $dest-str
     (call $str-from-code-points
       (i32.add (local.get $src-buffer) (%word-size-l $start))
       (i32.sub (local.get $end) (local.get $start))
@@ -553,11 +553,11 @@
     (return (call $argument-error (local.get $args)))
   )
 
-  (return 
-    (%alloc-str 
-      (call $string-copy-impl 
-        (local.get $str) 
-        (local.get $start) 
+  (return
+    (%alloc-str
+      (call $string-copy-impl
+        (local.get $str)
+        (local.get $start)
         (local.get $end)
       )
     )
@@ -611,11 +611,11 @@
     (local.set $end (local.get $str-len))
   )
 
-  (return 
-    (%alloc-str 
-      (call $string-copy-impl 
-        (local.get $str) 
-        (local.get $start) 
+  (return
+    (%alloc-str
+      (call $string-copy-impl
+        (local.get $str)
+        (local.get $start)
         (local.get $end)
       )
     )
@@ -680,9 +680,9 @@
   )
 
 
-  (call $str-to-code-points 
-    (local.get $str) 
-    (local.tee $buffer 
+  (call $str-to-code-points
+    (local.get $str)
+    (local.tee $buffer
       (call $malloc (%word-size-l $end))
     )
     (local.get $end)
@@ -730,7 +730,7 @@
       (local.set $arg (%car-l $args))
       (local.set $arg-type (%get-type $arg))
       (if (i32.ne (local.get $arg-type) (%cons-type))
-        (then 
+        (then
           (br_if $b_fail (i32.ne (local.get $arg-type) (%nil-type)))))
       (br_if $b_fail (i32.eqz (call $is-list-impl (local.get $arg))))
       (br_if $b_fail (i32.eqz (call $all-char (local.get $arg))))
@@ -751,17 +751,27 @@
         (local.get $ptr)
         (%car (%car-l $arg)))
 
-      (%plus-eq $ptr 4)      
+      (%plus-eq $ptr 4)
       (local.set $arg (%cdr-l $arg))
-      (br $b_start))) 
+      (br $b_start)))
 
-  (return 
-    (%alloc-str 
-      (call $str-from-code-points 
-        (local.get $buffer) 
+  (return
+    (%alloc-str
+      (call $str-from-code-points
+        (local.get $buffer)
         (local.get $cp-len)))))
 
 (func $string-append (param $env i32) (param $args i32) (result i32)
+  (block $b_check
+    (block $b_fail
+      (br_if $b_fail (i32.eqz (call $list-len (local.get $args))))
+      (br_if $b_fail (i32.eqz (call $all-string (local.get $args))))
+      (br $b_check))
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $string-append-impl (local.get $args))))
+
+(func $string-append-impl (param $args i32) (result i32)
   (local $ptr i32)
   (local $str i32)
   (local $str-ptr i32)
@@ -769,13 +779,6 @@
   (local $buffer i32)
   (local $total i32)
   (local $dest i32)
-
-  (block $b_check
-    (block $b_fail
-      (br_if $b_fail (i32.eqz (call $list-len (local.get $args))))
-      (br_if $b_fail (i32.eqz (call $all-string (local.get $args))))
-      (br $b_check))
-    (return (call $argument-error (local.get $args))))
 
   (local.set $ptr (local.get $args))
   (local.set $total (i32.const 0))
@@ -793,7 +796,7 @@
           (i32.load (local.get $str-ptr))))
 
       (local.set $ptr (%cdr-l $ptr))
-      (br $b_start))) 
+      (br $b_start)))
 
   ;; add 4 bytes to store the length
   (local.set $buffer (call $malloc (i32.add (local.get $total) (i32.const 4))))
@@ -811,8 +814,8 @@
       (local.set $str-ptr (%car-l $str))
       (local.set $str-len (i32.load (local.get $str-ptr)))
 
-      (call $memcpy 
-        (local.get $dest) 
+      (call $memcpy
+        (local.get $dest)
         (i32.add (local.get $str-ptr) (i32.const 4))
         (local.get $str-len))
 
@@ -891,18 +894,18 @@
 
           (br_if $b_fail (i32.lt_u (local.get $end) (local.get $start)))
           (br_if $b_fail (i32.gt_u (local.get $end) (local.get $from-len)))
-          (br_if $b_fail (i32.gt_u 
+          (br_if $b_fail (i32.gt_u
             (i32.sub (local.get $end) (local.get $start))
             (i32.sub (local.get $to-len) (local.get $at))))
 
           (br_if $b_check (i32.eq (local.get $num-args) (i32.const 5))))
         (return (call $argument-error (local.get $args))))
-      
+
       (local.set $start (i32.const 0)))
 
     (local.set $end (local.get $from-len))
-    (if 
-      (i32.gt_u 
+    (if
+      (i32.gt_u
         (i32.sub (local.get $end) (local.get $start))
         (i32.sub (local.get $to-len) (local.get $at)))
       (then
@@ -922,7 +925,7 @@
 
   (local.set $dest-ptr (i32.add (local.get $dest-buffer) (%word-size-l $at)))
   (local.set $src-ptr (i32.add (local.get $src-buffer) (%word-size-l $start)))
-  
+
   (block $b_end
     (loop $b_start
       (br_if $b_end (i32.ge_u (local.get $start) (local.get $end)))
@@ -933,9 +936,9 @@
 
       (%plus-eq $dest-ptr 4)
       (%plus-eq $src-ptr 4)
-      (%inc $start) 
+      (%inc $start)
       (br $b_start)))
-  
+
   (call $malloc-free (local.get $src-buffer))
   (call $malloc-free (local.get $to-str))
   (local.set $to-str (call $str-from-code-points (local.get $dest-buffer) (local.get $to-len)))
@@ -1003,7 +1006,7 @@
 
     (local.set $end (local.get $str-len)))
 
-  (call $str-to-code-points 
+  (call $str-to-code-points
     (local.get $str-ptr)
     (local.tee $buffer (call $malloc (%word-size-l $str-len)))
     (local.get $str-len))
@@ -1013,19 +1016,19 @@
   (block $b_end
     (loop $b_start
       (br_if $b_end (i32.ge_u (local.get $start) (local.get $end)))
-      
+
       (i32.store (local.get $ptr) (local.get $fill))
-      
+
       (%inc $start)
       (%plus-eq $ptr 4)
       (br $b_start)))
-  
+
   (call $malloc-free (local.get $str-ptr))
-  (local.set $str-ptr 
-    (call $str-from-code-points 
-      (local.get $buffer) 
+  (local.set $str-ptr
+    (call $str-from-code-points
+      (local.get $buffer)
       (local.get $str-len)))
   (call $malloc-free (local.get $buffer))
-  
+
   (%set-car!-l $str $str-ptr)
   (return (local.get $str)))

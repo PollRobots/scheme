@@ -13,11 +13,11 @@
 
   (%pop-l $num $args)
   (local.set $num-type (%get-type $num))
-  (if (i32.eq (local.get $num-type) (%i64-type)) (then 
+  (if (i32.eq (local.get $num-type) (%i64-type)) (then
       (return (global.get $g-true))))
-  (if (i32.eq (local.get $num-type) (%big-int-type)) (then 
+  (if (i32.eq (local.get $num-type) (%big-int-type)) (then
       (return (global.get $g-true))))
-  
+
   (if (i32.eq (local.get $num-type) (%f64-type)) (then
       (local.set $v (f64.load offset=4 (local.get $num)))
       (if (call $ieee-inf? (local.get $v)) (then
@@ -43,11 +43,11 @@
 
   (%pop-l $num $args)
   (local.set $num-type (%get-type $num))
-  (if (i32.eq (local.get $num-type) (%i64-type)) (then 
+  (if (i32.eq (local.get $num-type) (%i64-type)) (then
       (return (global.get $g-false))))
-  (if (i32.eq (local.get $num-type) (%big-int-type)) (then 
+  (if (i32.eq (local.get $num-type) (%big-int-type)) (then
       (return (global.get $g-false))))
-  
+
   (if (i32.eq (local.get $num-type) (%f64-type)) (then
       (local.set $v (f64.load offset=4 (local.get $num)))
       (if (call $ieee-inf? (local.get $v)) (then
@@ -71,11 +71,11 @@
 
   (%pop-l $num $args)
   (local.set $num-type (%get-type $num))
-  (if (i32.eq (local.get $num-type) (%i64-type)) (then 
+  (if (i32.eq (local.get $num-type) (%i64-type)) (then
       (return (global.get $g-false))))
-  (if (i32.eq (local.get $num-type) (%big-int-type)) (then 
+  (if (i32.eq (local.get $num-type) (%big-int-type)) (then
       (return (global.get $g-false))))
-  
+
   (if (i32.eq (local.get $num-type) (%f64-type)) (then
       (local.set $v (f64.load offset=4 (local.get $num)))
       (if (call $ieee-nan? (local.get $v)) (then
@@ -83,50 +83,6 @@
       (return (global.get $g-false))))
 
   (unreachable))
-
-;; (/ z)
-;; (/ z_1 z_2 ...)
-(func $real-div (param $env i32) (param $args i32) (result i32)
-  (local $temp i32)
-  (local $accum f64)
-  (local $v f64)
-  (local $num i32)
-
-  (block $b_check (block $b_fail
-      (br_if $b_fail (i32.eq (%get-type $args) (%nil-type)))
-      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
-      (br $b_check))
-
-    (return (call $argument-error (local.get $args))))
-
-  (local.set $temp (local.get $args))
-  (%pop-l $num $temp)
-  (local.set $num (call $inexact-impl (local.get $num)))
-  (local.set $accum (f64.load offset=4 (local.get $num)))
-
-  (if (i32.eq (%get-type $temp) (%nil-type)) (then
-      (if (f64.ne (local.get $accum) (f64.const 0)) 
-        (then (return (%alloc-f64 (f64.div (f64.const 1) (local.get $accum)))))
-        (else (return (%alloc-error-cons
-              (global.get $g-div0)
-              (local.get $args)))))))
-
-  ;; while ( (*args & 0x0f) != nil-type) {
-  (block $b_end (loop $b_start
-      (br_if $b_end (i32.eq (%get-type $temp) (%nil-type)))
-
-      (%pop-l $num $temp)
-      (local.set $v (f64.load offset=4 (call $inexact-impl (local.get $num))))
-      (if (f64.eq (local.get $v) (f64.const 0)) (then
-          (return (%alloc-error-cons
-              (global.get $g-div0)
-              (local.get $args)))))
-
-      (local.set $accum (f64.div (local.get $accum) (local.get $v)))
-
-      (br $b_start)))
-
-  (return (%alloc-f64 (local.get $accum))))
 
 (func $floor (param $env i32) (param $args i32) (result i32)
   (local $num i32)
@@ -147,11 +103,11 @@
       (local.set $v (f64.load offset=4 (local.get $num)))
       (return (%alloc-f64 (f64.floor (local.get $v))))))
 
-  (if (i32.eq (local.get $num-type) (%i64-type)) (then 
+  (if (i32.eq (local.get $num-type) (%i64-type)) (then
       (return (local.get $num))))
-  (if (i32.eq (local.get $num-type) (%big-int-type)) (then 
+  (if (i32.eq (local.get $num-type) (%big-int-type)) (then
       (return (local.get $num))))
-  
+
   (unreachable))
 
 (func $ceiling (param $env i32) (param $args i32) (result i32)
@@ -173,11 +129,11 @@
       (local.set $v (f64.load offset=4 (local.get $num)))
       (return (%alloc-f64 (f64.ceil (local.get $v))))))
 
-  (if (i32.eq (local.get $num-type) (%i64-type)) (then 
+  (if (i32.eq (local.get $num-type) (%i64-type)) (then
       (return (local.get $num))))
-  (if (i32.eq (local.get $num-type) (%big-int-type)) (then 
+  (if (i32.eq (local.get $num-type) (%big-int-type)) (then
       (return (local.get $num))))
-  
+
   (unreachable))
 
 (func $truncate (param $env i32) (param $args i32) (result i32)
@@ -199,11 +155,11 @@
       (local.set $v (f64.load offset=4 (local.get $num)))
       (return (%alloc-f64 (f64.trunc (local.get $v))))))
 
-  (if (i32.eq (local.get $num-type) (%i64-type)) (then 
+  (if (i32.eq (local.get $num-type) (%i64-type)) (then
       (return (local.get $num))))
-  (if (i32.eq (local.get $num-type) (%big-int-type)) (then 
+  (if (i32.eq (local.get $num-type) (%big-int-type)) (then
       (return (local.get $num))))
-  
+
   (unreachable))
 
 (func $round (param $env i32) (param $args i32) (result i32)
@@ -225,11 +181,11 @@
       (local.set $v (f64.load offset=4 (local.get $num)))
       (return (%alloc-f64 (f64.nearest (local.get $v))))))
 
-  (if (i32.eq (local.get $num-type) (%i64-type)) (then 
+  (if (i32.eq (local.get $num-type) (%i64-type)) (then
       (return (local.get $num))))
-  (if (i32.eq (local.get $num-type) (%big-int-type)) (then 
+  (if (i32.eq (local.get $num-type) (%big-int-type)) (then
       (return (local.get $num))))
-  
+
   (unreachable))
 
 ;; (log <num>)
@@ -260,7 +216,7 @@
 
   (if (i32.eq (local.get $num-args) (i32.const 1)) (then
       (return (%alloc-f64 (local.get $ln-num)))))
-  
+
   (local.set $ln-base (call $logn-impl (local.get $base)))
 
   (return (%alloc-f64 (f64.div (local.get $ln-num) (local.get $ln-base)))))
@@ -293,7 +249,7 @@
   (if (i32.eqz (local.get $e))
     (then ;; TODO this is a denormalized number, handle later.
       (unreachable))
-    (else 
+    (else
       ;; remove exponent bias
       (%minus-eq $e 0x3FF)))
 
@@ -323,7 +279,7 @@
       (local.set $v (f64.mul (local.get $v) (f64.const 0.5)))
       (%inc $e)))
 
-  ;; compute taylor series, either 52 times (once per bit), 
+  ;; compute taylor series, either 52 times (once per bit),
   ;; or until it converges
   (local.set $x (f64.sub (local.get $v) (f64.const 1)))
   (local.set $pow (local.get $x))
@@ -350,11 +306,11 @@
       (local.set $pow (f64.mul (local.get $pow) (local.get $x)))
       (br $b_start)))
 
-  (return (f64.add 
+  (return (f64.add
       (local.get $accum)
       (f64.mul (f64.convert_i32_s (local.get $e)) (%kLn2)))))
 
-;; compute logn using Carlson72 
+;; compute logn using Carlson72
 (func $logn-impl (param $num i32) (result f64)
   (local $v f64)
   (local $e i32)
@@ -404,7 +360,7 @@
   (if (i32.eqz (local.get $e))
     (then ;; TODO this is a denormalized number, handle later.
       (unreachable))
-    (else 
+    (else
       ;; remove exponent bias
       (%minus-eq $e 0x3FF)))
 
@@ -447,11 +403,11 @@
    ;          d(n, n)
    ;
    ;  Limiting n to 5 provides sufficient precision.
-   ;  
+   ;
    ;)
 
    (;
-      Loops are completely unrolled. 
+      Loops are completely unrolled.
       p2k = 2^(-2k)           - stored as constants
       inv-p2k = 1/(1 - 2-2k)  - stored as constants
 
@@ -505,7 +461,7 @@
 
   ;; a_0 = 0.5 * (1 + x)
   (local.set $a_0 (f64.mul
-      (f64.const 0.5) 
+      (f64.const 0.5)
       (f64.add (f64.const 1) (local.get $x))))
   ;; g_0 = sqrt(x)
   (local.set $g_0 (f64.sqrt (local.get $x)))
@@ -692,7 +648,7 @@
     (then (unreachable)))
   (local.set $e (i32.sub (local.get $e) (i32.const 0x3FF)))
   (if (i32.gt_s (local.get $e) (i32.const 0))
-    (then 
+    (then
       ;; Remove exponent, adjust it later
       (local.set $v (f64.reinterpret_i64 (i64.or
             (local.get $f)
@@ -713,7 +669,7 @@
 
   (block $b_end (loop $b_start
 
-      (local.set $accum (f64.add 
+      (local.set $accum (f64.add
           (local.get $accum)
           (f64.div (local.get $pow) (local.get $fact))))
 
@@ -727,7 +683,7 @@
       (local.set $fact (f64.mul
           (local.get $fact)
           (f64.convert_i32_u (local.get $index))))
-      
+
       (br $b_start)))
 
   (if (i32.gt_s (local.get $e) (i32.const 0)) (then
@@ -743,4 +699,3 @@
 
   ;; TODO handle values not between 1 and 2
   (return (local.get $accum)))
-

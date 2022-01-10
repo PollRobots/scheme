@@ -162,7 +162,7 @@
 (%define %builtin-finite?()                   (i32.const 157))
 (%define %builtin-infinite?()                 (i32.const 158))
 (%define %builtin-nan?()                      (i32.const 159))
-(%define %builtin-real-div()                  (i32.const 160))
+(%define %builtin-num-div()                   (i32.const 160))
 (%define %builtin-floor()                     (i32.const 161))
 (%define %builtin-ceiling()                   (i32.const 162))
 (%define %builtin-truncate()                  (i32.const 163))
@@ -215,23 +215,27 @@
 (%define %special-define-values ()            (i32.const 210))
 (%define %cont-env-add-values ()              (i32.const 211))
 (%define %builtin-version ()                  (i32.const 212))
+(%define %builtin-rational? ()                (i32.const 213))
+(%define %builtin-numerator ()                (i32.const 214))
+(%define %builtin-denominator ()              (i32.const 215))
+(%define %builtin-rationalize ()              (i32.const 215))
 
-(table $table-builtin 213 anyfunc)
+(table $table-builtin 216 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
   (local $quote i32)
 
   (%define %add-special (%sym %num)
-    (call $environment-add 
+    (call $environment-add
       (local.get $env)
-      %sym 
+      %sym
       (call $heap-alloc (local.get $heap) (%special-type) %num %sym))
   )
 
   (%define %add-builtin (%sym %num)
-    (call $environment-add 
+    (call $environment-add
       (local.get $env)
-      %sym 
+      %sym
       (call $heap-alloc (local.get $heap) (%builtin-type) %num %sym))
   )
 
@@ -362,7 +366,7 @@
   (%add-builtin (%sym-64 0x3f6574696e6966 7) (%builtin-finite?)) ;; 'finite?'
   (%add-builtin (%sym-128 0x6574696e69666e69 0x3f 9) (%builtin-infinite?)) ;; 'infinite?'
   (%add-builtin (%sym-32 0x3F6e616e 4) (%builtin-nan?)) ;; 'nan?'
-  (%add-builtin (%sym-32 0x2F 1) (%builtin-real-div)) ;; '/'
+  (%add-builtin (%sym-32 0x2F 1) (%builtin-num-div)) ;; '/'
   (%add-builtin (%sym-64 0x726f6f6c66 5) (%builtin-floor)) ;; 'floor'
   (%add-builtin (%sym-64 0x676e696c696563 7) (%builtin-ceiling)) ;; 'ceiling
   (%add-builtin (%sym-64 0x657461636e757274 8) (%builtin-truncate)) ;; 'truncate'
@@ -401,6 +405,10 @@
   (%add-builtin (%sym-128 0x616d2D6563617274 0x3F736f7263 13) (%builtin-trace-macros?)) ;; 'trace-macros?'
   (%add-builtin (%sym-192 0x616d2D6563617274 0x7465732D736f7263 0x21 17) (%builtin-trace-macros-set!)) ;; 'trace-macros-set!'
   (%add-builtin (%str %sym-64 64 "version") (%builtin-version))
+  (%add-builtin (%str %sym-128 128 "rational?") (%builtin-rational?))
+  (%add-builtin (%str %sym-128 128 "numerator") (%builtin-numerator))
+  (%add-builtin (%str %sym-128 128 "denominator") (%builtin-denominator))
+  (%add-builtin (%str %sym-128 128 "rationalize") (%builtin-rationalize))
 
   (%add-special (%sym-32 0x6669 2) (%special-if))               ;; 'if'
   (%add-special (global.get $g-let) (%special-let))             ;; 'let'
@@ -598,7 +606,7 @@
 (elem $table-builtin (%builtin-finite?) $finite?)
 (elem $table-builtin (%builtin-infinite?) $infinite?)
 (elem $table-builtin (%builtin-nan?) $nan?)
-(elem $table-builtin (%builtin-real-div) $real-div)
+(elem $table-builtin (%builtin-num-div) $num-div)
 (elem $table-builtin (%builtin-floor) $floor)
 (elem $table-builtin (%builtin-ceiling) $ceiling)
 (elem $table-builtin (%builtin-truncate) $truncate)
@@ -637,3 +645,7 @@
 (elem $table-builtin (%builtin-trace-macros?) $trace-macros?)
 (elem $table-builtin (%builtin-trace-macros-set!) $trace-macros-set!)
 (elem $table-builtin (%builtin-version) $version)
+(elem $table-builtin (%builtin-rational?) $rational?)
+(elem $table-builtin (%builtin-numerator) $numerator)
+(elem $table-builtin (%builtin-denominator) $denominator)
+(elem $table-builtin (%builtin-rationalize) $rationalize)

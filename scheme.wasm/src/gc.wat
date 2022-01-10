@@ -192,6 +192,12 @@ while the working set is non-empty:
           (call $gc-maybe-touched-push (%cdr-l $curr))
           (br $b_switch)))
 
+      ;; case rational-type
+      (if (i32.eq (local.get $type) (%rational-type)) (then
+          (call $gc-maybe-touched-push (%car-l $curr))
+          (call $gc-maybe-touched-push (%cdr-l $curr))
+          (br $b_switch)))
+
       ;; }
     )
 
@@ -316,6 +322,9 @@ while the working set is non-empty:
             ;; }
             (if (i32.eq (local.get $type) (%cont-type)) (then
                 (call $cont-free (%car-l $ptr))))
+
+            (if (i32.eq (local.get $type) (%big-int-type)) (then
+                (call $mp-free (%car-l $ptr))))
 
             ;; heap-free(ptr)
             (call $heap-free (local.get $heap) (local.get $ptr))
@@ -495,6 +504,8 @@ while the working set is non-empty:
   (call $gc-mark-safe (global.get $g-nil))
   (call $gc-mark-safe (global.get $g-true))
   (call $gc-mark-safe (global.get $g-false))
+  (call $gc-mark-safe (global.get $g-one))
+  (call $gc-mark-safe (global.get $g-zero))
   ;; Add passed in roots to the touched set
   (call $gc-maybe-touched-push (local.get $touched-init))
   ;; Add the read and write caches from the global reader to the touched set

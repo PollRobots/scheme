@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { Theme } from "../monaco/theme";
+import { SchemeType } from "../SchemeRuntime";
 import { SchemeRuntimeContext } from "./SchemeRuntimeProvider";
 import { ThemeContext } from "./ThemeProvider";
 import { ToggleSwitch } from "./ToggleSwitch";
@@ -70,7 +71,9 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
     setState({
       ...state,
       ptr: ptr.toString(16),
-      lookupRes: `${ptr.toString(16)}(${type}): ${output.join("")}`,
+      lookupRes: `${ptr.toString(16)}(${
+        SchemeType[type]
+      }:${type}): ${output.join("")}`,
     });
   }
 
@@ -396,61 +399,76 @@ const HeapView: React.FunctionComponent<HeapViewProps> = (props) => {
 
       let fill = true;
       let color = "";
-      switch (type) {
-        case 1: // nil
+      switch (type as SchemeType) {
+        case SchemeType.Nil: // nil
           color = theme.base00;
           break;
-        case 2: // boolean
+        case SchemeType.Boolean: // boolean
           color = theme.base00;
           break;
-        case 3: // cons
+        case SchemeType.Cons: // cons
           fill = false;
           color = theme.red;
           break;
-        case 4: // i64
+        case SchemeType.I64: // i64
           color = theme.violet;
           break;
-        case 5: // f64
+        case SchemeType.F64: // f64
           color = theme.blue;
           break;
-        case 6: // symbol
+        case SchemeType.Symbol: // symbol
           color = theme.yellow;
           break;
-        case 7: // string
+        case SchemeType.Str: // string
           color = theme.green;
           break;
-        case 8: // char
+        case SchemeType.Char: // char
           color = theme.orange;
           break;
-        case 9: // env
+        case SchemeType.Env: // env
           fill = false;
           color = theme.blue;
           break;
-        case 10: // special
+        case SchemeType.Special: // special
           color = theme.base1;
           break;
-        case 11: // builtin
+        case SchemeType.Builtin: // builtin
           color = theme.base1;
           break;
-        case 12: // lambda
+        case SchemeType.Lambda: // lambda
           color = theme.magenta;
-        case 13: // error
+          break;
+        case SchemeType.Error: // error
           color = theme.red;
           break;
-        case 14: // values
+        case SchemeType.Values: // values
           fill = false;
           color = theme.green;
           break;
-        case 15: // vector
+        case SchemeType.Vector: // vector
+          fill = false;
           color = theme.blue;
           break;
-        case 16: // bytevector
+        case SchemeType.Bytevector: // bytevector
+          fill = false;
           color = theme.violet;
           break;
-        case 17: // cont
+        case SchemeType.Cont: // cont
           color = theme.base1;
           break;
-        case 18: // big-int
+        case SchemeType.BigInt: // big-int
+          color = theme.cyan;
+          break;
+        case SchemeType.Except:
+          color = theme.base2;
+          break;
+        case SchemeType.ContProc:
+          color = theme.base1;
+          break;
+        case SchemeType.SyntaxRules:
+          color = theme.orange;
+          break;
+        case SchemeType.Rational:
           color = theme.cyan;
           break;
         default:

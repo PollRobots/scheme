@@ -1,6 +1,5 @@
-(define (number? x) (or (integer? x) (real? x)))
+(define number? real?)
 (define complex? number?)
-(define rational? integer?)
 
 (define (exact-integer? x) (and (exact? x) (integer? x)))
 

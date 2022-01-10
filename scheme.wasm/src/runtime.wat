@@ -1,59 +1,62 @@
-(global $g-reader     (mut i32) (i32.const 0))
-(global $g-heap       (mut i32) (i32.const 0))
-(global $g-interned   (mut i32) (i32.const 0))
-(global $g-true       (mut i32) (i32.const 0))
-(global $g-true-str   (mut i32) (i32.const 0))
-(global $g-false      (mut i32) (i32.const 0))
-(global $g-false-str  (mut i32) (i32.const 0))
-(global $g-nil        (mut i32) (i32.const 0))
-(global $g-nil-str    (mut i32) (i32.const 0))
-(global $g-newline    (mut i32) (i32.const 0))
-(global $g-collect    (mut i32) (i32.const 0))
-(global $g-builtin    (mut i32) (i32.const 0))
-(global $g-special    (mut i32) (i32.const 0))
-(global $g-env        (mut i32) (i32.const 0))
-(global $g-lt         (mut i32) (i32.const 0))
-(global $g-gt         (mut i32) (i32.const 0))
-(global $g-unknown    (mut i32) (i32.const 0))
-(global $g-space      (mut i32) (i32.const 0))
-(global $g-error      (mut i32) (i32.const 0))
-(global $g-open       (mut i32) (i32.const 0))
-(global $g-close      (mut i32) (i32.const 0))
-(global $g-dot        (mut i32) (i32.const 0))
-(global $g-eof        (mut i32) (i32.const 0))
-(global $g-double-quote      (mut i32) (i32.const 0))
-(global $g-args       (mut i32) (i32.const 0))
-(global $g-not-impl   (mut i32) (i32.const 0))
-(global $g-vec-open   (mut i32) (i32.const 0))
-(global $g-u8vec      (mut i32) (i32.const 0))
-(global $g-u8-open    (mut i32) (i32.const 0))
-(global $g-else       (mut i32) (i32.const 0))
-(global $g-arrow      (mut i32) (i32.const 0))
-(global $g-apply      (mut i32) (i32.const 0))
-(global $g-interned-str   (mut i32) (i32.const 0))
-(global $g-eval       (mut i32) (i32.const 0))
-(global $g-gc-run     (mut i32) (i32.const 0))
-(global $g-div0       (mut i32) (i32.const 0))
-(global $g-inf        (mut i32) (i32.const 0))
-(global $g-neg-inf    (mut i32) (i32.const 0))
-(global $g-nan        (mut i32) (i32.const 0))
-(global $g-neg-nan    (mut i32) (i32.const 0))
-(global $g-fzero      (mut i32) (i32.const 0))
-(global $g-exp        (mut i32) (i32.const 0))
-(global $g-neg        (mut i32) (i32.const 0))
-(global $g-cont-type  (mut i32) (i32.const 0))
-(global $g-curr-cont  (mut i32) (i32.const 0))
-(global $g-syntax-rules   (mut i32) (i32.const 0))
-(global $g-ellipsis   (mut i32) (i32.const 0))
-(global $g-underscore (mut i32) (i32.const 0))
-(global $g-let        (mut i32) (i32.const 0))
-(global $g-let-star   (mut i32) (i32.const 0))
-(global $g-letrec     (mut i32) (i32.const 0))
-(global $g-letrec-star  (mut i32) (i32.const 0))
-(global $g-syntax-error  (mut i32) (i32.const 0))
-(global $g-lambda     (mut i32) (i32.const 0))
-(global $g-quote      (mut i32) (i32.const 0))
-(global $g-curr-version    (mut i32) (i32.const 0))
+(global $g-reader           (mut i32) (i32.const 0))
+(global $g-heap             (mut i32) (i32.const 0))
+(global $g-interned         (mut i32) (i32.const 0))
+(global $g-true             (mut i32) (i32.const 0))
+(global $g-true-str         (mut i32) (i32.const 0))
+(global $g-false            (mut i32) (i32.const 0))
+(global $g-false-str        (mut i32) (i32.const 0))
+(global $g-nil              (mut i32) (i32.const 0))
+(global $g-one              (mut i32) (i32.const 0))
+(global $g-zero             (mut i32) (i32.const 0))
+(global $g-nil-str          (mut i32) (i32.const 0))
+(global $g-newline          (mut i32) (i32.const 0))
+(global $g-collect          (mut i32) (i32.const 0))
+(global $g-builtin          (mut i32) (i32.const 0))
+(global $g-special          (mut i32) (i32.const 0))
+(global $g-env              (mut i32) (i32.const 0))
+(global $g-lt               (mut i32) (i32.const 0))
+(global $g-gt               (mut i32) (i32.const 0))
+(global $g-unknown          (mut i32) (i32.const 0))
+(global $g-space            (mut i32) (i32.const 0))
+(global $g-error            (mut i32) (i32.const 0))
+(global $g-open             (mut i32) (i32.const 0))
+(global $g-close            (mut i32) (i32.const 0))
+(global $g-dot              (mut i32) (i32.const 0))
+(global $g-eof              (mut i32) (i32.const 0))
+(global $g-double-quote     (mut i32) (i32.const 0))
+(global $g-args             (mut i32) (i32.const 0))
+(global $g-not-impl         (mut i32) (i32.const 0))
+(global $g-vec-open         (mut i32) (i32.const 0))
+(global $g-u8vec            (mut i32) (i32.const 0))
+(global $g-u8-open          (mut i32) (i32.const 0))
+(global $g-else             (mut i32) (i32.const 0))
+(global $g-arrow            (mut i32) (i32.const 0))
+(global $g-apply            (mut i32) (i32.const 0))
+(global $g-interned-str     (mut i32) (i32.const 0))
+(global $g-eval             (mut i32) (i32.const 0))
+(global $g-gc-run           (mut i32) (i32.const 0))
+(global $g-div0             (mut i32) (i32.const 0))
+(global $g-inf              (mut i32) (i32.const 0))
+(global $g-neg-inf          (mut i32) (i32.const 0))
+(global $g-nan              (mut i32) (i32.const 0))
+(global $g-neg-nan          (mut i32) (i32.const 0))
+(global $g-fzero            (mut i32) (i32.const 0))
+(global $g-exp              (mut i32) (i32.const 0))
+(global $g-neg              (mut i32) (i32.const 0))
+(global $g-cont-type        (mut i32) (i32.const 0))
+(global $g-curr-cont        (mut i32) (i32.const 0))
+(global $g-syntax-rules     (mut i32) (i32.const 0))
+(global $g-ellipsis         (mut i32) (i32.const 0))
+(global $g-underscore       (mut i32) (i32.const 0))
+(global $g-let              (mut i32) (i32.const 0))
+(global $g-let-star         (mut i32) (i32.const 0))
+(global $g-letrec           (mut i32) (i32.const 0))
+(global $g-letrec-star      (mut i32) (i32.const 0))
+(global $g-syntax-error     (mut i32) (i32.const 0))
+(global $g-lambda           (mut i32) (i32.const 0))
+(global $g-quote            (mut i32) (i32.const 0))
+(global $g-slash            (mut i32) (i32.const 0))
+(global $g-curr-version     (mut i32) (i32.const 0))
 
 (global $g-eval-count (mut i32) (i32.const 0))
 (%define %gc-threshold () (i32.const 256))
@@ -67,6 +70,8 @@
   (global.set $g-false (call $heap-alloc (global.get $g-heap) (%boolean-type) (i32.const 0) (i32.const 0x6623)))
   (global.set $g-false-str (%sym-32 0x6623 2))
   (global.set $g-nil (call $heap-alloc (global.get $g-heap) (%nil-type) (i32.const 0) (i32.const 0x2928)))
+  (global.set $g-one (%alloc-i32 (i32.const 1)))
+  (global.set $g-zero (%alloc-i32 (i32.const 0)))
   (global.set $g-nil-str (%sym-32 0x2928 2))
   (global.set $g-newline  (%sym-32 0x0A 1))
   (global.set $g-collect (%sym-64 0x207463656c6c6f43 8))
@@ -113,6 +118,7 @@
   (global.set $g-syntax-error (%sym-128 0x652D7861746e7973 0x726f7272 12)) ;; 'syntax-error'
   (global.set $g-lambda (%sym-64 0x6164626d616c 6)) ;; 'lambda'
   (global.set $g-quote (%sym-64 0x65746f7571 5)) ;; 'quote'
+  (global.set $g-slash (%str %sym-32 32 "/"))
   (global.set $g-curr-version (%str %sym-192 192 (%version)))
 
   ;; global reader is attached to stdin
@@ -463,7 +469,7 @@
       (i32.const 2))
     (then (return (call $read-char (local.get $token-str)))))
 
-  ;; atom = string->number-impl(token, 10)
+  ;; atom = string->number-impl(token, 10, true)
   (local.set $atom (call $string->number-impl (local.get $token) (i32.const 10)))
   ;; if (is-truthy(atom)) {
   (if (call $is-truthy (local.get $atom))
@@ -616,7 +622,8 @@
   (local $big-int-fraction i32)
   (local $num i32)
   (local $real f64)
-
+  (local $rational i32)
+  (local $numerator i32)
 
   (if (i32.ne (%get-type $str) (%str-type)) (then
       (return (global.get $g-false))))
@@ -628,43 +635,9 @@
   (local.set $inexact (i32.const 0))
   (local.set $radix-count (i32.const 0))
   (local.set $negative (i32.const 0))
-  (local.set $decimal (i32.const 0))
-  (local.set $integer (i64.const 0))
-  (local.set $fraction-start (i32.const 0))
-  (local.set $fraction-digits (i32.const 0))
-  (local.set $integer-start (i32.const 0))
-  (local.set $integer-digits (i32.const 0))
-  (local.set $integer-overflow (i32.const 0))
-  (local.set $exponent-overflow (i32.const 0))
-  (local.set $exponent-digits (i32.const 0))
-  (local.set $have-exp (i32.const 0))
-  (local.set $exponent (i32.const 0))
-  (local.set $neg-exp (i32.const 0))
+ (local.set $rational (i32.const 0))
 
   (%define %sssw (%cmp %len) (call $short-str-start-with (local.get $str-ptr) (local.get $offset) (i32.const %cmp) (i32.const %len)))
-
-  ;; check for +inf.0 -inf.0 +nan.0 -nan.0
-  (block $b_no_real_special
-    (block $b_real_special
-      (if (call $str-eq (local.get $str-ptr) (%car (global.get $g-inf)))
-        (then
-          (local.set $real (f64.const inf))
-          (br $b_real_special)))
-      (if (call $str-eq (local.get $str-ptr) (%car (global.get $g-neg-inf)))
-        (then
-          (local.set $real (f64.const -inf))
-          (br $b_real_special)))
-      (if (call $str-eq (local.get $str-ptr) (%car (global.get $g-nan)))
-        (then
-          (local.set $real (f64.const nan))
-          (br $b_real_special)))
-      (if (call $str-eq (local.get $str-ptr) (%car (global.get $g-neg-nan)))
-        (then
-          (local.set $real (f64.reinterpret_i64 (i64.const 0xFFF0_0000_0000_0001)))
-          (br $b_real_special)))
-      (br $b_no_real_special))
-
-    (return (%alloc-f64 (local.get $real))))
 
   ;; look for prefix elements #e #i #b #d #o #x
   ;; while (true) {
@@ -764,6 +737,29 @@
 
     (return (%alloc-error (%sym-64 0x786966657270 6) (local.get $str))))
 
+  ;; check for +inf.0 -inf.0 +nan.0 -nan.0
+  (block $b_no_real_special
+    (block $b_real_special
+      (if (call $str-eq (local.get $str-ptr) (%car (global.get $g-inf)))
+        (then
+          (local.set $real (f64.const inf))
+          (br $b_real_special)))
+      (if (call $str-eq (local.get $str-ptr) (%car (global.get $g-neg-inf)))
+        (then
+          (local.set $real (f64.const -inf))
+          (br $b_real_special)))
+      (if (call $str-eq (local.get $str-ptr) (%car (global.get $g-nan)))
+        (then
+          (local.set $real (f64.const nan))
+          (br $b_real_special)))
+      (if (call $str-eq (local.get $str-ptr) (%car (global.get $g-neg-nan)))
+        (then
+          (local.set $real (f64.reinterpret_i64 (i64.const 0xFFF0_0000_0000_0001)))
+          (br $b_real_special)))
+      (br $b_no_real_special))
+
+    (return (%alloc-f64 (local.get $real))))
+
   ;; check for sign
   (if (%sssw 0x2d 1) ;; '-'
     (then
@@ -773,193 +769,224 @@
       (if (%sssw 0x2B 1) ;; '+'
         (then (%inc $offset)))))
 
-  (local.set $integer-start (local.get $offset))
-  (block $b_integer_end
-    (loop $b_integer
-      ;; break if offset >= str-len
-      (br_if $b_integer_end (i32.ge_u (local.get $offset) (local.get $str-len)))
+  (block $done (loop $l-rational
+      (local.set $decimal (i32.const 0))
+      (local.set $integer (i64.const 0))
+      (local.set $fraction-start (i32.const 0))
+      (local.set $fraction-digits (i32.const 0))
+      (local.set $integer-start (i32.const 0))
+      (local.set $integer-digits (i32.const 0))
+      (local.set $integer-overflow (i32.const 0))
+      (local.set $exponent-overflow (i32.const 0))
+      (local.set $exponent-digits (i32.const 0))
+      (local.set $have-exp (i32.const 0))
+      (local.set $exponent (i32.const 0))
+      (local.set $neg-exp (i32.const 0))
 
-      (local.set $digit (call $get-radix-digit (local.get $str-ptr) (local.get $offset) (local.get $radix)))
-      (br_if $b_integer_end (i32.lt_s (local.get $digit) (i32.const 0)))
+      (local.set $integer-start (local.get $offset))
+      (block $b_integer_end (loop $b_integer
+          ;; break if offset >= str-len
+          (br_if $b_integer_end (i32.ge_u (local.get $offset) (local.get $str-len)))
 
-      (if (i32.eqz (local.get $integer-overflow))
-        ;; integer = integer * radix + digit
-        (local.set $integer
-          (i64.add
-            (i64.mul (local.get $integer) (i64.extend_i32_u (local.get $radix)))
-            (i64.extend_i32_u (local.get $digit)))))
+          (local.set $digit (call $get-radix-digit (local.get $str-ptr) (local.get $offset) (local.get $radix)))
+          (br_if $b_integer_end (i32.lt_s (local.get $digit) (i32.const 0)))
 
-      ;; check for overflow, if it is detected then a big int conversion
-      ;; will be done below
-      (if
-        (i64.eq
-          (i64.and (local.get $integer) (i64.const 0x8000_0000_0000_0000))
-          (i64.const 0x8000_0000_0000_0000))
-        (then (local.set $integer-overflow (i32.const 1))))
+          (if (i32.eqz (local.get $integer-overflow)) (then
+            ;; integer = integer * radix + digit
+            (local.set $integer (i64.add
+                (i64.mul (local.get $integer) (i64.extend_i32_u (local.get $radix)))
+                (i64.extend_i32_u (local.get $digit))))))
 
-      (%inc $offset)
-      (%inc $integer-digits)
+          ;; check for overflow, if it is detected then a big int conversion
+          ;; will be done below
+          (if (i64.eq
+              (i64.and (local.get $integer) (i64.const 0x8000_0000_0000_0000))
+              (i64.const 0x8000_0000_0000_0000))
+            (then (local.set $integer-overflow (i32.const 1))))
 
-      (br $b_integer)))
-
-  (if (i32.eq (local.get $radix) (i32.const 10))
-    (then
-      ;; check for decimal
-      (if (%sssw 0x2e 1) ;; '.'
-        (then
-          (local.set $decimal (i32.const 1))
           (%inc $offset)
+          (%inc $integer-digits)
 
-          (local.set $fraction-start (local.get $offset))
-          (block $b_fraction_end
-            (loop $b_fraction
-              ;; break if offset >= str-len
-              (br_if $b_fraction_end (i32.ge_u (local.get $offset) (local.get $str-len)))
+          (br $b_integer)))
 
-              (local.set $digit (call $get-radix-digit (local.get $str-ptr) (local.get $offset) (local.get $radix)))
-              (br_if $b_fraction_end (i32.lt_s (local.get $digit) (i32.const 0)))
-
+      (if (i32.eq (local.get $radix) (i32.const 10)) (then
+          ;; check for decimal
+          (if (%sssw 0x2e 1) (then ;; '.'
+              (local.set $decimal (i32.const 1))
               (%inc $offset)
-              (%inc $fraction-digits)
-              (br $b_fraction)))))
 
-      ;; check for exponent
-      (if (i32.or (%sssw 0x65 1) (%sssw 0x45 1)) (then
-          (local.set $have-exp (i32.const 1))
-          (%inc $offset)
+              (local.set $fraction-start (local.get $offset))
+              (block $b_fraction_end (loop $b_fraction
+                  ;; break if offset >= str-len
+                  (br_if $b_fraction_end (i32.ge_u (local.get $offset) (local.get $str-len)))
 
-          ;; check for sign
-          (if (%sssw 0x2d 1) ;; '-'
+                  (local.set $digit (call $get-radix-digit (local.get $str-ptr) (local.get $offset) (local.get $radix)))
+                  (br_if $b_fraction_end (i32.lt_s (local.get $digit) (i32.const 0)))
+
+                  (%inc $offset)
+                  (%inc $fraction-digits)
+                  (br $b_fraction)))))
+
+          ;; check for exponent
+          (if (i32.or (%sssw 0x65 1) (%sssw 0x45 1)) (then
+              (local.set $have-exp (i32.const 1))
+              (%inc $offset)
+
+              ;; check for sign
+              (if (%sssw 0x2d 1)  ;; '-'
+                (then
+                  (local.set $neg-exp (i32.const 1))
+                  (%inc $offset))
+                (else
+                  (if (%sssw 0x2B 1) (then  ;; '+'
+                    (%inc $offset)))))
+
+              (block $b_exp_end (loop $b_exp
+                  ;; break if offset >= str-len
+                  (br_if $b_exp_end (i32.ge_u
+                      (local.get $offset)
+                      (local.get $str-len)))
+
+                  (local.set $digit (call $get-radix-digit
+                      (local.get $str-ptr)
+                      (local.get $offset)
+                      (local.get $radix)))
+
+                  (br_if $b_exp_end (i32.lt_s (local.get $digit) (i32.const 0)))
+                  (%inc $offset)
+
+                  ;; exponent = fraction * radix + digit
+                  (local.set $exponent (i32.add
+                      (i32.mul (local.get $exponent) (local.get $radix))
+                      (local.get $digit)))
+                  (if (i32.and (local.get $exponent) (i32.const 0x8000_0000))
+                    (local.set $exponent-overflow (i32.const 1)))
+
+                  (%inc $exponent-digits)
+                  (br $b_exp)))
+
+              (if (i32.eqz (local.get $exponent-digits))
+                (then (%dec $offset)))))))
+
+      ;; There are no integer or fractional digits, not a valid number.
+      (if (i32.eqz (i32.add (local.get $integer-digits) (local.get $fraction-digits)))
+        (then (return (global.get $g-false))))
+
+      ;; The exponent overflowed a signed 32-bit integer, not a valid number.
+      (if (local.get $exponent-overflow)
+        (then (return (global.get $g-false))))
+
+      (if (i32.eqz (i32.or (local.get $decimal) (local.get $have-exp)))
+        ;; There was no decimal point and no exponent, therefore this is an integer
+        (then
+          (if (i32.eqz (local.get $integer-overflow))
             (then
-              (local.set $neg-exp (i32.const 1))
-              (%inc $offset))
+              (local.set $num (%alloc-i64 (local.get $integer))))
             (else
-              (if (%sssw 0x2B 1) ;; '+'
-                (then (%inc $offset)))))
-
-          (block $b_exp_end (loop $b_exp
-              ;; break if offset >= str-len
-              (br_if $b_exp_end (i32.ge_u
-                  (local.get $offset)
-                  (local.get $str-len)))
-
-              (local.set $digit (call $get-radix-digit
-                  (local.get $str-ptr)
-                  (local.get $offset)
+              (local.set $big-int (call $mp-string->mp
+                  (i32.add (i32.add (local.get $str-ptr) (local.get $integer-start)) (i32.const 4))
+                  (local.get $integer-digits)
                   (local.get $radix)))
+              (local.set $num (%alloc-big-int (local.get $big-int)))))
+          (if (%sssw 0x2F 1) (then  ;; '/'
+              (if (local.get $rational) (then
+                  (return (global.get $g-false))))
 
-              (br_if $b_exp_end (i32.lt_s (local.get $digit) (i32.const 0)))
               (%inc $offset)
+              (local.set $rational (i32.const 1))
+              (local.set $numerator (local.get $num))
+              (br $l-rational)))
+          (br $done)))
 
-              ;; exponent = fraction * radix + digit
-              (local.set $exponent (i32.add
-                  (i32.mul (local.get $exponent) (local.get $radix))
-                  (local.get $digit)))
-              (if (i32.and (local.get $exponent) (i32.const 0x8000_0000))
-                (local.set $exponent-overflow (i32.const 1)))
+      (if (local.get $rational) (then
+          ;; it is not allowed to mix integer and real in a rational
+          (return (global.get $g-false))))
 
-              (%inc $exponent-digits)
-              (br $b_exp)))
+      ;; apply the exponent sign
+      (if (local.get $neg-exp) (then
+          (local.set $exponent (i32.sub (i32.const 0) (local.get $exponent)))))
 
-          (if (i32.eqz (local.get $exponent-digits))
-            (then (%dec $offset)))))))
-
-  ;; There are extra characters in the string, not a valid number.
-  (if (i32.ne (local.get $offset) (local.get $str-len))
-    (then (return (global.get $g-false))))
-
-  ;; There are no integer or fractional digits, not a valid number.
-  (if (i32.eqz (i32.add (local.get $integer-digits) (local.get $fraction-digits)))
-    (then (return (global.get $g-false))))
-
-  ;; The exponent overflowed a signed 32-bit integer, not a valid number.
-  (if (local.get $exponent-overflow)
-    (then (return (global.get $g-false))))
-
-  (if (i32.eqz (i32.or (local.get $decimal) (local.get $have-exp)))
-    ;; There was no decimal point and no exponent, therefore this is an integer
-    (then
-      (if (i32.eqz (local.get $integer-overflow))
-        (then
-          (if (local.get $negative)
-            (then
-              (local.set $integer (i64.sub (i64.const 0) (local.get $integer)))))
-          (local.set $num (%alloc-i64 (local.get $integer))))
-        (else
-          (local.set $big-int (call $mp-string->mp
-              (i32.add (i32.add (local.get $str-ptr) (local.get $integer-start)) (i32.const 4))
-              (local.get $integer-digits)
-              (local.get $radix)))
-          (if (local.get $negative)
-            (then (call $mp-neg (local.get $big-int))))
-          (local.set $num (%alloc-big-int (local.get $big-int)))))
-      (if (local.get $inexact) (then
-        (return (call $inexact-impl (local.get $num)))))
-      (return (local.get $num))))
-
-  ;; apply the exponent sign
-  (if (local.get $neg-exp) (then
-      (local.set $exponent (i32.sub (i32.const 0) (local.get $exponent)))))
-
-  ;; create a big-int containing both the integer and fractional parts
-  (if (local.get $integer-overflow)
-    (then (local.set $big-int (call $mp-string->mp
-          (i32.add
-            (i32.add
-              (local.get $str-ptr)
-              (local.get $integer-start))
-
-            (i32.const 4))
-          (local.get $integer-digits)
-          (local.get $radix))))
-    (else (local.set $big-int (call $mp-from-u64 (local.get $integer)))))
-
-  (if (local.get $fraction-digits) (then
-      (local.set $big-int-fraction (call $mp-string->mp
-              (i32.add (i32.add
+      ;; create a big-int containing both the integer and fractional parts
+      (if (local.get $integer-overflow)
+        (then (local.set $big-int (call $mp-string->mp
+              (i32.add
+                (i32.add
                   (local.get $str-ptr)
-                  (local.get $fraction-start))
+                  (local.get $integer-start))
+
                 (i32.const 4))
-              (local.get $fraction-digits)
-              (local.get $radix)))
-      (local.set $big-int (call $mp-times-eq
+              (local.get $integer-digits)
+              (local.get $radix))))
+        (else (local.set $big-int (call $mp-from-u64 (local.get $integer)))))
+
+      (if (local.get $fraction-digits) (then
+          (local.set $big-int-fraction (call $mp-string->mp
+                  (i32.add (i32.add
+                      (local.get $str-ptr)
+                      (local.get $fraction-start))
+                    (i32.const 4))
+                  (local.get $fraction-digits)
+                  (local.get $radix)))
+          (local.set $big-int (call $mp-times-eq
+              (local.get $big-int)
+              (call $mp-10-pow (local.get $fraction-digits))))
+          (local.set $big-int (call $mp-plus-eq
+              (local.get $big-int)
+              (local.get $big-int-fraction)))
+          (local.set $exponent (i32.sub
+              (local.get $exponent)
+              (local.get $fraction-digits)))
+          (call $mp-free (local.get $big-int-fraction))))
+
+      (if (local.get $exact) (then
+          (if (i32.ge_s (local.get $exponent) (i32.const 0)) (then
+              ;; apply the exponent
+              (if (i32.gt_s (local.get $exponent) (i32.const 0)) (then
+                  (local.set $big-int (call $mp-times-eq
+                      (local.get $big-int)
+                      (call $mp-10-pow (local.get $exponent))))))
+
+              ;; handle sign elsewhere
+              ;; (if (local.get $negative) (then
+              ;;    (call $mp-neg (local.get $big-int))))
+
+              (local.set $num (%alloc-big-int (local.get $big-int)))
+              (br $done)))
+
+          (local.set $rational (i32.const 1))
+          (local.set $numerator (%alloc-big-int (local.get $big-int)))
+          (local.set $num (%alloc-big-int (call $mp-10-pow (i32.sub
+                (i32.const 0)
+                (local.get $exponent)))))
+          (br $done)))
+
+      (local.set $real (call $mp-algorithm-m
           (local.get $big-int)
-          (call $mp-10-pow (local.get $fraction-digits))))
-      (local.set $big-int (call $mp-plus-eq
-          (local.get $big-int)
-          (local.get $big-int-fraction)))
-      (local.set $exponent (i32.sub
-          (local.get $exponent)
-          (local.get $fraction-digits)))
-      (call $malloc-free (local.get $big-int-fraction))))
+          (local.get $exponent)))
+      (call $mp-free (local.get $big-int))
+      (local.set $num (%alloc-f64 (local.get $real)))
+      (br $done)))
 
-  (if (local.get $exact) (then
-      ;; we don't support rationals yet, so the best we can to is to exactify
-      ;; fractions as the nearest int.
-      (if (i32.ge_s (local.get $exponent) (i32.const 0)) (then
-          ;; apply the exponent
-          (if (i32.gt_s (local.get $exponent) (i32.const 0)) (then
-              (local.set $big-int (call $mp-times-eq
-                  (local.get $big-int)
-                  (call $mp-10-pow (local.get $exponent))))))
+  (if (i32.ne (local.get $offset) (local.get $str-len))
+      (then (return (global.get $g-false))))
 
-          (if (local.get $negative) (then
-              (call $mp-neg (local.get $big-int))))
-
-          (return (%alloc-big-int (local.get $big-int)))))))
-
-  (local.set $real (call $mp-algorithm-m
-      (local.get $big-int)
-      (local.get $exponent)))
-  (call $malloc-free (local.get $big-int))
+  (if (local.get $rational) (then
+      (if (call $num-core-zero? (local.get $num)) (then
+          (return (global.get $g-false))))
+      (if (call $num-core-zero? (local.get $numerator)) (then
+          (return (local.get $numerator))))
+      (local.set $num (call $simplify-rational (%alloc-rational
+            (local.get $numerator)
+            (local.get $num))))))
 
   (if (local.get $negative) (then
-          (local.set $real (f64.neg (local.get $real)))))
-
-  (local.set $num (%alloc-f64 (local.get $real)))
+      (local.set $num (call $num-core-neg (local.get $num)))))
 
   (if (local.get $exact) (then
       (return (call $exact-impl (local.get $num)))))
+
+  (if (local.get $inexact) (then
+      (return (call $inexact-impl (local.get $num)))))
 
   (return (local.get $num)))
 

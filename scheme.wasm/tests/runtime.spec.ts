@@ -300,7 +300,10 @@ describe("runtime wasm", () => {
       const words = new Uint32Array(
         exports.memory.buffer.slice(datum, datum + 12)
       );
-      expect(words[0]).to.equal(5, "expecting a floating point number");
+      expect(words[0]).to.equal(
+        5,
+        `expecting a floating point number ${str} => ${real}`
+      );
       const numbers = new Float64Array(
         exports.memory.buffer.slice(datum + 4, datum + 12)
       );
@@ -531,7 +534,7 @@ describe("runtime wasm", () => {
       `
       (let
         (
-          (x 10) 
+          (x 10)
           (y 20)
         )
         (+ x y)
@@ -628,7 +631,7 @@ describe("runtime wasm", () => {
           (let ((x 3))
             (fn 4)
           )
-        )  
+        )
       )
     `,
     ];

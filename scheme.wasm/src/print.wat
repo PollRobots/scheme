@@ -1,5 +1,5 @@
 (func $print (param $ptr i32)
-  (local $type i32) 
+  (local $type i32)
 
   ;; type = *ptr & 0x0F
   (local.set $type (%get-type $ptr))
@@ -29,7 +29,7 @@
         (call $print-cons (%car-l $ptr) (%cdr-l $ptr) (i32.const 1))
         ;; break
         (br $b_switch)))
-        
+
     ;; case i64 (4):
     (if (i32.eq (local.get $type) (%i64-type))
       (then
@@ -50,7 +50,7 @@
         (call $print-symbol (local.get $ptr))
         ;; break
         (br $b_switch)))
-        
+
     ;; case str (7):
     (if (i32.eq (local.get $type) (%str-type))
       (then
@@ -123,17 +123,23 @@
 
     ;; case Continuation
     (if (i32.eq (local.get $type) (%cont-type)) (then
-        (call $print-other 
-          (global.get $g-cont-type) 
-          (local.get $type) 
+        (call $print-other
+          (global.get $g-cont-type)
+          (local.get $type)
           (local.get $ptr))
         (br $b_switch)))
 
     (if (i32.eq (local.get $type (%syntax-rules-type))) (then
         (call $print-other
-          (global.get $g-syntax-rules) 
-          (local.get $type) 
+          (global.get $g-syntax-rules)
+          (local.get $type)
           (local.get $ptr))
+        (br $b_switch)))
+
+    (if (i32.eq (local.get $type (%rational-type))) (then
+        (call $print (%car-l $ptr))
+        (call $print-symbol (global.get $g-slash))
+        (call $print (%cdr-l $ptr))
         (br $b_switch)))
 
 
@@ -145,7 +151,7 @@
   )
 )
 
-(func $print-nil 
+(func $print-nil
   (call $io-write (i32.load offset=4 (global.get $g-nil-str)))
 )
 
@@ -185,8 +191,8 @@
       (local.set $str (call $str-from-32 (i32.const 1) (i32.const 0x78)))
       (call $io-write (local.get $str))
       (call $malloc-free (local.get $str))
-      (call $print-integer 
-        (i64.extend_i32_u (local.get $code-point)) 
+      (call $print-integer
+        (i64.extend_i32_u (local.get $code-point))
         (i32.const 16)))))
 
 (func $print-error (param $ptr i32)
@@ -283,14 +289,14 @@
 
 (func $print-boolean (param $bool i32)
   (call $io-write
-    (i32.load offset=4 
+    (i32.load offset=4
       (select (global.get $g-true-str) (global.get $g-false-str) (local.get $bool))
     )
   )
 )
 
 (func $print-integer (param $num i64) (param $radix i32)
-  (local $str-ptr i32) 
+  (local $str-ptr i32)
 
   (local.set $str-ptr (call $integer->string-impl (local.get $num) (local.get $radix)))
   (call $io-write (local.get $str-ptr))
@@ -317,14 +323,14 @@
       (local.set $num (i64.sub (i64.const 0) (local.get $num)))
     )
     ;; } else {
-    (else 
+    (else
       ;; is-negative = false;
       (local.set $is-negative (i32.const 0))
     )
     ;; }
   )
 
-  ;; buffer = malloc(0x100) ;; 100 characters 
+  ;; buffer = malloc(0x100) ;; 100 characters
   (local.set $buffer (call $malloc (i32.const 0x100)))
   ;; ptr = buffer + 0x100;
   (local.set $ptr (i32.add (local.get $buffer) (i32.const 0x100)))
@@ -355,7 +361,7 @@
           (local.set $num (i64.div_u (local.get $num) (local.get $r64)))
           ;; ptr -= 4;
           (%minus-eq $ptr 4)
-          (if (i32.lt_u (local.get $digit) (i32.const 10)) 
+          (if (i32.lt_u (local.get $digit) (i32.const 10))
             (then
               ;; *ptr = 0x30 + digit
               (i32.store (local.get $ptr) (i32.add (i32.const 0x30) (local.get $digit)))
@@ -405,12 +411,12 @@
   (call $malloc-free (local.get $str)))
 
 (func $print-big-int (param $num i32) (param $radix i32)
-  (local $str-ptr i32) 
+  (local $str-ptr i32)
 
   (local.set $str-ptr (call $mp-mp->string (%car-l $num) (local.get $radix)))
   (call $io-write (local.get $str-ptr))
   (call $malloc-free (local.get $str-ptr)))
- 
+
 (func $print-symbol (param $sym i32)
   ;; TODO handle symbols with non-standard characters
   (call $io-write (i32.load offset=4 (local.get $sym)))

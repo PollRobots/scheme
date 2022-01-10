@@ -2,7 +2,7 @@ import pako from "pako";
 
 type WriteCallback = (str: string) => void;
 
-const enum SchemeType {
+export enum SchemeType {
   Empty = 0,
   Nil = 1,
   Boolean = 2,
@@ -24,7 +24,9 @@ const enum SchemeType {
   BigInt = 18,
   Except = 19,
   ContProc = 20,
-  MaxHeap = 20,
+  SyntaxRules = 21,
+  Rational = 22,
+  MaxHeap = 22,
   Mask = 0x1f,
 }
 
