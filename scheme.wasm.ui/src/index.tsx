@@ -10,12 +10,12 @@ import { SettingsMenu } from "./components/SettingsMenu";
 import { Terminal } from "./components/Terminal";
 import { EditorThemeProvider, ThemeProvider } from "./components/ThemeProvider";
 import { kSolarizedDark, kSolarizedLight } from "./monaco/solarized";
-import { SchemeRuntime } from "./SchemeRuntime";
 import { reference } from "./util";
 
 import fonts from "./styles/fonts.module.css";
 import css from "./styles/page.module.css";
 import { DataLine } from "./components/TerminalData";
+import { RuntimeWorker } from "./RuntimeWorker";
 
 reference(fonts, css);
 
@@ -26,11 +26,13 @@ interface AppState {
   fontSize: number;
   open: boolean;
   stopped: boolean;
+  waiting: boolean;
   about: boolean;
   first: boolean;
   inspector: boolean;
   persist: boolean;
   output: DataLine[];
+  clock: number;
 }
 
 const kPartialPrompt = "~    ";
@@ -43,11 +45,13 @@ const kDefaultState: AppState = {
   open: false,
   about: false,
   stopped: true,
+  waiting: false,
   first: true,
   inspector: false,
   persist: false,
   fontSize: 12,
   output: [],
+  clock: 0,
 };
 
 const kSettingsSubHeading: React.CSSProperties = {
@@ -117,7 +121,7 @@ function clearSettings() {
 
 class App extends React.Component<{}, AppState> {
   private readonly ref = React.createRef<HTMLDivElement>();
-  private runtime?: SchemeRuntime;
+  private runtime?: RuntimeWorker;
   private readonly pending: DataLine[] = [];
   private writing: boolean = false;
 
@@ -218,44 +222,51 @@ class App extends React.Component<{}, AppState> {
     parts.shift();
     parts.forEach((el) => output.push(el));
     this.writing = true;
-    this.setState({ output: output }, () => {
-      this.writing = false;
-      if (this.pending.length) {
-        window.requestAnimationFrame(() => this.onWrite("raw", ""));
+    this.setState(
+      {
+        output: output,
+        clock:
+          output.length !== this.state.output.length
+            ? this.state.clock + 1
+            : this.state.clock,
+      },
+      () => {
+        this.writing = false;
+        if (this.pending.length) {
+          window.requestAnimationFrame(() => this.onWrite("raw", ""));
+        }
       }
-    });
+    );
   }
 
   async onInput(str: string): Promise<void> {
     this.onWrite("prompted", str, this.getPrompt(), true);
     try {
       if (!this.runtime) {
-        this.runtime = await SchemeRuntime.load();
+        this.runtime = new RuntimeWorker();
+        await this.runtime.load();
         this.runtime.addEventListener("write", (str) =>
           this.onWrite("raw", str)
         );
-        this.setState({ first: false, stopped: false }, () =>
-          this.onWrite("raw", "\x1B[0;94mStarted runtime.\x1B[0m\n")
-        );
-        this.runtime.processLine("\n");
-        return;
+        this.runtime.addEventListener("status", () => {
+          if (!this.runtime) {
+            return;
+          }
+          this.setState({
+            stopped: this.runtime.stopped,
+            waiting: this.runtime.waiting,
+            prompt: this.runtime.partial ? kPartialPrompt : kRegularPrompt,
+          });
+        });
+        this.setState({ first: false });
+        await this.runtime.start();
       } else if (!this.runtime || this.runtime.stopped) {
         await this.runtime.start();
-        this.setState({ stopped: false }, () =>
-          this.onWrite("raw", "\x1B[0;94mRestarted.\x1B[0m\n")
-        );
       } else if (this.runtime.waiting) {
         return;
       }
-      const result = this.runtime.processLine(str + "\n");
-      if (this.runtime.stopped) {
-        this.setState({ stopped: true });
-      } else if (this.runtime.partial && this.state.prompt != kPartialPrompt) {
-        this.setState({ prompt: kPartialPrompt });
-      } else if (!this.runtime.partial && this.state.prompt != kRegularPrompt) {
-        this.setState({ prompt: kRegularPrompt });
-      }
-      return; //result;
+      this.runtime.processLine(str + "\n");
+      this.setState({ clock: this.state.clock + 1 });
     } catch (err) {
       this.onWrite(
         "raw",
@@ -307,6 +318,7 @@ class App extends React.Component<{}, AppState> {
               <Terminal
                 prompt={this.getPrompt()}
                 pause={this.state.stopped}
+                waiting={this.state.waiting}
                 welcomeMessage="Welcome to scheme.wasm"
                 fontSize={(4 * this.state.fontSize) / 3}
                 onInput={(str) => this.onInput(str)}
@@ -315,7 +327,10 @@ class App extends React.Component<{}, AppState> {
             </div>
             {this.state.inspector ? (
               <Flyout label="Inspector" fontSize={this.state.fontSize}>
-                <HeapInspector scale={this.state.fontSize / 12} />
+                <HeapInspector
+                  scale={this.state.fontSize / 12}
+                  clock={this.state.clock}
+                />
               </Flyout>
             ) : null}
 

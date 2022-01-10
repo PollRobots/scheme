@@ -1,34 +1,7 @@
 import pako from "pako";
+import { SchemeType } from "./SchemeType";
 
 type WriteCallback = (str: string) => void;
-
-export enum SchemeType {
-  Empty = 0,
-  Nil = 1,
-  Boolean = 2,
-  Cons = 3,
-  I64 = 4,
-  F64 = 5,
-  Symbol = 6,
-  Str = 7,
-  Char = 8,
-  Env = 9,
-  Special = 10,
-  Builtin = 11,
-  Lambda = 12,
-  Error = 13,
-  Values = 14,
-  Vector = 15,
-  Bytevector = 16,
-  Cont = 17,
-  BigInt = 18,
-  Except = 19,
-  ContProc = 20,
-  SyntaxRules = 21,
-  Rational = 22,
-  MaxHeap = 22,
-  Mask = 0x1f,
-}
 
 class RuntimeExit extends Error {}
 
@@ -44,11 +17,17 @@ export class SchemeRuntime {
   private env_: number = 0;
   private partial_: boolean = false;
   private waiting_: boolean = false;
-  private readonly promises_: number[] = [];
+  private readonly promises_: Map<
+    number,
+    { resolver: (ptr: number) => void; promise: number }
+  > = new Map();
 
   constructor(module: WebAssembly.Module) {
     this.module_ = module;
   }
+
+  addEventListener(event: "write", callback: WriteCallback): void;
+  addEventListener(event: "write-priority", callback: WriteCallback): void;
 
   addEventListener(event: "write" | "write-priority", callback: WriteCallback) {
     if (event === "write") {
@@ -57,6 +36,9 @@ export class SchemeRuntime {
       this.writePriorityCallbacks_.push(callback);
     }
   }
+
+  removeEventListener(event: "write", callback: WriteCallback): void;
+  removeEventListener(event: "write-priority", callback: WriteCallback): void;
 
   removeEventListener(
     event: "write" | "write-priority",
@@ -258,8 +240,13 @@ export class SchemeRuntime {
     return continuation[0] == 204;
   }
 
-  addImportPromise(ptr: number) {
-    this.promises_.push(ptr);
+  addImportPromise(ptr: number): Promise<number> {
+    const heapWords = this.heapItem(ptr);
+    const continuation = this.heapItem(heapWords[1]);
+    const index = continuation[2];
+    return new Promise<number>((resolve) =>
+      this.promises_.set(index, { resolver: resolve, promise: ptr })
+    );
   }
 
   resolveImportPromise(promise: number, text: string): boolean {
@@ -276,59 +263,36 @@ export class SchemeRuntime {
     return this.settleImportPromise(promise, value);
   }
 
-  settleImportPromise(promise: number, value: number): boolean {
-    for (let index = 0; index != this.promises_.length; index++) {
-      const ptr = this.promises_[index];
-      const heapWords = this.heapItem(ptr);
-      if ((heapWords[0] & SchemeType.Mask) != SchemeType.Cont) {
-        console.error(
-          "Unexpected object in import promise list: ",
-          ptr,
-          heapWords
-        );
-        continue;
-      }
-
-      const continuation = this.heapItem(heapWords[1]);
-      if (continuation[0] != 204) {
-        console.error("Unexpected function in continuation", ptr, continuation);
-        continue;
-      }
-
-      if (continuation[2] == promise) {
-        // this is the promise.
-        continuation[0] = 0;
-        continuation[2] = value;
-        this.pokeMemory(heapWords[1], continuation.buffer);
-        this.promises_.splice(index, 1);
-
-        try {
-          this.evalInput(ptr);
-        } catch (err) {
-          console.error(err);
-          this.instance_ = undefined;
-          this.exports_ = undefined;
-          this.initialized_ = false;
-          if (err instanceof Error && typeof err.stack == "string") {
-            err.stack
-              .split("\n")
-              .forEach((el) => this.onWrite(`\x1B[0;91m${el}\n`));
-            this.onWrite("\n");
-          } else {
-            this.onWrite(`\x1B[0;31m${err}\n`);
-          }
-          this.onWrite(
-            "\n\x1B[0;94mPress <Enter> to restart scheme runtime.\x1B[0m\n"
-          );
-        }
-
-        if (this.promises_.length == 0) {
-          this.waiting_ = false;
-        }
-        return true;
-      }
+  settleImportPromise(promiseIdx: number, value: number): boolean {
+    const promiseObj = this.promises_.get(promiseIdx);
+    if (!promiseObj) {
+      return false;
     }
-    return false;
+    const { resolver, promise: ptr } = promiseObj;
+
+    const heapWords = this.heapItem(ptr);
+    if ((heapWords[0] & SchemeType.Mask) != SchemeType.Cont) {
+      throw new Error("Unexpected object in import promise list");
+    }
+
+    const continuation = this.heapItem(heapWords[1]);
+    if (continuation[0] != 204) {
+      throw new Error("Unexpected function in continuation");
+    }
+
+    if (continuation[2] !== promiseIdx) {
+      throw new Error("Unexpected promise in continuation");
+    }
+
+    // this is the promise.
+    continuation[0] = 0;
+    continuation[2] = value;
+    this.pokeMemory(heapWords[1], continuation.buffer);
+    this.promises_.delete(promiseIdx);
+
+    this.waiting_ = this.promises_.size > 0;
+    resolver(ptr);
+    return true;
   }
 
   isNil(ptr: number) {
@@ -350,9 +314,8 @@ export class SchemeRuntime {
 
   private getString(ptr: number) {
     const len = new Uint32Array(this.memory.buffer.slice(ptr, ptr + 4))[0];
-    const utf8 = new Uint8Array(
-      this.memory.buffer.slice(ptr + 4, ptr + len + 4)
-    );
+    const utf8 = new Uint8Array(len);
+    utf8.set(new Uint8Array(this.memory.buffer.slice(ptr + 4, ptr + len + 4)));
     const str = new TextDecoder().decode(utf8);
     return str;
   }
@@ -394,7 +357,7 @@ export class SchemeRuntime {
     });
   }
 
-  async doFileRead(filenamePtr: number): Promise<void> {
+  async doFileRead(promiseIdx: number, filenamePtr: number): Promise<void> {
     try {
       const filename = this.getString(filenamePtr);
       const response = await fetch(`./scheme/${filename}`);
@@ -402,12 +365,12 @@ export class SchemeRuntime {
         throw new Error(response.statusText);
       }
       const text = await response.text();
-      while (!this.resolveImportPromise(filenamePtr, text)) {
+      while (!this.resolveImportPromise(promiseIdx, text)) {
         await this.waitFor(100);
       }
     } catch (err) {
       this.rejectImportPromise(
-        filenamePtr,
+        promiseIdx,
         "file-read",
         err instanceof Error ? err.message : "unknown"
       );
@@ -415,12 +378,21 @@ export class SchemeRuntime {
     }
   }
 
-  fileRead(filenamePtr: number) {
-    this.doFileRead(filenamePtr);
-    return filenamePtr;
+  doRead(filenamePtr: number): number {
+    const word = new Uint32Array(1);
+    self.crypto.getRandomValues(word);
+    const promiseIdx = word[0];
+
+    this.doFileRead(promiseIdx, filenamePtr).catch(console.error);
+
+    return promiseIdx;
   }
 
-  processLine(str: string): void {
+  fileRead(filenamePtr: number) {
+    return this.doRead(filenamePtr);
+  }
+
+  async processLine(str: string): Promise<void> {
     if (this.stopped) {
       return;
     }
@@ -436,12 +408,27 @@ export class SchemeRuntime {
       }
       this.lines_.push(str);
       while (this.lines_.length) {
-        const input = this.read();
-        if (this.isEofError(input)) {
+        let expr = this.read();
+        let first = true;
+        if (this.isEofError(expr)) {
           this.partial_ = true;
           break;
-        } else if (input != 0) {
-          this.evalInput(input);
+        } else if (expr != 0) {
+          while (true) {
+            const result = this.eval(this.env_, expr);
+            if (this.isImportPromise(result)) {
+              expr = await this.addImportPromise(result);
+              continue;
+            } else if (result != 0 && !this.isNil(result)) {
+              if (first) {
+                first = false;
+              } else {
+                this.onWrite("\n");
+              }
+              this.print(result);
+            }
+            break;
+          }
           this.partial_ = false;
         }
       }
@@ -465,17 +452,6 @@ export class SchemeRuntime {
       this.onWrite(
         "\n\x1B[0;94mPress <Enter> to restart scheme runtime.\x1B[0m\n"
       );
-    }
-  }
-
-  evalInput(input: number) {
-    const result = this.eval(this.env_, input);
-    if (this.isImportPromise(result)) {
-      this.waiting_ = true;
-      this.onWrite("\x1B[0;94mWaiting...\x1B[0m\n");
-      this.addImportPromise(result);
-    } else if (!this.isNil(result)) {
-      this.print(result);
     }
   }
 

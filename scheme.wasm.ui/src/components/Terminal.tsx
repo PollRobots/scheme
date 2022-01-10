@@ -12,6 +12,7 @@ interface TerminalProps {
   welcomeMessage?: React.ReactNode;
   output: DataLine[];
   prompt: string;
+  waiting: boolean;
   pause: boolean;
   fontSize: number;
   onInput: (str: string) => Promise<void>;
@@ -181,6 +182,7 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
             <TerminalData text={this.props.output} />
             <TerminalInput
               prompt={this.props.prompt}
+              waiting={this.props.waiting}
               readonly={this.props.pause}
               value={this.state.input}
               onEnter={(text) => this.onEnter(this.props.prompt, text)}

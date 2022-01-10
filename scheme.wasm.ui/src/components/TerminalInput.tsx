@@ -8,6 +8,7 @@ import "prismjs/themes/prism-solarizedlight.css";
 interface TerminalInputProps {
   value: string;
   readonly: boolean;
+  waiting: boolean;
   prompt: string;
   onEnter: (text: string) => void;
   onUp: () => void;
@@ -97,7 +98,7 @@ export class TerminalInput extends React.Component<
   }
 
   onKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !this.props.waiting) {
       this.props.onEnter(this.getValue());
       this.setState({ text: "" });
     } else if (this.props.readonly) {
@@ -117,16 +118,23 @@ export class TerminalInput extends React.Component<
   }
 
   render() {
+    const prompt = this.props.waiting ? (
+      <span style={{ whiteSpace: "pre-wrap" }}>
+        {"".padEnd(this.props.prompt.length, " ")}
+      </span>
+    ) : (
+      <span style={{ whiteSpace: "pre-wrap" }}>{this.props.prompt}</span>
+    );
     return (
       <div style={{ display: "flex" }}>
-        <span style={{ whiteSpace: "pre-wrap" }}>{this.props.prompt}</span>
+        {prompt}
         <ContentEditable
           style={{
             display: "inline-block",
             whiteSpace: "pre-wrap",
             background: "inherit",
             border: "none",
-            width: `calc(100% - ${prompt.length}em)`,
+            width: `calc(100% - ${this.props.prompt.length}em)`,
             font: "inherit",
             fontSize: "inherit",
             color: "inherit",

@@ -4,13 +4,13 @@
     "rootDirs": ["./src/", "./tests/"],
     "sourceMap": true,
     "noImplicitAny": true,
-    "module": "CommonJS",
+    "module": "ES2020",
     "target": "ES2021",
     "declaration": false,
     "strict": true,
     "jsx": "react",
     "lib": ["dom", "es2021"],
-    "esModuleInterop": true,
-    "resolveJsonModule": true
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "node"
   }
 }

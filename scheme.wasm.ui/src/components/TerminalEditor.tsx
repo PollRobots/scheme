@@ -1,5 +1,5 @@
-import React, { Suspense } from "react";
-import * as monaco from "monaco-editor";
+import React from "react";
+import monaco from "monaco-editor";
 
 import { IconButton } from "./IconButton";
 import { EditorThemeContext, ThemeContext } from "./ThemeProvider";

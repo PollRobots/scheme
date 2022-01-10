@@ -1,8 +1,8 @@
 import React from "react";
-import { SchemeRuntime } from "../SchemeRuntime";
+import { RuntimeWorker } from "../RuntimeWorker";
 
 export const SchemeRuntimeContext = React.createContext<
-  SchemeRuntime | undefined
+  RuntimeWorker | undefined
 >(undefined);
 
 export const SchemeRuntimeProvider = SchemeRuntimeContext.Provider;

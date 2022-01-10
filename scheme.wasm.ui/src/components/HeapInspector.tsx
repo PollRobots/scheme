@@ -1,18 +1,37 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Theme } from "../monaco/theme";
-import { SchemeType } from "../SchemeRuntime";
+import { SchemeType } from "../SchemeType";
 import { SchemeRuntimeContext } from "./SchemeRuntimeProvider";
 import { ThemeContext } from "./ThemeProvider";
 import { ToggleSwitch } from "./ToggleSwitch";
 
 interface HeapInspectorProps {
   scale?: number;
+  clock: number;
 }
+
+interface HeapDefinition {
+  ptr: number;
+  size: number;
+  free: number;
+  next: number;
+  entries: ArrayBuffer;
+}
+
 interface HeapInspectorState {
   ptr: string;
   lookupRes: string;
   counter: number;
   showEmpty: boolean;
+}
+
+interface GcStatistics {
+  isCollecting: boolean;
+  collectionCount: number;
+  collected: number;
+  notCollected: number;
+  totalCollected: number;
+  totalNotCollected: number;
 }
 
 function buttonStyle(theme: Theme, disabled?: boolean): React.CSSProperties {
@@ -32,7 +51,7 @@ function buttonStyle(theme: Theme, disabled?: boolean): React.CSSProperties {
 }
 
 export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
-  props
+  props: HeapInspectorProps
 ) => {
   const runtime = React.useContext(SchemeRuntimeContext);
   const theme = React.useContext(ThemeContext);
@@ -42,6 +61,23 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
     counter: 0,
     showEmpty: false,
   });
+  const [heapState, setHeaps] = React.useState<HeapDefinition[]>([]);
+  const [gcStatistics, setGcStatistics] = React.useState<GcStatistics>({
+    isCollecting: false,
+    collectionCount: 0,
+    collected: 0,
+    notCollected: 0,
+    totalCollected: 0,
+    totalNotCollected: 0,
+  });
+  React.useEffect(() => {
+    if (runtime) {
+      runtime.gcRun(false).then((stats) => {
+        setGcStatistics(stats);
+        lookupHeaps(runtime.heap, heapState);
+      });
+    }
+  }, [props.clock, state.counter]);
 
   if (!runtime || runtime.stopped) {
     return (
@@ -51,22 +87,31 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
     );
   }
 
-  function onLookup(ptr: number) {
+  async function onLookup(ptr: number) {
     if (!runtime) {
       return;
     }
-    const words = new Uint32Array(runtime.memory.buffer.slice(ptr, ptr + 12));
-    const type = words[0] & 0x1f;
+    // find the relevant heap
+    const heap = heapState.find(
+      (el) => ptr >= el.ptr + 12 && ptr < el.ptr + 12 * (1 + el.size)
+    );
+    if (!heap) {
+      return;
+    }
+    const idx = (ptr - (heap.ptr + 12)) / 12;
+    if (idx != (idx | 0)) {
+      return;
+    }
+    const words = new Uint32Array(heap.entries);
+    const type = words[idx * 3] & SchemeType.Mask;
     const output: string[] = [];
-    if (type == 0) {
+    if (type == SchemeType.Empty) {
       output.push("<empty>");
     } else {
       const listener = (str: string) => {
         output.push(str);
       };
-      runtime.addEventListener("write-priority", listener);
-      runtime.print(ptr);
-      runtime.removeEventListener("write-priority", listener);
+      output.push(await runtime.print(ptr));
     }
     setState({
       ...state,
@@ -77,50 +122,55 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
     });
   }
 
-  // const heaps: { ptr: number; size: number; free: number; next: number }[] = [];
+  async function lookupHeaps(ptr: number, heaps: HeapDefinition[]) {
+    if (ptr == 0 || !runtime) {
+      return;
+    }
+
+    const heap = await runtime.getHeap(ptr);
+    const idx = heaps.findIndex((el) => el.ptr === heap.ptr);
+    if (idx >= 0) {
+      heaps[idx] = heap;
+    } else {
+      heaps.push(heap);
+    }
+    if (heap.next) {
+      lookupHeaps(heap.next, heaps);
+    } else {
+      setHeaps(heaps);
+    }
+  }
+
   const heaps: React.ReactNode[] = [];
 
-  let ptr = runtime.gHeap;
-
-  while (ptr != 0) {
-    const words = new Uint32Array(runtime.memory.buffer.slice(ptr, ptr + 12));
-    const size = words[0];
-    const free = words[1];
-    const nextHeap = words[2];
-
+  for (const heap of heapState) {
     heaps.push(
-      <div style={{ textAlign: "right" }} key={`ptr${ptr}`}>
-        {ptr.toString(16)}
+      <div style={{ textAlign: "right" }} key={`ptr${heap.ptr}`}>
+        {heap.ptr.toString(16)}
+      </div>,
+      <div style={{ textAlign: "right" }} key={`size${heap.ptr}`}>
+        {heap.size}
+      </div>,
+      <div style={{ textAlign: "right" }} key={`free${heap.ptr}`}>
+        {heap.free.toString(16)}
+      </div>,
+      <div style={{ textAlign: "right" }} key={`next${heap.ptr}`}>
+        {heap.next.toString(16)}
       </div>
     );
-    heaps.push(
-      <div style={{ textAlign: "right" }} key={`size${ptr}`}>
-        {size}
-      </div>
-    );
-    heaps.push(
-      <div style={{ textAlign: "right" }} key={`free${ptr}`}>
-        {free.toString(16)}
-      </div>
-    );
-    heaps.push(
-      <div style={{ textAlign: "right" }} key={`next${ptr}`}>
-        {nextHeap.toString(16)}
-      </div>
-    );
-    if (state.showEmpty || !isHeapEmpty(ptr, size, runtime.memory)) {
+    if (state.showEmpty || !isHeapEmpty(heap)) {
       heaps.push(
         <HeapView
-          key={`cvs${ptr}`}
-          ptr={ptr}
-          size={size}
+          key={`cvs${heap.ptr}`}
+          ptr={heap.ptr}
+          size={heap.size}
+          entries={heap.entries}
           scale={props.scale || 1}
           width={512}
           onLookup={(ptr) => onLookup(ptr)}
         />
       );
     }
-    ptr = nextHeap;
   }
 
   const kColumnHeapStyle: React.CSSProperties = {
@@ -153,7 +203,7 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
           Show empty slabs{" "}
           <ToggleSwitch
             on={state.showEmpty}
-            onChange={(on) => setState({ ...state, showEmpty: on })}
+            onChange={(on: boolean) => setState({ ...state, showEmpty: on })}
           />
         </div>
         <div style={kColumnHeapStyle}>Address</div>
@@ -234,25 +284,17 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
         </div>
         <button
           style={{ ...buttonStyle(theme), justifySelf: "end" }}
-          onClick={() => {
-            const output: string[] = [];
-            const listener = (str: string) => {
-              output.push(str);
-            };
-            runtime.addEventListener("write-priority", listener);
-            runtime.gcRun(runtime.replEnv);
-            runtime.removeEventListener("write-priority", listener);
-            console.log(output.join(""));
-            if (output.length) {
-              console.log(output.join(""));
-            }
+          onClick={async () => {
+            const gcResp = await runtime.gcRun(true);
+            console.log(gcResp.output);
             setState({ ...state, counter: state.counter + 1 });
+            setGcStatistics(gcResp);
           }}
         >
           gc
         </button>
 
-        <div>{runtime.gGcIsCollecting ? "active" : "idle"} </div>
+        <div>{gcStatistics.isCollecting ? "active" : "idle"} </div>
 
         <div
           style={{ gridColumnStart: 2, fontWeight: 500, justifySelf: "end" }}
@@ -272,63 +314,53 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
 
         <div style={{ gridColumnStart: 1 }}>Last Collection</div>
         <div style={{ justifySelf: "end" }}>
-          {runtime.gGcCollectedCount}{" "}
+          {gcStatistics.collected}{" "}
           <Percentage
-            val={runtime.gGcCollectedCount}
-            total={runtime.gGcCollectedCount + runtime.gGcNotCollectedCount}
+            val={gcStatistics.collected}
+            total={gcStatistics.collected + gcStatistics.notCollected}
           />
         </div>
 
         <div style={{ justifySelf: "end" }}>
-          {runtime.gGcNotCollectedCount}{" "}
+          {gcStatistics.notCollected}{" "}
           <Percentage
-            val={runtime.gGcNotCollectedCount}
-            total={runtime.gGcCollectedCount + runtime.gGcNotCollectedCount}
+            val={gcStatistics.notCollected}
+            total={gcStatistics.collected + gcStatistics.notCollected}
           />
         </div>
         <div style={{ justifySelf: "end" }}>
-          {runtime.gGcCollectedCount + runtime.gGcNotCollectedCount}
+          {gcStatistics.collected + gcStatistics.notCollected}
         </div>
 
         <div style={{ gridColumnStart: 1 }}>
-          {runtime.gGcCollectionCount} Collections
+          {gcStatistics.collectionCount} Collections
         </div>
         <div style={{ justifySelf: "end" }}>
-          {runtime.gGcTotalCollectedCount}{" "}
+          {gcStatistics.totalCollected}{" "}
           <Percentage
-            val={runtime.gGcTotalCollectedCount}
-            total={
-              runtime.gGcTotalCollectedCount + runtime.gGcTotalNotCollectedCount
-            }
+            val={gcStatistics.totalCollected}
+            total={gcStatistics.totalCollected + gcStatistics.totalNotCollected}
           />
         </div>
 
         <div style={{ justifySelf: "end" }}>
-          {runtime.gGcTotalNotCollectedCount}{" "}
+          {gcStatistics.totalNotCollected}{" "}
           <Percentage
-            val={runtime.gGcTotalNotCollectedCount}
-            total={
-              runtime.gGcTotalCollectedCount + runtime.gGcTotalNotCollectedCount
-            }
+            val={gcStatistics.totalNotCollected}
+            total={gcStatistics.totalCollected + gcStatistics.totalNotCollected}
           />
         </div>
         <div style={{ justifySelf: "end" }}>
-          {runtime.gGcTotalCollectedCount + runtime.gGcTotalNotCollectedCount}
+          {gcStatistics.totalCollected + gcStatistics.totalNotCollected}
         </div>
       </div>
     </div>
   );
 };
 
-function isHeapEmpty(
-  ptr: number,
-  size: number,
-  memory: WebAssembly.Memory
-): boolean {
-  const words = new Uint32Array(
-    memory.buffer.slice(ptr, ptr + 12 * (1 + size))
-  );
-  for (let i = 1; i <= size; i++) {
+function isHeapEmpty(heap: HeapDefinition): boolean {
+  const words = new Uint32Array(heap.entries);
+  for (let i = 0; i < heap.size; i++) {
     if ((words[i * 3] & 0x1f) != 0) {
       return false;
     }
@@ -355,6 +387,7 @@ interface HeapViewProps {
   size: number;
   scale: number;
   width: number;
+  entries: ArrayBuffer;
   onLookup?: (ptr: number) => void;
 }
 
@@ -369,7 +402,7 @@ const HeapView: React.FunctionComponent<HeapViewProps> = (props) => {
 
   const cellSize = Math.round(8 * props.scale);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!canvasRef.current || !runtime || runtime.stopped) {
       return;
     }
@@ -381,12 +414,7 @@ const HeapView: React.FunctionComponent<HeapViewProps> = (props) => {
     ctx.resetTransform();
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     ctx.translate(0.5, 0.5);
-    const words = new Uint32Array(
-      runtime.memory.buffer.slice(
-        props.ptr + 12,
-        props.ptr + 12 * (1 + props.size)
-      )
-    );
+    const words = new Uint32Array(props.entries);
 
     for (let i = 0; i < props.size; i++) {
       const offset = i * 3;
