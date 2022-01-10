@@ -22,7 +22,7 @@ some of the optional features.
 - [x] Numerics
   - [x] Integers (arbitrary precision)
   - [x] Real numbers (double precision)
-  - [ ] Rationals
+  - [x] Rationals
   - [ ] Complex Numbers
 - [x] Booleans
 - [x] Strings
