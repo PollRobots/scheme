@@ -273,7 +273,6 @@ class App extends React.Component<{}, AppState> {
     try {
       if (!this.runtime) {
         this.runtime = new RuntimeWorker();
-        await this.runtime.load();
         this.runtime.addEventListener("write", (str) =>
           this.onWrite("raw", str)
         );
@@ -282,11 +281,15 @@ class App extends React.Component<{}, AppState> {
             return;
           }
           this.setState({
+            first: !this.runtime.loaded,
             stopped: this.runtime.stopped,
             waiting: this.runtime.waiting,
             prompt: this.runtime.partial ? kPartialPrompt : kRegularPrompt,
           });
         });
+      }
+      if (!this.runtime.loaded) {
+        await this.runtime.load();
         this.setState({ first: false });
         await this.runtime.start();
       } else if (!this.runtime || this.runtime.stopped) {

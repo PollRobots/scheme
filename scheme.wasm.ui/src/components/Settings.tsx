@@ -1,5 +1,6 @@
 import React from "react";
 import { Theme } from "../monaco/theme";
+import { RuntimeStatus } from "./RuntimeStatus";
 import { ThemeContext } from "./ThemeProvider";
 import { ToggleSwitch } from "./ToggleSwitch";
 
@@ -20,6 +21,7 @@ const kSettingsSubHeading: React.CSSProperties = {
   fontWeight: 500,
   fontSize: "1.25em",
   lineHeight: "2em",
+  marginTop: "1rem",
 };
 
 const kFontSizes: number[] = [
@@ -44,16 +46,7 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
   const theme = React.useContext(ThemeContext);
   return (
     <div style={{ fontSize: `${props.fontSize}pt` }}>
-      <div
-        style={{
-          fontWeight: 700,
-          fontSize: "1.5em",
-          margin: "1rem 0",
-        }}
-      >
-        Appearance
-      </div>
-      <div style={kSettingsSubHeading}>Theme</div>
+      <div style={kSettingsSubHeading}>Appearance</div>
       <div style={{ lineHeight: "2em" }}>
         REPL Theme:{" "}
         <select
@@ -126,6 +119,8 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
           }}
         />
       </div>
+      <div style={kSettingsSubHeading}>Runtime</div>
+      <RuntimeStatus />
       <div
         style={{
           ...kSettingsSubHeading,

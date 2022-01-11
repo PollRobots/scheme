@@ -18,6 +18,7 @@ export class RuntimeWorker {
   private idCounter_: number = 1;
   private status_: "running" | "waiting" | "stopped" | "partial" | "none" =
     "none";
+  private memorySize_: number = 0;
   private readonly statusListeners: StatusEventHandler[] = [];
   private readonly writeListeners: WriteCallback[] = [];
   private readonly pendingResponses: Map<number, ResponseResolver> = new Map();
@@ -42,6 +43,10 @@ export class RuntimeWorker {
 
   get partial(): boolean {
     return this.status_ === "partial";
+  }
+
+  get memorySize(): number {
+    return this.memorySize_;
   }
 
   get heap(): number {
@@ -149,6 +154,30 @@ export class RuntimeWorker {
     };
   }
 
+  terminate() {
+    if (!this.worker_) {
+      return;
+    }
+    this.worker_.terminate();
+    this.worker_ = undefined;
+    this.loaded_ = false;
+    this.status_ = "none";
+    this.memory_ = undefined;
+    this.heap_ = undefined;
+    this.memorySize_ = 0;
+    this.pendingResponses.clear();
+    this.onOutput({
+      type: "output",
+      id: -1,
+      content: `
+\x1B[0;31mscheme runtime terminated\x1B[0m
+`,
+    });
+    this.statusListeners.forEach((el) => {
+      el();
+    });
+  }
+
   private nextId() {
     return this.idCounter_++;
   }
@@ -204,6 +233,7 @@ export class RuntimeWorker {
 
   private onStatus(cmd: messages.StatusResponse) {
     this.status_ = cmd.status;
+    this.memorySize_ = cmd.memorySize;
     this.statusListeners.forEach((el) => {
       el();
     });

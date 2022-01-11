@@ -149,25 +149,32 @@ class SchemeWorker {
         type: "status-resp",
         id: cmd ? cmd.id : -1,
         status: "stopped",
-      });
-    } else if (this.working_) {
-      this.postMessage({
-        type: "status-resp",
-        id: cmd ? cmd.id : -1,
-        status: "waiting",
-      });
-    } else if (this.runtime.partial) {
-      this.postMessage({
-        type: "status-resp",
-        id: cmd ? cmd.id : -1,
-        status: "partial",
+        memorySize: 0,
       });
     } else {
-      this.postMessage({
-        type: "status-resp",
-        id: cmd ? cmd.id : -1,
-        status: this.runtime.waiting ? "waiting" : "running",
-      });
+      const memorySize = this.runtime.memory.buffer.byteLength;
+      if (this.working_) {
+        this.postMessage({
+          type: "status-resp",
+          id: cmd ? cmd.id : -1,
+          status: "waiting",
+          memorySize: memorySize,
+        });
+      } else if (this.runtime.partial) {
+        this.postMessage({
+          type: "status-resp",
+          id: cmd ? cmd.id : -1,
+          status: "partial",
+          memorySize: memorySize,
+        });
+      } else {
+        this.postMessage({
+          type: "status-resp",
+          id: cmd ? cmd.id : -1,
+          status: this.runtime.waiting ? "waiting" : "running",
+          memorySize: memorySize,
+        });
+      }
     }
   }
 }

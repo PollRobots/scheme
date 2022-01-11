@@ -20,6 +20,7 @@ export function isStatusRequest(value: any): value is StatusRequest {
 export interface StatusResponse extends WorkerMessage {
   type: "status-resp";
   status: "stopped" | "waiting" | "running" | "partial";
+  memorySize: number;
 }
 
 export function isStatusResponse(value: any): value is StatusResponse {
@@ -31,7 +32,8 @@ export function isStatusResponse(value: any): value is StatusResponse {
     (value.status === "stopped" ||
       value.status === "waiting" ||
       value.status === "running" ||
-      value.status === "partial")
+      value.status === "partial") &&
+    typeof value.memorySize === "number"
   );
 }
 
