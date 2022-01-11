@@ -4,6 +4,11 @@ import sanitizeHtml from "sanitize-html";
 import Prism from "prismjs";
 import "prismjs/components/prism-scheme";
 import "prismjs/themes/prism-solarizedlight.css";
+import { ThemeContext } from "./ThemeProvider";
+import animations from "../styles/animations.module.css";
+import { reference } from "../util";
+
+reference(animations);
 
 interface TerminalInputProps {
   value: string;
@@ -118,6 +123,7 @@ export class TerminalInput extends React.Component<
   }
 
   render() {
+    const spinner = this.props.waiting ? <Spinner /> : null;
     const prompt = this.props.waiting ? (
       <span style={{ whiteSpace: "pre-wrap" }}>
         {"".padEnd(this.props.prompt.length, " ")}
@@ -126,7 +132,8 @@ export class TerminalInput extends React.Component<
       <span style={{ whiteSpace: "pre-wrap" }}>{this.props.prompt}</span>
     );
     return (
-      <div style={{ display: "flex" }}>
+      <div style={{ display: "flex", position: "relative" }}>
+        {spinner}
         {prompt}
         <ContentEditable
           style={{
@@ -162,3 +169,63 @@ export class TerminalInput extends React.Component<
     );
   }
 }
+
+const Spinner: React.FunctionComponent = (props) => {
+  const theme = React.useContext(ThemeContext);
+
+  return (
+    <div
+      style={{
+        width: "1em",
+        height: "1em",
+        margin: 0,
+        padding: 0,
+        boxSizing: "border-box",
+        position: "absolute",
+        overflow: "clip",
+      }}
+    >
+      <div
+        style={{
+          zIndex: 10,
+          background: `linear-gradient(${theme.foreground}, ${theme.background})`,
+          width: "1em",
+          height: "1em",
+          borderRadius: "0.5em",
+          margin: 0,
+          padding: 0,
+          boxSizing: "border-box",
+          position: "absolute",
+          top: 0,
+          left: 0,
+          animationDuration: "1s",
+          animationIterationCount: "infinite",
+          animationName: "clockwise-spin",
+          animationTimingFunction: "linear",
+        }}
+      >
+        <div
+          style={{
+            background: theme.background,
+            width: "0.6em",
+            height: "0.6em",
+            position: "absolute",
+            left: "0.2em",
+            top: "0.2em",
+            borderRadius: "0.3em",
+          }}
+        />
+        <div
+          style={{
+            background: theme.background,
+            width: "1em",
+            height: "1em",
+            position: "absolute",
+            left: "0.5em",
+            top: "0.5em",
+          }}
+        />
+      </div>
+    </div>
+  );
+};

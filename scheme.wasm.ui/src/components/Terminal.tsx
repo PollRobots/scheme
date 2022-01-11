@@ -151,6 +151,25 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
     });
   }
 
+  onContextMenu(evt: React.MouseEvent) {
+    const sel = document.getSelection();
+    if (!sel) {
+      return;
+    }
+    if (sel.isCollapsed) {
+      navigator.clipboard.readText().then((text) => {
+        if (!text) {
+          return;
+        }
+        this.setState({ input: this.state.input + text });
+      });
+    } else {
+      const text = sel.toString();
+      navigator.clipboard.writeText(text).then(() => sel.removeAllRanges());
+    }
+    evt.preventDefault();
+  }
+
   render() {
     if (this.state.editing && !this.props.pause) {
       return (
@@ -177,6 +196,7 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
               minWidth: "40rem",
               outline: "none",
             }}
+            onContextMenu={(e) => this.onContextMenu(e)}
           >
             {this.props.welcomeMessage}
             <TerminalData text={this.props.output} />

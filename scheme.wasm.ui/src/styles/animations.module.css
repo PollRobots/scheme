@@ -72,3 +72,12 @@
     transform: scale(1);
   }
 }
+
+@keyframes :global(clockwise-spin) {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
