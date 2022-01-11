@@ -124,15 +124,23 @@ export class TerminalInput extends React.Component<
 
   render() {
     const spinner = this.props.waiting ? <Spinner /> : null;
-    const prompt = this.props.waiting ? (
-      <span style={{ whiteSpace: "pre-wrap" }}>
-        {"".padEnd(this.props.prompt.length, " ")}
+    const prompt = (
+      <span
+        style={{ whiteSpace: "pre-wrap", gridColumnStart: 1, gridRowStart: 1 }}
+      >
+        {this.props.waiting
+          ? "".padEnd(this.props.prompt.length, " ")
+          : this.props.prompt}
       </span>
-    ) : (
-      <span style={{ whiteSpace: "pre-wrap" }}>{this.props.prompt}</span>
     );
     return (
-      <div style={{ display: "flex", position: "relative" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "auto 1fr",
+          position: "relative",
+        }}
+      >
         {spinner}
         {prompt}
         <ContentEditable
@@ -141,29 +149,52 @@ export class TerminalInput extends React.Component<
             whiteSpace: "pre-wrap",
             background: "inherit",
             border: "none",
-            width: `calc(100% - ${this.props.prompt.length}em)`,
             font: "inherit",
             fontSize: "inherit",
             color: "inherit",
             padding: 0,
             margin: 0,
             outline: "none",
-            caretColor: "none",
             wordWrap: "break-word",
             wordBreak: "break-all",
+            gridColumnStart: 2,
+            gridRowStart: 1,
           }}
           title="Open editor with Ctrl+E, or Escape"
           innerRef={this.ref}
-          html={Prism.highlight(
-            this.state.text,
-            Prism.languages.scheme,
-            "scheme"
-          )}
+          html={this.state.text}
           spellCheck={false}
           onChange={(e) =>
             this.setState({ text: this.cleanHtml(e.target.value) })
           }
           onKeyDown={(e) => this.onKeyDown(e)}
+        />
+        <div
+          style={{
+            display: "inline-block",
+            whiteSpace: "pre-wrap",
+            background: "inherit",
+            border: "none",
+            font: "inherit",
+            fontSize: "inherit",
+            color: "inherit",
+            padding: 0,
+            margin: 0,
+            outline: "none",
+            userSelect: "none",
+            caretColor: "none",
+            wordWrap: "break-word",
+            wordBreak: "break-all",
+            gridColumnStart: 2,
+            gridRowStart: 1,
+          }}
+          dangerouslySetInnerHTML={{
+            __html: Prism.highlight(
+              this.state.text,
+              Prism.languages.scheme,
+              "scheme"
+            ),
+          }}
         />
       </div>
     );
@@ -181,8 +212,10 @@ const Spinner: React.FunctionComponent = (props) => {
         margin: 0,
         padding: 0,
         boxSizing: "border-box",
-        position: "absolute",
+        position: "relative",
         overflow: "clip",
+        gridColumnStart: 1,
+        gridRowStart: 1,
       }}
     >
       <div
