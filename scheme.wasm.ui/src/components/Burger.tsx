@@ -7,6 +7,7 @@ reference(animations);
 
 interface BurgerProps {
   open: boolean;
+  visibleBack?: boolean;
   onClick?: () => void;
 }
 
@@ -25,7 +26,8 @@ const kBurgerStyle: React.CSSProperties = {
   cursor: "pointer",
   padding: 0,
   zIndex: 10,
-  transformOrigin: "0.75rem 0.75rem",
+  transformOrigin: "50% 50%",
+  transition: "background 0.4s",
 };
 
 const kBurgerLineStyle: React.CSSProperties = {
@@ -40,6 +42,15 @@ export const Burger: React.FunctionComponent<BurgerProps> = (props) => {
   const theme = React.useContext(ThemeContext);
   const ref = React.useRef<HTMLDivElement>(null);
 
+  const burgerStyle = props.visibleBack
+    ? {
+        ...kBurgerStyle,
+        background: props.open ? "transparent" : `${theme.foreground}80`,
+        padding: "0.25em",
+        borderRadius: "0.25em",
+      }
+    : kBurgerStyle;
+
   const lineStyle = {
     ...kBurgerLineStyle,
     background: props.open ? theme.foreground : theme.boldBackground,
@@ -52,7 +63,7 @@ export const Burger: React.FunctionComponent<BurgerProps> = (props) => {
           ref.current.style.animation = "";
         }
       }}
-      style={kBurgerStyle}
+      style={burgerStyle}
       onClick={() => {
         if (props.onClick) {
           props.onClick();

@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
+import UAParser from "ua-parser-js";
 import { About } from "./components/About";
 import { Burger } from "./components/Burger";
 import { Flyout } from "./components/Flyout";
@@ -33,6 +34,7 @@ interface AppState {
   persist: boolean;
   output: DataLine[];
   clock: number;
+  isMobile: boolean;
 }
 
 const kPartialPrompt = "~    ";
@@ -52,6 +54,26 @@ const kDefaultState: AppState = {
   fontSize: 12,
   output: [],
   clock: 0,
+  isMobile: false,
+};
+
+const kDefaultRootStyle: React.CSSProperties = {
+  display: "grid",
+  height: "calc(100vh - 5rem)",
+  width: "calc(95vw - 7rem)",
+  margin: "1rem auto 4rem",
+  boxSizing: "border-box",
+  boxShadow: "#444 0 0.5em 1em",
+  overflowY: "scroll",
+};
+
+const kMobileRootStyle: React.CSSProperties = {
+  display: "grid",
+  height: "100vh",
+  width: "100vw",
+  margin: "0",
+  boxSizing: "border-box",
+  overflowY: "scroll",
 };
 
 const kSettingsSubHeading: React.CSSProperties = {
@@ -127,7 +149,14 @@ class App extends React.Component<{}, AppState> {
 
   constructor(props: {}) {
     super(props);
-    this.state = { ...kDefaultState, ...loadSettings() };
+    const uaParser = new UAParser();
+    const device = uaParser.getDevice();
+
+    this.state = {
+      ...kDefaultState,
+      ...loadSettings(),
+      isMobile: device.type === "mobile",
+    };
     this.onClickOutside = this.onClickOutside.bind(this);
   }
 
@@ -297,24 +326,16 @@ class App extends React.Component<{}, AppState> {
   }
 
   render() {
+    const rootStyle = this.state.isMobile
+      ? kMobileRootStyle
+      : kDefaultRootStyle;
     return (
       <ThemeProvider
         value={this.state.theme == "Dark" ? kSolarizedDark : kSolarizedLight}
       >
         <SchemeRuntimeProvider value={this.runtime}>
           <EditorThemeProvider value={this.getEditorTheme()}>
-            <div
-              style={{
-                display: "grid",
-                height: "calc(100vh - 5rem)",
-                width: "calc(95vw - 7rem)",
-                margin: "1rem auto 4rem",
-                boxSizing: "border-box",
-                boxShadow: "#444 0 0.5em 1em",
-                overflowY: "scroll",
-                fontSize: `${this.state.fontSize}pt`,
-              }}
-            >
+            <div style={{ ...rootStyle, fontSize: `${this.state.fontSize}pt` }}>
               <Terminal
                 prompt={this.getPrompt()}
                 pause={this.state.stopped}
@@ -337,6 +358,7 @@ class App extends React.Component<{}, AppState> {
             <div ref={this.ref}>
               <Burger
                 open={this.state.open}
+                visibleBack={this.state.isMobile}
                 onClick={() => this.setState({ open: !this.state.open })}
               />
               <SettingsMenu open={this.state.open}>
