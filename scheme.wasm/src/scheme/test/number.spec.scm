@@ -211,15 +211,34 @@
     (assert-not (negative? 0))
     (assert-not (negative? 1))))
 
-  (test-case "(min <x1> <x2 ...)" (lambda ()
+  (test-case "(min <x1> <x2> ...)" (lambda ()
     (assert-equal (min 3 4) 3)
     (assert-equal (min 4.1 4) 4)
     (assert (inexact? (min 4.1 4)))
     (assert-equal (min 1 4 73 -3 17 -54) -54)))
 
-  (test-case "(max <x1> <x2 ...)" (lambda ()
+  (test-case "(max <x1> <x2> ...)" (lambda ()
     (assert-equal (max 3 4) 4)
     (assert-equal (max 3.9 4) 4)
     (assert (inexact? (max 3.9 4)))
     (assert-equal (max 1 4 73 -3 17 -54) 73)))
+
+  (test-case "(+ <z1> ...)" (lambda ()
+    (assert-equal (+ 3 4) 7)
+    (assert-equal (+ 3) 3)
+    (assert-equal (+) 0)))
+
+  (test-case "(* <z1> ...)" (lambda ()
+    (assert-equal (* 3 4) 12)
+    (assert-equal (* 3) 3)
+    (assert-equal (*) 1)))
+
+  (test-case "(- <z1> ...)" (lambda ()
+    (assert-equal (- 3 4) -1)
+    (assert-equal (- 3 4 5) -6)
+    (assert-equal (- 3) -3)))
+
+  (test-case "(/ <z1> ...)" (lambda ()
+    (assert-equal (/ 3 4 5) 3/20)
+    (assert-equal (/ 3) 1/3)))
 )

@@ -1,6 +1,6 @@
-;; An environment is a hashtable and a pointer to a (heap allocated) outer 
+;; An environment is a hashtable and a pointer to a (heap allocated) outer
 ;; environment, conveniently this fits within a heap object
-;; 
+;;
 ;; Environment
 ;;  hashtable i32  -- ptr to a hashtable allocated with $hashtable-init
 ;;  outer i32      -- heap-ptr to the outer hashtable (0 if none)
@@ -38,7 +38,6 @@
   (local $new-hash i32)
 
   ;; check that key is a symbol
-  ;; if (*key & 0xF != 6) {
   (if (i32.ne (%get-type $key) (%symbol-type))
     ;; trap
     ;; TODO: return error
@@ -62,7 +61,7 @@
 
   ;; place value in hashtable
   ;; new-hash = hashtable-add(hashtable, str-dup(key-str), value)
-  (local.set $new-hash 
+  (local.set $new-hash
     (call $hashtable-add
       (local.get $hashtable)
       (local.get $key-str)
@@ -85,7 +84,7 @@
 
 (func $environment-has (param $env i32) (param $key i32) (result i32)
   ;; check that key is a symbol
-  (if (i32.ne (%get-type $key) (%symbol-type)) (then 
+  (if (i32.ne (%get-type $key) (%symbol-type)) (then
     (return (i32.const 0))))
 
   ;; check that there isn't an existing entry in the hashtable
@@ -98,7 +97,6 @@
   (local $value i32)
 
   ;; check that key is a string
-  ;; if (*key & 0xF != 6) {
   (if (i32.ne (%get-type $key) (%symbol-type)) (then
       ;; return g-nil
       (return (global.get $g-nil))))
@@ -110,8 +108,8 @@
     ;; hashtable = env[4]
     (local.set $hashtable (i32.load offset=4 (local.get $env)))
     ;; value = hashtable-get(hashtable, key-str)
-    (local.set $value (call $hashtable-get 
-        (local.get $hashtable) 
+    (local.set $value (call $hashtable-get
+        (local.get $hashtable)
         (local.get $key-str)))
     ;; if (value != 0) {
     (if (local.get $value) (then
@@ -132,9 +130,9 @@
   (local $hashtable i32)
   (local $curr i32)
 
-  (if (i32.ne (%get-type $key) (%symbol-type)) (then 
-      (return (call $argument-error (%alloc-list-2 
-            (local.get $key) 
+  (if (i32.ne (%get-type $key) (%symbol-type)) (then
+      (return (call $argument-error (%alloc-list-2
+            (local.get $key)
             (local.get $value))))))
 
   ;; key-str = key[4]
@@ -145,16 +143,16 @@
     ;; hashtable = car(env)
     (local.set $hashtable (%car-l $env))
 
-    (if (local.tee $curr (call $hashtable-get 
-          (local.get $hashtable) 
+    (if (local.tee $curr (call $hashtable-get
+          (local.get $hashtable)
           (local.get $key-str)))
       (then
         (if (i32.ne (%get-type $curr) (%syntax-rules-type)) (then
-            ;; Note: cannot remove then add, because the duplicated key-string in 
+            ;; Note: cannot remove then add, because the duplicated key-string in
             ;; the hashtable will leak.
-            (if (call $hashtable-replace 
-                (local.get $hashtable) 
-                (local.get $key-str) 
+            (if (call $hashtable-replace
+                (local.get $hashtable)
+                (local.get $key-str)
                 (local.get $value))
               ;; return
               (then (return (global.get $g-nil)))))))
@@ -162,6 +160,6 @@
         ;; if (env = cdr(env)) continue;
         (br_if $forever (local.tee $env (%cdr-l $env))))))
 
-  (return (call $argument-error (%alloc-list-2 
-        (local.get $key) 
+  (return (call $argument-error (%alloc-list-2
+        (local.get $key)
         (local.get $value)))))

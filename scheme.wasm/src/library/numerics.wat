@@ -455,7 +455,6 @@
   ;; accum = 0
   (local.set $accum (global.get $g-zero))
 
-  ;; while ( (*args & 0x0f) != nil-type) {
   (block $b_end (loop $b_start
       (br_if $b_end (i32.eq (%get-type $args) (%nil-type)))
 
@@ -480,7 +479,6 @@
   ;; accum = 1
   (local.set $accum (global.get $g-one))
 
-  ;; while ( (*args & 0x0f) != nil-type) {
   (block $b_end (loop $b_start
       (br_if $b_end (i32.eq (%get-type $args) (%nil-type)))
 
@@ -511,7 +509,6 @@
   (if (i32.eq (%get-type $args) (%nil-type))
     (then (return (call $num-core-neg (local.get $accum)))))
 
-  ;; while ( (*args & 0x0f) != nil-type) {
   (block $b_end (loop $b_start
       (br_if $b_end (i32.eq (%get-type $args) (%nil-type)))
 
@@ -542,12 +539,11 @@
   (local.set $temp (local.get $args))
   (%pop-l $accum $temp)
 
-  (if (i32.eq (%get-type $args) (%nil-type)) (then
+  (if (i32.eq (%get-type $temp) (%nil-type)) (then
       (if (call $num-core-zero? (local.get $accum)) (then
           (return (%alloc-error-cons (global.get $g-div0) (local.get $args)))))
       (return (call $num-core-div (global.get $g-one) (local.get $accum)))))
 
-  ;; while ( (*args & 0x0f) != nil-type) {
   (block $b_end (loop $b_start
       (br_if $b_end (i32.eq (local.get $temp) (global.get $g-nil)))
       (br_if $b_end (call $num-core-zero? (local.get $accum)))

@@ -122,7 +122,7 @@
       (return (call $num-core-cmp (%car-l $left) (%car-l $right)))))
 
   (local.set $left-num (call $num-core-mul (%car-l $left) (local.get $right-denom)))
-  (local.set $right-num (call $num-core-mul (%car-l $left) (local.get $left-denom)))
+  (local.set $right-num (call $num-core-mul (%car-l $right) (local.get $left-denom)))
 
   (return (call $num-core-cmp (local.get $left-num) (local.get $right-num))))
 

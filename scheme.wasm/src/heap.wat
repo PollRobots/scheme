@@ -201,7 +201,6 @@
     (loop $b_start
       (br_if $b_end (i32.eqz (local.get $size)))
 
-      ;; type = entry-ptr[0] & 0xF
       (local.set $type (%get-type $entry-ptr))
 
       ;; switch (type)

@@ -466,6 +466,7 @@ while the working set is non-empty:
         (br_if $b_then (i32.eq (local.get $type) (%except-type)))
         (br_if $b_then (i32.eq (local.get $type) (%cont-proc-type)))
         (br_if $b_then (i32.eq (local.get $type) (%syntax-rules-type)))
+        (br_if $b_then (i32.eq (local.get $type) (%rational-type)))
         (br $b_else)
       )
       ;; mark-touched(item)
@@ -511,7 +512,7 @@ while the working set is non-empty:
   ;; Add the read and write caches from the global reader to the touched set
   (call $gc-maybe-touched-push (i32.load offset=16 (global.get $g-reader)))
   (call $gc-maybe-touched-push (i32.load offset=20 (global.get $g-reader)))
-  ;; Add the named character set to the touched set
+  ;; Add ahe named character set to the touched set
   (call $gc-maybe-touched-push (global.get $g-char-env))
 
   ;; g-gc-collecting? = true

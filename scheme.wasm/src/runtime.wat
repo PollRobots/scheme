@@ -425,7 +425,6 @@
   (local $atom-str i32)
   (local $atom i32)
 
-  ;; if ((token[0] & 0xF) != 7 {
   (if (i32.ne (%get-type $token) (%str-type)) (then unreachable))
 
   ;; token-str == token[4]
@@ -1255,7 +1254,6 @@
   (local $result i32)
   (local $op i32)
 
-  ;; type = *args & 0xf
   (local.set $type (%get-type $args))
 
   ;; switch (type) {
@@ -1272,7 +1270,7 @@
       (%ginc $g-eval-count)
 
       (if (i32.eqz (call $is-list-impl (local.get $args))) (then
-          (return (%alloc-raise (%alloc-error 
+          (return (%alloc-raise (%alloc-error
                 (%str %sym-128 128 "improper list")
                 (local.get $args))))))
 
@@ -1344,7 +1342,6 @@
   (local $curr i32)
   (local $head i32)
 
-  ;; op-type = *op & 0xF
   (local.set $op-type (%get-type $op))
 
   (if (i32.eq (local.get $op-type) (%special-type)) (then
@@ -1458,7 +1455,6 @@
   (local $head i32)
   (local $fn i32)
 
-  ;; op-type = *op & 0xF
   (local.set $op-type (%get-type $op))
 
   ;; switch (op-type) {

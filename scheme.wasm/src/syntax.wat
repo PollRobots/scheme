@@ -40,20 +40,20 @@
 
     (return (call $argument-error (local.get $args))))
 
-  (local.set $syntax-rules (call $create-syntax-rules 
-      (local.get $keyword) 
+  (local.set $syntax-rules (call $create-syntax-rules
+      (local.get $keyword)
       (local.get $spec)))
   (if (i32.ne (%get-type $syntax-rules) (%syntax-rules-type)) (then
       (return (local.get $syntax-rules))))
-    
-  (call $environment-add 
-    (local.get $env) 
-    (local.get $keyword) 
+
+  (call $environment-add
+    (local.get $env)
+    (local.get $keyword)
     (local.get $syntax-rules))
   (return (global.get $g-nil)))
 
-;; (syntax-rules (<literal> ...) <syntax-rule> ...) 
-;; (syntax-rules <ellipsis> (<literal> ...) <syntax-rule> ...) 
+;; (syntax-rules (<literal> ...) <syntax-rule> ...)
+;; (syntax-rules <ellipsis> (<literal> ...) <syntax-rule> ...)
 (func $create-syntax-rules (param $keyword i32) (param $spec i32) (result i32)
   (local $ellipsis i32)
   (local $literals i32)
@@ -61,7 +61,7 @@
   (local $temp i32)
   (local $rules i32)
   (local $cmd i32)
-  
+
   (block $check (block $fail
       (local.set $num-args (call $list-len (local.get $spec)))
       (br_if $fail (i32.lt_u (local.get $num-args) (i32.const 3)))
@@ -87,9 +87,9 @@
 
   (local.set $literals (%alloc-cons (local.get $ellipsis) (local.get $literals)))
 
-  (if (i32.eqz (call $valid-rules? 
-        (local.get $keyword) 
-        (local.get $literals) 
+  (if (i32.eqz (call $valid-rules?
+        (local.get $keyword)
+        (local.get $literals)
         (local.get $rules)))  (then
     (return (call $argument-error (local.get $spec)))))
 
@@ -108,7 +108,7 @@
 
       (%pop-l $curr $args)
 
-      (if (i32.ne (%get-type $curr) (%symbol-type)) 
+      (if (i32.ne (%get-type $curr) (%symbol-type))
         (then (return (i32.const 0))))
 
       (br $forever)))
@@ -122,9 +122,9 @@
       (br_if $end (i32.eq (%get-type $rules) (%nil-type)))
       (%pop-l $rule $rules)
 
-      (if (i32.eqz (call $valid-rule? 
-            (local.get $keyword) 
-            (local.get $literals) 
+      (if (i32.eqz (call $valid-rule?
+            (local.get $keyword)
+            (local.get $literals)
             (local.get $rule)))
         (then (return (i32.const 0))))
 
@@ -159,8 +159,8 @@
       (return (i32.const 0))))
 
   ;; a valid rule must be a valid pattern...
-  (if (i32.eqz (call $valid-pattern? 
-        (local.get $ellipsis) 
+  (if (i32.eqz (call $valid-pattern?
+        (local.get $ellipsis)
         (local.get $pattern)))
     (then (return (i32.const 0))))
 
@@ -203,14 +203,14 @@
 
           (if (i32.and (local.get $check-ellipsis) (i32.eq
                 (local.get $curr)
-                (local.get $ellipsis))) 
+                (local.get $ellipsis)))
             (then
               ;; this is an ellipsis in a valid position
               (local.set $check-ellipsis (i32.const 0))
               (local.set $have-ellipsis (i32.const 1)))
             (else
-              (if (i32.eqz (call $valid-pattern? 
-                    (local.get $ellipsis) 
+              (if (i32.eqz (call $valid-pattern?
+                    (local.get $ellipsis)
                     (local.get $curr))) (then
                   ;; curr is not a valid pattern
                   (return (i32.const 0))))
@@ -220,12 +220,12 @@
 
           ;; check for a dotted list ending
           (local.set $type (%get-type $pattern))
-          (if (i32.and 
+          (if (i32.and
               (i32.ne (local.get $type) (%nil-type))
               (i32.ne (local.get $type) (%cons-type)))
             (then
-              (return (call $valid-pattern? 
-                  (local.get $ellipsis) 
+              (return (call $valid-pattern?
+                  (local.get $ellipsis)
                   (local.get $pattern)))))
 
           (br $start)))
@@ -240,16 +240,16 @@
 
           (local.set $curr (i32.load (local.get $ptr)))
 
-          (if (i32.and (local.get $check-ellipsis) (i32.eq 
-                (local.get $curr) 
-                (local.get $ellipsis))) 
+          (if (i32.and (local.get $check-ellipsis) (i32.eq
+                (local.get $curr)
+                (local.get $ellipsis)))
             (then
               ;; this is a valid ellipsis
               (local.set $check-ellipsis (i32.const 0))
               (local.set $have-ellipsis (i32.const 1)))
             (else
-              (if (i32.eqz (call $valid-pattern? 
-                    (local.get $ellipsis) 
+              (if (i32.eqz (call $valid-pattern?
+                    (local.get $ellipsis)
                     (local.get $curr))) (then
                   (return (i32.const 0))))
               ;; Curr is a valid pattern, so an ellipsis is possible, if one
@@ -293,13 +293,13 @@
       ;; first check for (<ellipsis> <template>)
       (if (i32.eq (%car-l $template) (local.get $ellipsis)) (then
           (%pop-l $curr $template)
-          ;; head of the list is the ellipsis symbol, rest of the list must be a 
+          ;; head of the list is the ellipsis symbol, rest of the list must be a
           ;; single template
           (%pop-l $curr $template)
-          (if (i32.eq (%get-type $template) (%nil-type)) (then 
-              (if (call $valid-template? 
-                  (local.get $ellipsis) 
-                  (local.get $curr)) (then 
+          (if (i32.eq (%get-type $template) (%nil-type)) (then
+              (if (call $valid-template?
+                  (local.get $ellipsis)
+                  (local.get $curr)) (then
                   (return (i32.const 1))))))
           (return (i32.const 0))))
 
@@ -308,22 +308,22 @@
           (%chk-type $end $template %cons-type)
           (%pop-l $curr $template)
 
-          (if (i32.and (local.get $check-ellipsis) (i32.eq 
-                (local.get $curr) 
-                (local.get $ellipsis))) 
+          (if (i32.and (local.get $check-ellipsis) (i32.eq
+                (local.get $curr)
+                (local.get $ellipsis)))
             (then
               ;; this is a valid ellipsis
               (local.set $check-ellipsis (i32.const 0)))
             (else
-              (if (i32.eqz (call $valid-template? 
-                    (local.get $ellipsis) 
+              (if (i32.eqz (call $valid-template?
+                    (local.get $ellipsis)
                     (local.get $curr))) (then
                   (return (i32.const 0))))
               (local.set $check-ellipsis (i32.const 1))))
 
           (local.set $type (%get-type $template))
           ;; check for dotted list
-          (if (i32.and 
+          (if (i32.and
               (i32.ne (local.get $type) (%nil-type))
               (i32.ne (local.get $type) (%cons-type))) (then
               (return (call $valid-template? (local.get $ellipsis) (local.get $template)))))
@@ -341,15 +341,15 @@
 
           (local.set $curr (i32.load (local.get $ptr)))
 
-          (if (i32.and (local.get $check-ellipsis) (i32.eq 
-                (local.get $curr) 
-                (local.get $ellipsis))) 
+          (if (i32.and (local.get $check-ellipsis) (i32.eq
+                (local.get $curr)
+                (local.get $ellipsis)))
             (then
               ;; this is a valid ellipsis
               (local.set $check-ellipsis (i32.const 0)))
             (else
-              (if (i32.eqz (call $valid-template? 
-                    (local.get $ellipsis) 
+              (if (i32.eqz (call $valid-template?
+                    (local.get $ellipsis)
                     (local.get $curr))) (then
                   (return (i32.const 0))))
               (local.set $check-ellipsis (i32.const 1))))
@@ -363,7 +363,7 @@
   (return (i32.const 0)))
 
 (;
-Constants are 
+Constants are
   Numbers
   Strings
   Characters
@@ -372,7 +372,7 @@ Constants are
   Bytevectors
  ;)
 (func $identifier-or-constant? (param $obj-type i32) (result i32)
-  (block $check 
+  (block $check
     ;; indentifier
     (br_if $check (i32.eq (local.get $obj-type) (%symbol-type)))
     ;; boolean
@@ -381,6 +381,7 @@ Constants are
     (br_if $check (i32.eq (local.get $obj-type) (%i64-type)))
     (br_if $check (i32.eq (local.get $obj-type) (%f64-type)))
     (br_if $check (i32.eq (local.get $obj-type) (%big-int-type)))
+    (br_if $check (i32.eq (local.get $obj-type) (%rational-type)))
     ;; string
     (br_if $check (i32.eq (local.get $obj-type) (%str-type)))
     ;; character
@@ -393,7 +394,7 @@ Constants are
 
   (return (i32.const 1)))
 
- 
+
 (func $apply-syntax-rules (param $env i32) (param $syntax-rules i32) (param $args i32) (result i32)
   (local $literals i32)
   (local $ellipsis i32)
@@ -417,13 +418,13 @@ Constants are
       (local.set $template (%car (%cdr-l $rule)))
 
       ;; the first element of the pattern has already matched...
-      (if (local.tee $match (call $match-syntax-pattern 
-            (%cdr-l $pattern) 
+      (if (local.tee $match (call $match-syntax-pattern
+            (%cdr-l $pattern)
             (local.get $args)
             (local.get $ellipsis)
             (local.get $literals)))
         (then
-          (local.set $expanded (call $expand-syntax-template 
+          (local.set $expanded (call $expand-syntax-template
               (local.get $template)
               (local.get $match)
               (local.get $ellipsis)
@@ -443,8 +444,8 @@ Constants are
 
           (if (i32.eq (local.get $expanded-type) (%cons-type)) (then
               (if (i32.eq (%car-l $expanded) (global.get $g-syntax-error)) (then
-                  (return (call $syntax-error 
-                      (local.get $env) 
+                  (return (call $syntax-error
+                      (local.get $env)
                       (%cdr-l $expanded)))))))
 
           (return (call $cont-alloc
@@ -471,8 +472,8 @@ Constants are
 
     (return (call $argument-error (local.get $args))))
 
-  (return (%alloc-raise (%alloc-error-cons 
-        (local.get $msg) 
+  (return (%alloc-raise (%alloc-error-cons
+        (local.get $msg)
         (local.get $temp)))))
 
 (;
@@ -484,13 +485,13 @@ Constants are
  ;  Where an <element> is a <template> optionally followed by an <ellipsis>
  ;
  ;  constants expand to themselves
- ;  identifiers that match entries in the match-env expand to that entry 
+ ;  identifiers that match entries in the match-env expand to that entry
  ;  expanding elements with ellipsis matches single items from lists in the env
  ;)
-(func $expand-syntax-template 
-  (param $template i32) 
+(func $expand-syntax-template
+  (param $template i32)
   (param $match-env i32)
-  (param $ellipsis i32) 
+  (param $ellipsis i32)
   (param $in-ellipsis i32)
   (param $context i32)
   (result i32)
@@ -538,7 +539,7 @@ Constants are
               (call $print (local.get $context))
               (call $print-symbol (global.get $g-newline))))
 
-          (local.set $count (call $list-len (local.get $context))) 
+          (local.set $count (call $list-len (local.get $context)))
           ;; apply hygiene for binding constructs in lambda
           (if (i32.ge_u (local.get $count) (i32.const 2))
             (then
@@ -549,7 +550,7 @@ Constants are
                   (br_if $need-lambda-hygiene (i32.eq (%car-l $gp) (global.get $g-lambda)))
                   (br $no-lambda-hygiene))
 
-                (call $environment-add 
+                (call $environment-add
                   (local.get $match-env)
                   (local.get $template)
                   (local.tee $curr (call $make-hygienic)))
@@ -569,12 +570,12 @@ Constants are
                       (br_if $need-let-hygiene (i32.eq (local.get $gp) (global.get $g-letrec-star)))
                       (br $no-let-hygiene))
 
-                    (call $environment-add 
+                    (call $environment-add
                       (local.get $match-env)
                       (local.get $template)
                       (local.tee $curr (call $make-hygienic)))
                     (return (local.get $curr)))))))
-              
+
           (return (local.get $template))))))
 
   ;; list or vector
@@ -612,14 +613,14 @@ Constants are
               (br_if $need-hygiene (i32.eq (local.get $gp) (global.get $g-lambda)))
               (br $no-hygiene))
 
-            ;; hygienic macros need a local environment 
-            (local.set $match-env (call $environment-init 
-                (global.get $g-heap) 
+            ;; hygienic macros need a local environment
+            (local.set $match-env (call $environment-init
+                (global.get $g-heap)
                 (local.get $match-env))))
 
 
           (if (i32.eq (%car-l $template) (local.get $ellipsis)) (then
-              ;; the next item in the template is an ellipsis, 
+              ;; the next item in the template is an ellipsis,
               ;; skip over the ellipsis
               (local.set $template (%cdr-l $template))
               ;; expand the current element until we get nothing
@@ -646,9 +647,9 @@ Constants are
               (local.get $ellipsis)
               (local.get $in-ellipsis)
               (%alloc-cons (local.get $head) (local.get $context))))
-          
+
           (if (local.get $in-ellipsis) (then
-              ;; we are in an ellipsis expansion, if we don't have another 
+              ;; we are in an ellipsis expansion, if we don't have another
               ;; element (i.e. we get a ()), then return ()
               (if (i32.eq (local.get $matched) (global.get $g-nil)) (then
                   (return (local.get $matched))))))
@@ -681,7 +682,7 @@ Constants are
                 (%alloc-cons (local.get $head) (local.get $context))))
 
             (if (local.get $in-ellipsis) (then
-                ;; we are in an ellipsis expansion, if we don't have another 
+                ;; we are in an ellipsis expansion, if we don't have another
                 ;; element (i.e. we get a ()), then return ()
                 (if (i32.eq (local.get $matched) (global.get $g-nil)) (then
                     (return (local.get $matched))))))
@@ -698,9 +699,9 @@ Constants are
 
           (br $start)))
 
-      (if (i32.eq (local.get $type) (%cons-type)) 
+      (if (i32.eq (local.get $type) (%cons-type))
         (then
-          ;; this is a list so simply return the list that we just built      
+          ;; this is a list so simply return the list that we just built
           (return (local.get $head)))
         (else
           ;; return a vector
@@ -709,18 +710,18 @@ Constants are
   ;; everything else
   (return (local.get $template)))
 
-(func $match-syntax-pattern 
-  (param $pattern i32) 
-  (param $exp i32) 
-  (param $ellipsis i32) 
-  (param $literals i32) 
+(func $match-syntax-pattern
+  (param $pattern i32)
+  (param $exp i32)
+  (param $ellipsis i32)
+  (param $literals i32)
   (result i32)
 
   (local $match-env i32)
   (local $res i32)
 
-  (local.set $match-env (call $environment-init 
-      (global.get $g-heap) 
+  (local.set $match-env (call $environment-init
+      (global.get $g-heap)
       (i32.const 0)))
 
   (if (global.get $g-trace-macros) (then
@@ -734,7 +735,7 @@ Constants are
       (if (i32.eq (local.get $pattern) (global.get $g-nil)) (then
           (return (local.get $match-env))))))
 
-  (local.set $res (call $match-syntax-pattern-impl 
+  (local.set $res (call $match-syntax-pattern-impl
       (local.get $pattern)
       (local.get $exp)
       (local.get $ellipsis)
@@ -754,33 +755,33 @@ Constants are
  ;    • P is an underscore (_); OR
  ;    • P is a non-literal identifier; OR
  ;    • P is a literal identifier and E is an identifier with the same binding; OR
- ;    • P is a list (P1 ... Pn) and E is a list of n elements that match P1 
+ ;    • P is a list (P1 ... Pn) and E is a list of n elements that match P1
  ;        through Pn, respectively; OR
  ;    • P is an improper list (P1 P2 ... Pn . Pn+1) and E is a list or improper
  ;        list of n or more elements that match P1 through Pn, respectively, and
  ;        whose nth tail matches Pn+1; OR
- ;    • P is of the form (P1 ... Pk Pe <ellipsis> Pm+1 ... Pn) where E is a 
- ;        proper list of n elements, the first k of which match P1 through Pk, 
- ;        respectively, whose next m − k elements each match Pe, whose 
+ ;    • P is of the form (P1 ... Pk Pe <ellipsis> Pm+1 ... Pn) where E is a
+ ;        proper list of n elements, the first k of which match P1 through Pk,
+ ;        respectively, whose next m − k elements each match Pe, whose
  ;        remaining n − m elements match Pm+1 through Pn; OR
- ;    • P is of the form (P1 ... Pk Pe <ellipsis> Pm+1 ... Pn . Px) where E is 
- ;        a list or improper list of n elements, the first k of which match P1 
+ ;    • P is of the form (P1 ... Pk Pe <ellipsis> Pm+1 ... Pn . Px) where E is
+ ;        a list or improper list of n elements, the first k of which match P1
  ;        through Pk, whose next m − k elements each match Pe, whose remaining
  ;        n−m elements match Pm+1 through Pn, and whose nth and final cdr
  ;        matches Px; OR
- ;    • P is a vector of the form #(P1 ... Pn) and E is a vector of n elements 
+ ;    • P is a vector of the form #(P1 ... Pn) and E is a vector of n elements
  ;        that match P1 through Pn; OR
- ;    • P is of the form #(P1 ... Pk Pe <ellipsis> Pm+1 ... Pn) where E is a 
- ;        vector of n elements the first k of which match P1 through Pk, whose 
- ;        next m − k elements each match Pe, and whose remaining n − m elements 
- ;        match Pm+1 through Pn; OR 
+ ;    • P is of the form #(P1 ... Pk Pe <ellipsis> Pm+1 ... Pn) where E is a
+ ;        vector of n elements the first k of which match P1 through Pk, whose
+ ;        next m − k elements each match Pe, and whose remaining n − m elements
+ ;        match Pm+1 through Pn; OR
  ;    • P is a constant and E is equal to P in the sense of the equal? procedure.
  ;)
 (func $match-syntax-pattern-impl
-  (param $pattern i32) 
-  (param $exp i32) 
-  (param $ellipsis i32) 
-  (param $literals i32) 
+  (param $pattern i32)
+  (param $exp i32)
+  (param $ellipsis i32)
+  (param $literals i32)
   (param $match-env i32)
   (param $in-ellipsis i32)
   (result i32)
@@ -789,8 +790,8 @@ Constants are
   (local $exp-type i32)
   (local $curr-pattern i32)
   (local $next-pattern i32)
-  (local $curr-exp i32) 
-  (local $next-exp i32) 
+  (local $curr-exp i32)
+  (local $next-exp i32)
   (local $pattern-ptr i32)
   (local $exp-ptr i32)
   (local $pattern-count i32)
@@ -809,19 +810,19 @@ Constants are
           ;; as the exp, otherwise no match;
           (return (i32.eq (local.get $pattern) (local.get $exp)))))
       ;; pattern is a non-literal identifier
-      (if (local.get $in-ellipsis) 
+      (if (local.get $in-ellipsis)
         (then
-          (local.set $curr-exp (call $environment-get 
-              (local.get $match-env) 
+          (local.set $curr-exp (call $environment-get
+              (local.get $match-env)
               (local.get $pattern)))
           ;; this is in an ellipsis, so store a list
 
           (if (i32.eq (%get-type $curr-exp) (%error-type)) (then
-              ;; There is nothing in the environment, so add to the environment 
+              ;; There is nothing in the environment, so add to the environment
               ;; as a list of 1
-              (call $environment-add 
+              (call $environment-add
                 (local.get $match-env)
-                (local.get $pattern) 
+                (local.get $pattern)
                 (%alloc-list-1 (local.get $exp)))
               (return (i32.const 1))))
 
@@ -830,7 +831,7 @@ Constants are
               (return (i32.const 0))))
 
           (block $end (loop $start
-              (br_if $end (i32.eq 
+              (br_if $end (i32.eq
                   (local.tee $next-exp (%cdr-l $curr-exp))
                   (global.get $g-nil)))
               (local.set $curr-exp (local.get $next-exp))
@@ -838,12 +839,12 @@ Constants are
           (%set-cdr! (local.get $curr-exp) (%alloc-list-1 (local.get $exp)))
           (return (i32.const 1))))
 
-      (if (call $environment-has (local.get $match-env) (local.get $pattern)) 
+      (if (call $environment-has (local.get $match-env) (local.get $pattern))
         ;; this is already defined in the environment
         (then (return (i32.const 0))))
-      (call $environment-add 
+      (call $environment-add
         (local.get $match-env)
-        (local.get $pattern) 
+        (local.get $pattern)
         (local.get $exp))
       ;; Expression is now bound to this pattern literal
       (return (i32.const 1))))
@@ -866,7 +867,7 @@ Constants are
           (local.set $next-pattern (%car-l $pattern))
           (if (i32.eq (local.get $next-pattern) (local.get $ellipsis))
             (then
-              ;; this is an ellipsis, so we need to try and match as many as 
+              ;; this is an ellipsis, so we need to try and match as many as
               ;; possible
               ;; advance pattern past the ellipsis
               (local.set $pattern (%cdr-l $pattern))
@@ -878,9 +879,9 @@ Constants are
                       (local.get $ellipsis)
                       (local.get $literals)
                       (local.get $match-env)
-                      (i32.const 1)) 
+                      (i32.const 1))
                     (then
-                      ;; current expression matched the ellipsis pattern, 
+                      ;; current expression matched the ellipsis pattern,
                       ;; try the next
                       ;; TODO: this won't handle some cases where we might
                       ;; need to check the lengths of the lists
@@ -904,7 +905,7 @@ Constants are
 
           ;; check for improper pattern list
           (local.set $pattern-type (%get-type $pattern))
-          (block $improper  
+          (block $improper
             (br_if $improper (i32.eq (local.get $pattern-type) (%cons-type)))
             (br_if $improper (i32.eq (local.get $pattern-type) (%nil-type)))
 
@@ -917,7 +918,7 @@ Constants are
                 (local.get $in-ellipsis))))
 
           (br $start)))
-      
+
       (if (i32.eq (local.get $pattern) (global.get $g-nil)) (then
           (if (i32.eq (local.get $exp) (global.get $g-nil)) (then
               (return (i32.const 1))))))
@@ -942,7 +943,7 @@ Constants are
           (%plus-eq $pattern-ptr 4)
           (%plus-eq $exp-ptr 4)
 
-          (if (local.get $pattern-count) 
+          (if (local.get $pattern-count)
             (then
               (local.set $next-pattern (i32.load (local.get $pattern-ptr))))
             (else
@@ -953,15 +954,15 @@ Constants are
               ;; skip the counter over the ellipsis
               (%dec $pattern-count)
               (%plus-eq $pattern-ptr 4)
-              (if (local.get $pattern-count) 
+              (if (local.get $pattern-count)
                 (then
                   (local.set $next-pattern (i32.load (local.get $pattern-ptr))))
                 (else
                   (local.set $next-pattern (i32.const 0))))
 
-              (if (i32.lt_u (local.get $exp-count) (local.get $pattern-count)) 
+              (if (i32.lt_u (local.get $exp-count) (local.get $pattern-count))
                 (then
-                  ;; there are no matches for this ellipsis, rewind the 
+                  ;; there are no matches for this ellipsis, rewind the
                   ;; exp count and ptr to continue matching them against the
                   ;; next pattern
                   (%inc $exp-count)
@@ -993,15 +994,15 @@ Constants are
                     (local.get $match-env)
                     (local.get $in-ellipsis)))
                   (then (return (i32.const 0))))))
-            
+
           (br $start)))))
 
   ;; at this point pattern must be a constant, only match if (equal? pattern exp)
-  (return (call $equal-inner 
-      (local.get $pattern) 
-      (local.get $exp) 
+  (return (call $equal-inner
+      (local.get $pattern)
+      (local.get $exp)
       (i32.const 1))))
-      
+
 (func $symbol-in-list? (param $symbol i32) (param $list i32) (result i32)
   (local $curr i32)
   (block $end (loop $start
@@ -1035,9 +1036,8 @@ Constants are
 (func $make-hygienic (result i32)
   (local $str i32)
   (%ginc $g-hygienic-counter)
-  (local.set $str (call $integer->string-impl 
+  (local.set $str (call $integer->string-impl
       (i64.extend_i32_u (global.get $g-hygienic-counter))
       (i32.const 16)))
   (i32.store8 offset=4 (local.get $str) (i32.const 0x58)) ;; set first char to X
   (return (%alloc-symbol (local.get $str))))
-

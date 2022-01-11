@@ -1,7 +1,6 @@
 (func $print (param $ptr i32)
   (local $type i32)
 
-  ;; type = *ptr & 0x0F
   (local.set $type (%get-type $ptr))
 
   (block $b_switch
@@ -453,7 +452,6 @@
   ;; while(true) {
   (block $b_end
     (loop $b_start
-      ;; cdr-type = *cdr & 0xF;
       (local.set $cdr-type (%get-type $cdr))
       ;; if (cdr-type == 1) {
         ;; break
