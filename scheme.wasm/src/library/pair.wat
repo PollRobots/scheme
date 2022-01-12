@@ -21,7 +21,7 @@
     (then (return (call $argument-error (local.get $args))))
   )
 
-  (return 
+  (return
     (%alloc-cons
       (%car-l $args)
       (%car (%cdr-l $args))
@@ -137,7 +137,7 @@
         (local.set $result (i32.const 1))
         (br $b_end)))
 
-      (if (i32.ne (local.get $type) (%cons-type)) (then 
+      (if (i32.ne (local.get $type) (%cons-type)) (then
           ;; this isn't a list
           (local.set $result (i32.const 0))
           (br $b_end)))
@@ -176,10 +176,9 @@
 
       (%pop-l $temp $args)
 
-      (if (i32.eqz (call $is-list-impl (local.get $temp))) (then 
+      (if (i32.eqz (call $is-list-impl (local.get $temp))) (then
           (return (i32.const 0))))
 
-      (local.set $args (%cdr-l $args))
       (br $forever)))
 
   (return (i32.const 1)))
@@ -189,7 +188,7 @@
   (local $arg i32)
 
   (if (i32.ne (call $list-len (local.get $args)) (i32.const 1))
-    (then 
+    (then
       (return (call $argument-error (local.get $args)))))
 
   (return
@@ -324,11 +323,11 @@
             (then
               (%set-cdr!-l $tail $temp)
               (local.set $tail (local.get $temp))
-            ) 
-            (else 
+            )
+            (else
               (local.set $head (local.tee $tail (local.get $temp)))
             )
-          ) 
+          )
 
           (local.set $curr (%cdr-l $curr))
           (br $b_in_start)
@@ -351,7 +350,7 @@
 
 (func $reverse (param $env i32) (param $args i32) (result i32)
   (local $head i32)
-  
+
   (block $b_check
     (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
@@ -430,7 +429,7 @@
     (return (call $argument-error (local.get $args))))
 
   (local.set $tail (call $list-tail-impl (local.get $args) (local.get $obj) (local.get $k)))
-  (if (i32.eq (%get-type $tail) (%except-type)) (then 
+  (if (i32.eq (%get-type $tail) (%except-type)) (then
     (return (local.get $tail))))
 
   (return (%car-l $tail)))
@@ -452,7 +451,7 @@
     (return (call $argument-error (local.get $args))))
 
   (local.set $tail (call $list-tail-impl (local.get $args) (local.get $obj) (local.get $k)))
-  (if (i32.eq (%get-type $tail) (%except-type)) (then 
+  (if (i32.eq (%get-type $tail) (%except-type)) (then
       (return (local.get $tail))))
 
   (if (i32.and (%get-flags $tail) (i32.const 2)) (then
@@ -565,21 +564,21 @@
         (then (return (call $argument-error (local.get $args))))
       )
 
-      (if (i32.eqz (local.get $cmp)) 
+      (if (i32.eqz (local.get $cmp))
         (then
-          (br_if $b_end 
+          (br_if $b_end
             (call $equal-inner (%car-l $list) (local.get $obj) (i32.const 1))
           )
         )
         (else
-          (local.set $cmp-args 
+          (local.set $cmp-args
             (%alloc-cons
               (%car-l $list)
               (%alloc-cons (local.get $obj) (global.get $g-nil))
             )
           )
           (br_if $b_end
-            (i32.ne 
+            (i32.ne
               (global.get $g-false)
               (call $apply-internal
                 (local.get $env)
@@ -719,21 +718,21 @@
         (then (return (call $argument-error (local.get $args))))
       )
 
-      (if (i32.eqz (local.get $cmp)) 
+      (if (i32.eqz (local.get $cmp))
         (then
-          (br_if $b_end 
+          (br_if $b_end
             (call $equal-inner (%car-l $item) (local.get $obj) (i32.const 1))
           )
         )
         (else
-          (local.set $cmp-args 
+          (local.set $cmp-args
             (%alloc-cons
               (%car-l $item)
               (%alloc-cons (local.get $obj) (global.get $g-nil))
             )
           )
           (br_if $b_end
-            (i32.ne 
+            (i32.ne
               (global.get $g-false)
               (call $apply-internal
                 (local.get $env)

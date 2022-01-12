@@ -107,6 +107,10 @@
       (return (local.get $num))))
   (if (i32.eq (local.get $num-type) (%big-int-type)) (then
       (return (local.get $num))))
+  (if (i32.eq (local.get $num-type) (%rational-type)) (then
+      (local.set $num (call $inexact-impl (local.get $num)))
+      (local.set $v (f64.load offset=4 (local.get $num)))
+      (return (%alloc-i64 (i64.trunc_f64_s (f64.floor (local.get $v)))))))
 
   (unreachable))
 
@@ -133,6 +137,10 @@
       (return (local.get $num))))
   (if (i32.eq (local.get $num-type) (%big-int-type)) (then
       (return (local.get $num))))
+  (if (i32.eq (local.get $num-type) (%rational-type)) (then
+      (local.set $num (call $inexact-impl (local.get $num)))
+      (local.set $v (f64.load offset=4 (local.get $num)))
+      (return (%alloc-i64 (i64.trunc_f64_s (f64.ceil (local.get $v)))))))
 
   (unreachable))
 
@@ -159,6 +167,10 @@
       (return (local.get $num))))
   (if (i32.eq (local.get $num-type) (%big-int-type)) (then
       (return (local.get $num))))
+  (if (i32.eq (local.get $num-type) (%rational-type)) (then
+      (local.set $num (call $inexact-impl (local.get $num)))
+      (local.set $v (f64.load offset=4 (local.get $num)))
+      (return (%alloc-i64 (i64.trunc_f64_s (f64.trunc (local.get $v)))))))
 
   (unreachable))
 
@@ -185,6 +197,10 @@
       (return (local.get $num))))
   (if (i32.eq (local.get $num-type) (%big-int-type)) (then
       (return (local.get $num))))
+  (if (i32.eq (local.get $num-type) (%rational-type)) (then
+      (local.set $num (call $inexact-impl (local.get $num)))
+      (local.set $v (f64.load offset=4 (local.get $num)))
+      (return (%alloc-i64 (i64.trunc_f64_s (f64.nearest (local.get $v)))))))
 
   (unreachable))
 

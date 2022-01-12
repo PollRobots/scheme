@@ -218,9 +218,9 @@
 (%define %builtin-rational? ()                (i32.const 213))
 (%define %builtin-numerator ()                (i32.const 214))
 (%define %builtin-denominator ()              (i32.const 215))
-(%define %builtin-rationalize ()              (i32.const 215))
+(%define %builtin-rationalize ()              (i32.const 216))
 
-(table $table-builtin 216 anyfunc)
+(table $table-builtin 217 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
   (local $quote i32)

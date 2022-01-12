@@ -3,7 +3,7 @@
   (if (i32.ne (call $list-len (local.get $args)) (i32.const 1)) (then
       (return (call $argument-error (local.get $args)))))
 
-  (return (select 
+  (return (select
       (global.get $g-true)
       (global.get $g-false)
       (call $procedure?-impl (%car-l $args)))))
@@ -60,8 +60,8 @@
 
     (return (call $argument-error (local.get $args))))
 
-  (return (call $apply-internal 
-      (local.get $env) 
+  (return (call $apply-internal
+      (local.get $env)
       (local.get $proc)
       (local.get $head))))
 
@@ -109,7 +109,7 @@
           (local.set $curr (%alloc-list-1 (local.get $curr)))
 
           (if (i32.eqz (local.get $zip-item-head))
-            (then (local.set $zip-item-tail 
+            (then (local.set $zip-item-tail
                 (local.tee $zip-item-head (local.get $curr))))
             (else (%set-cdr!-l $zip-item-tail $curr)))
 
@@ -120,8 +120,8 @@
           (local.set $temp (%cdr-l $temp))
           (br $inner_start)))
 
-      (local.set $zipped (%alloc-cons 
-          (local.get $zip-item-head) 
+      (local.set $zipped (%alloc-cons
+          (local.get $zip-item-head)
           (local.get $zipped)))
 
       (br $outer_start)))
@@ -133,8 +133,8 @@
   ;; if the call was (map proc '(a b c d) '(1 2 3 4))
   ;; zipped will now be ((d 4) (c 3) (b 2) (a 1))
 
-  (return (call $cont-map 
-      (local.get $env) 
+  (return (call $cont-map
+      (local.get $env)
       (%alloc-list-2 (local.get $proc) (local.get $zipped)))))
 
 ;; (cont-map proc zipped)
@@ -155,11 +155,11 @@
           (local.get $map-res)
           (local.get $all-res))))
     (else (local.set $all-res (global.get $g-nil))))
-  
+
   (%pop-l $proc $args)
   (%pop-l $zipped $args)
 
-  (if (i32.eq (%get-type $zipped) (%nil-type)) (then 
+  (if (i32.eq (%get-type $zipped) (%nil-type)) (then
       (return (local.get $all-res))))
 
   (%pop-l $args $zipped)
@@ -171,17 +171,17 @@
         (call $cont-alloc
           (%cont-map)
           (local.get $env)
-          (%alloc-list-3 
-            (local.get $all-res) 
-            (local.get $proc) 
+          (%alloc-list-3
+            (local.get $all-res)
+            (local.get $proc)
             (local.get $zipped))
             (i32.const 0)))))
 
 ;; (cont-apply-internal proc args ...)
 (func $cont-apply-internal (param $env i32) (param $args i32) (result i32)
-  (return (call $apply-internal 
-      (local.get $env) 
-      (%car-l $args) 
+  (return (call $apply-internal
+      (local.get $env)
+      (%car-l $args)
       (%cdr-l $args))))
 
 ;; (string-map <proc> <string_1> <string_2> ...)
@@ -210,7 +210,7 @@
       (i32.const 0))))
 
 
-;; (cont-string-map <proc> <string_1> <string_2> ...) 
+;; (cont-string-map <proc> <string_1> <string_2> ...)
 ;; (cont-string-map <map-res> <idx> <all-res> <proc> <string_1> <string_2> ...)
 (func $cont-string-map (param $env i32) (param $args i32) (result i32)
   (local $strings i32)
@@ -239,13 +239,13 @@
       (%pop-l $idx $args)
       (local.set $temp64 (i64.load offset=4 (local.get $idx)))
       (local.set $idx (i32.wrap_i64 (local.get $temp64)))
-    
+
       (%pop-l $all-res $args)
       (%pop-l $proc $args)
       (local.set $strings (local.get $args))
       (local.set $all-res (%alloc-cons (local.get $map-res) (local.get $all-res)))
     )
-    (else 
+    (else
       (%pop-l $proc $args)
       (local.set $strings (local.get $args))
       (local.set $all-res (global.get $g-nil))
@@ -255,14 +255,14 @@
   (local.set $tail (local.tee $chars (%alloc-list-1 (local.get $proc))))
 
   (block $end (loop $start
-      (br_if $end (i32.ne (%get-type $strings) (%cons-type)))  
+      (br_if $end (i32.ne (%get-type $strings) (%cons-type)))
       (%pop-l $curr $strings)
 
       (local.set $char (call $str-code-point-at (%car-l $curr) (local.get $idx)))
       (if (i32.eq (local.get $char) (i32.const -1)) (then
           (local.set $all-res (call $reverse-impl (local.get $all-res)))
-          (return (call $list->string 
-              (local.get $env) 
+          (return (call $list->string
+              (local.get $env)
               (%alloc-list-1 (local.get $all-res))))))
 
       (local.set $char (%alloc-list-1 (%alloc-char (local.get $char))))
@@ -288,7 +288,7 @@
               (local.get $proc)
               (local.get $args))))
         (i32.const 0)))))
-        
+
 ;; (vector-map <proc> <vector_1> <vector_2> ...)
 (func $vector-map (param $env i32) (param $args i32) (result i32)
   (local $temp i32)
@@ -315,7 +315,7 @@
       (i32.const 0))))
 
 
-;; (cont-vector-map <proc> <vector_1> <vector_2> ...) 
+;; (cont-vector-map <proc> <vector_1> <vector_2> ...)
 ;; (cont-vector-map <map-res> <idx> <all-res> <proc> <vetor_1> <vector_2> ...)
 (func $cont-vector-map (param $env i32) (param $args i32) (result i32)
   (local $vectors i32)
@@ -339,13 +339,13 @@
       (%pop-l $idx $args)
       (local.set $temp64 (i64.load offset=4 (local.get $idx)))
       (local.set $idx (i32.wrap_i64 (local.get $temp64)))
-    
+
       (%pop-l $all-res $args)
       (%pop-l $proc $args)
       (local.set $vectors (local.get $args))
       (local.set $all-res (%alloc-cons (local.get $map-res) (local.get $all-res)))
     )
-    (else 
+    (else
       (%pop-l $proc $args)
       (local.set $vectors (local.get $args))
       (local.set $all-res (global.get $g-nil))
@@ -355,13 +355,13 @@
   (local.set $tail (local.tee $els (%alloc-list-1 (local.get $proc))))
 
   (block $end (loop $start
-      (br_if $end (i32.ne (%get-type $vectors) (%cons-type)))  
+      (br_if $end (i32.ne (%get-type $vectors) (%cons-type)))
       (%pop-l $curr $vectors)
 
       (if (i32.eq (local.get $idx) (%cdr-l $curr)) (then
           (local.set $all-res (call $reverse-impl (local.get $all-res)))
           (return (call $vector
-              (local.get $env) 
+              (local.get $env)
               (local.get $all-res)))))
 
       (local.set $el (i32.load (i32.add (%car-l $curr) (%word-size-l $idx))))
@@ -434,7 +434,7 @@
           (local.set $curr (%alloc-list-1 (local.get $curr)))
 
           (if (i32.eqz (local.get $zip-item-head))
-            (then (local.set $zip-item-tail 
+            (then (local.set $zip-item-tail
                 (local.tee $zip-item-head (local.get $curr))))
             (else (%set-cdr!-l $zip-item-tail $curr)))
 
@@ -445,8 +445,8 @@
           (local.set $temp (%cdr-l $temp))
           (br $inner_start)))
 
-      (local.set $zipped (%alloc-cons 
-          (local.get $zip-item-head) 
+      (local.set $zipped (%alloc-cons
+          (local.get $zip-item-head)
           (local.get $zipped)))
 
       (br $outer_start)))
@@ -458,10 +458,10 @@
   ;; if the call was (map proc '(a b c d) '(1 2 3 4))
   ;; zipped will now be ((d 4) (c 3) (b 2) (a 1))
 
-  (return (call $cont-for-each 
-      (local.get $env) 
-      (%alloc-list-2 
-        (local.get $proc) 
+  (return (call $cont-for-each
+      (local.get $env)
+      (%alloc-list-2
+        (local.get $proc)
         (call $reverse-impl (local.get $zipped))))))
 
 ;; (cont-for-each proc zipped)
@@ -475,11 +475,11 @@
       (%pop-l $proc-res $args)
       (if (i32.eq (%get-type $proc-res) (%except-type)) (then
           (return (local.get $proc-res))))))
-  
+
   (%pop-l $proc $args)
   (%pop-l $zipped $args)
 
-  (if (i32.eq (%get-type $zipped) (%nil-type)) (then 
+  (if (i32.eq (%get-type $zipped) (%nil-type)) (then
       (return (global.get $g-nil))))
 
   (%pop-l $args $zipped)
@@ -491,8 +491,8 @@
         (call $cont-alloc
           (%cont-for-each)
           (local.get $env)
-          (%alloc-list-2 
-            (local.get $proc) 
+          (%alloc-list-2
+            (local.get $proc)
             (local.get $zipped))
             (i32.const 0)))))
 
@@ -516,7 +516,7 @@
       (%cdr (global.get $g-curr-cont))
       (i32.const 0)))
 
-  (return (call $apply-internal 
-      (local.get $env) 
-      (local.get $proc) 
+  (return (call $apply-internal
+      (local.get $env)
+      (local.get $proc)
       (%alloc-list-1 (local.get $cont-proc)))))

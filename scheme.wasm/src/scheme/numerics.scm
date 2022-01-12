@@ -27,17 +27,36 @@
               (if (<= a b) a b)))
         ((min a b c ...) (min (min a b) c ...))))
 
-(define (modulo x y) (floor-remainder x y))
-(define (gcd a b)
-  (if (zero? b)
-    a
-    (if (> a b)
-      (gcd b (floor-remainder a b))
-      (gcd a (floor-remainder b a)))))
-(define (lcm a b)
-  (if (or (zero? a) (zero? b))
-    (+ a b)
-    (* a (truncate-quotient b (gcd a b)))))
+(define modulo floor-remainder)
+
+(define (gcd . lst)
+  (if (null? lst)
+      0
+      (letrec ((gcd-core (lambda (a b)
+                            (if (zero? b)
+                                a
+                                (if (> a b)
+                                  (gcd-core b (floor-remainder a b))
+                                  (gcd-core a (floor-remainder b a))))))
+                (result (abs (car lst))))
+          (for-each
+            (lambda (x) (set! result (gcd-core result (abs x))))
+            (cdr lst))
+          result)))
+
+(define (lcm . lst)
+  (if (null? lst)
+      1
+      (letrec ((lcm-core (lambda (a b)
+                            (if (or (zero? a) (zero? b))
+                              (+ a b)
+                              (* a (truncate-quotient b (gcd a b))))))
+               (result (abs (car lst))))
+        (for-each
+          (lambda (x) (set! result (lcm-core result (abs x))))
+          (cdr lst))
+        result)))
+
 (define (square x) (* x x))
 (define (expt a b)
   (cond

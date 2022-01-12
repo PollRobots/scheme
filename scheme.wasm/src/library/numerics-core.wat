@@ -448,7 +448,7 @@
   (local.set $type (%get-type $num))
 
   (if (i32.eq (local.get $type) (%i64-type)) (then
-      (local.get $num-64 (i64.load offset=4 (local.get $num)))
+      (local.set $num-64 (i64.load offset=4 (local.get $num)))
       (if (i64.ge_s (local.get $num-64) (i64.const 0))
         (then (return (local.get $num))))
       (if (i64.eq (local.get $num-64) (i64.const 0x8000_0000_0000_0000)) (then
@@ -487,7 +487,6 @@
 
   (return (%alloc-rational (local.get $numerator-abs) (%cdr-l $num))))
 
-
 (func $num-core-div-rem (param $dividend i32) (param $divisor i32) (param $floor i32) (result i64)
   (local $dividend-type i32)
   (local $divisor-type i32)
@@ -505,6 +504,9 @@
   (local $rem-mp i32)
   (local $temp-mp i32)
   (local $one-mp i32)
+
+  (local.set $dividend (call $exact-impl (local.get $dividend)))
+  (local.set $divisor (call $exact-impl (local.get $divisor)))
 
   (local.set $dividend-type (%get-type $dividend))
   (local.set $divisor-type (%get-type $divisor))

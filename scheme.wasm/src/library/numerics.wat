@@ -114,6 +114,36 @@
 
   (return (i32.const 1)))
 
+(func $all-integer (param $args i32) (result i32)
+  (local $temp i32)
+  (local $real f64)
+  (local $temp-type i32)
+
+  (block $b_end (loop $b_start
+      (br_if $b_end (i32.eq (%get-type $args) (%nil-type)))
+
+      (local.set $temp (%car-l $args))
+      (local.set $temp-type (%get-type $temp))
+
+      (block $b_check
+        (br_if $b_check (i32.eq (local.get $temp-type) (%i64-type)))
+        (br_if $b_check (i32.eq (local.get $temp-type) (%big-int-type)))
+        (br_if $b_check (i32.eq (local.get $temp-type) (%rational-type)))
+
+        ;; f64 is ok if is an integer
+        (if (i32.eq (local.get $temp-type) (%f64-type)) (then
+            (local.set $real (f64.load offset=4 (local.get $temp)))
+            (br_if $b_check (f64.eq
+                (local.get $real)
+                (f64.nearest (local.get $real))))))
+
+        (return (i32.const 0)))
+
+      (local.set $args (%cdr-l $args))
+      (br $b_start)))
+
+  (return (i32.const 1)))
+
 (func $list-len (param $args i32) (result i32)
   (local $len i32)
   (local.set $len (i32.const 0))
@@ -585,7 +615,7 @@
   (block $b_check
     (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 2)))
-      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br_if $b_fail (i32.eqz (call $all-integer (local.get $args))))
       (br $b_check)
     )
     (return (call $argument-error (local.get $args)))
@@ -614,7 +644,7 @@
   (block $b_check
     (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 2)))
-      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br_if $b_fail (i32.eqz (call $all-integer (local.get $args))))
       (br $b_check)
     )
     (return (call $argument-error (local.get $args)))
@@ -643,7 +673,7 @@
   (block $b_check
     (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 2)))
-      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br_if $b_fail (i32.eqz (call $all-integer (local.get $args))))
       (br $b_check)
     )
     (return (call $argument-error (local.get $args)))
@@ -675,7 +705,7 @@
   (block $b_check
     (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 2)))
-      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br_if $b_fail (i32.eqz (call $all-integer (local.get $args))))
       (br $b_check)
     )
     (return (call $argument-error (local.get $args)))
@@ -704,7 +734,7 @@
   (block $b_check
     (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 2)))
-      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br_if $b_fail (i32.eqz (call $all-integer (local.get $args))))
       (br $b_check)
     )
     (return (call $argument-error (local.get $args)))
@@ -733,7 +763,7 @@
   (block $b_check
     (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 2)))
-      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br_if $b_fail (i32.eqz (call $all-integer (local.get $args))))
       (br $b_check)
     )
     (return (call $argument-error (local.get $args)))
