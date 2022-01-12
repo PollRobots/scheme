@@ -75,6 +75,14 @@ export const ToggleSwitch: React.FunctionComponent<ToggleSwitchProps> = (
           backgroundColor: props.on ? theme.blue : theme.background,
           borderColor: theme.base00,
         }}
+        tabIndex={0}
+        onKeyPress={(e) => {
+          if (e.code === "Space" || e.code === "Enter") {
+            if (props.onChange) {
+              props.onChange(!props.on);
+            }
+          }
+        }}
       >
         <span
           style={{
