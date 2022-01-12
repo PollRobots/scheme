@@ -22,6 +22,8 @@ export class RuntimeWorker {
   private readonly statusListeners: StatusEventHandler[] = [];
   private readonly writeListeners: WriteCallback[] = [];
   private readonly pendingResponses: Map<number, ResponseResolver> = new Map();
+  private readonly pendingOutput: string[] = [];
+  private outputCounter = 0;
 
   constructor() {}
 
@@ -240,8 +242,26 @@ export class RuntimeWorker {
   }
 
   private onOutput(msg: messages.OutputMessage) {
-    this.writeListeners.forEach((el) => {
-      el(msg.content);
-    });
+    this.pendingOutput.push(msg.content);
+
+    if (this.outputCounter > 0) {
+      return;
+    } else {
+      const frame = () => {
+        if (this.outputCounter < 3) {
+          this.outputCounter++;
+          window.requestAnimationFrame(frame);
+        } else {
+          this.outputCounter = 0;
+
+          const output = this.pendingOutput.join("");
+          this.pendingOutput.splice(0, this.pendingOutput.length);
+          this.writeListeners.forEach((el) => {
+            el(output);
+          });
+        }
+      };
+      window.requestAnimationFrame(frame);
+    }
   }
 }
