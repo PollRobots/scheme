@@ -2,6 +2,14 @@ import * as messages from "./worker/messages";
 
 type StatusEventHandler = () => void;
 type WriteCallback = (msg: string) => void;
+export interface DebugBreakEvent {
+  ptr: number;
+  env: number;
+  expr: string;
+  step: () => void;
+}
+
+type DebugBreakHander = (evt: DebugBreakEvent) => void;
 type ResponseResolver = (msg: messages.WorkerMessage) => void;
 
 declare global {
@@ -19,8 +27,10 @@ export class RuntimeWorker {
   private status_: "running" | "waiting" | "stopped" | "partial" | "none" =
     "none";
   private memorySize_: number = 0;
+  private debugging_: boolean = false;
   private readonly statusListeners: StatusEventHandler[] = [];
   private readonly writeListeners: WriteCallback[] = [];
+  private readonly debugListeners: DebugBreakHander[] = [];
   private readonly pendingResponses: Map<number, ResponseResolver> = new Map();
   private readonly pendingOutput: string[] = [];
   private outputCounter = 0;
@@ -49,6 +59,10 @@ export class RuntimeWorker {
 
   get memorySize(): number {
     return this.memorySize_;
+  }
+
+  get debugging(): boolean {
+    return this.debugging_;
   }
 
   get heap(): number {
@@ -85,17 +99,21 @@ export class RuntimeWorker {
 
   addEventListener(type: "status", handler: StatusEventHandler): void;
   addEventListener(type: "write", handler: WriteCallback): void;
+  addEventListener(type: "debug", handler: DebugBreakHander): void;
 
   addEventListener(type: unknown, handler: unknown): void {
     if (type === "status") {
       this.statusListeners.push(handler as StatusEventHandler);
     } else if (type === "write") {
       this.writeListeners.push(handler as WriteCallback);
+    } else if (type === "debug") {
+      this.debugListeners.push(handler as DebugBreakHander);
     }
   }
 
   removeEventListener(type: "status", handler: StatusEventHandler): void;
   removeEventListener(type: "write", handler: WriteCallback): void;
+  removeEventListener(type: "debug", handler: DebugBreakHander): void;
 
   removeEventListener(type: unknown, handler: unknown): void {
     if (type === "status") {
@@ -107,6 +125,11 @@ export class RuntimeWorker {
       const idx = this.writeListeners.indexOf(handler as WriteCallback);
       if (idx >= 0) {
         this.writeListeners.splice(idx, 1);
+      }
+    } else if (type === "debug") {
+      const idx = this.debugListeners.indexOf(handler as DebugBreakHander);
+      if (idx >= 0) {
+        this.debugListeners.splice(idx, 1);
       }
     }
   }
@@ -180,17 +203,46 @@ export class RuntimeWorker {
     });
   }
 
+  async enableDebug(enabled: boolean): Promise<boolean> {
+    if (!this.worker_) {
+      return false;
+    }
+    const reqId = this.nextId();
+    this.postMessage({ type: "enable-debug", id: reqId, enabled: enabled });
+    const response = await this.getResponse(reqId);
+    if (messages.isStatusResponse(response)) {
+      return response.debugging;
+    }
+    return this.debugging;
+  }
+
+  async lookupEnv(env: number): Promise<messages.EnvResponse> {
+    if (!this.worker_) {
+      throw new Error("Invalid operation");
+    }
+    const reqId = this.nextId();
+    this.postMessage({ type: "env-req", id: reqId, env: env });
+    const response = await this.getResponse(reqId);
+    if (messages.isEnvResponse(response)) {
+      return response;
+    }
+    throw new Error("Invalid response");
+  }
+
   private nextId() {
     return this.idCounter_++;
   }
 
   private postMessage(
     msg:
-      | messages.StartMessage
+      | messages.DebugStep
+      | messages.EnableDebug
+      | messages.EnvRequest
+      | messages.GcRequest
+      | messages.HeapRequest
       | messages.InputMessage
       | messages.PrintRequest
-      | messages.HeapRequest
-      | messages.GcRequest
+      | messages.StartMessage
   ) {
     if (!this.worker_) {
       console.error("Cannot post message, no worker!");
@@ -212,6 +264,8 @@ export class RuntimeWorker {
       this.onOutput(cmd);
     } else if (messages.isMemoryMessage(cmd)) {
       this.onMemory(cmd);
+    } else if (messages.isDebugBreak(cmd)) {
+      this.onDebugBreak(cmd);
     }
 
     if (this.pendingResponses.has(cmd.id)) {
@@ -229,6 +283,20 @@ export class RuntimeWorker {
     });
   }
 
+  private onDebugBreak(cmd: messages.DebugBreak) {
+    if (!this.debugListeners.length) {
+      this.postMessage({ type: "debug-step", id: cmd.id });
+      return;
+    }
+    const event: DebugBreakEvent = {
+      ...cmd,
+      step: () => {
+        this.postMessage({ type: "debug-step", id: cmd.id });
+      },
+    };
+    this.debugListeners.forEach((el) => el(event));
+  }
+
   private onMemory(cmd: messages.MemoryMessage) {
     this.memory_ = cmd.memory;
   }
@@ -236,6 +304,7 @@ export class RuntimeWorker {
   private onStatus(cmd: messages.StatusResponse) {
     this.status_ = cmd.status;
     this.memorySize_ = cmd.memorySize;
+    this.debugging_ = cmd.debugging;
     this.statusListeners.forEach((el) => {
       el();
     });

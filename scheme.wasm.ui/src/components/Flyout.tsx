@@ -4,6 +4,7 @@ import { ThemeContext } from "./ThemeProvider";
 interface FlyoutProps {
   label?: string;
   fontSize?: number;
+  offset?: number;
 }
 
 interface FlyoutState {
@@ -24,15 +25,15 @@ export const Flyout: React.FunctionComponent<FlyoutProps> = (props) => {
   const [state, setState] = React.useState(kDefaultState);
   const theme = React.useContext(ThemeContext);
   const label = props.label || "flyout";
-  const height = (30 * label.length) / 2;
-  const labelHeight = `${(1.5 * height) / 20}em`;
+  const height = 15 * label.length;
+  const labelHeight = `${label.length}em`;
 
   return (
     <div
       style={{
         ...kFlyoutStyle,
         pointerEvents: state.expanded ? undefined : "none",
-        fontSize: props.fontSize,
+        fontSize: `${props.fontSize}pt`,
       }}
     >
       <div
@@ -59,6 +60,7 @@ export const Flyout: React.FunctionComponent<FlyoutProps> = (props) => {
             alignSelf: "start",
             transition: "background 0.3s, color 0.5s",
             pointerEvents: "all",
+            marginTop: props.offset ? `${props.offset}em` : undefined,
           }}
           onClick={() => setState({ ...state, expanded: !state.expanded })}
         >
@@ -85,7 +87,7 @@ export const Flyout: React.FunctionComponent<FlyoutProps> = (props) => {
         <div
           style={{
             minWidth: "10em",
-            minHeight: `calc(2em + ${labelHeight})`,
+            minHeight: `calc(2em + ${labelHeight} + ${props.offset || 0}em)`,
             background: theme.boldBackground,
             color: theme.foreground,
             borderStyle: "solid",

@@ -17,6 +17,7 @@ import fonts from "./styles/fonts.module.css";
 import css from "./styles/page.module.css";
 import { DataLine } from "./components/TerminalData";
 import { RuntimeWorker } from "./RuntimeWorker";
+import { Debugger } from "./components/Debugger";
 
 reference(fonts, css);
 
@@ -355,6 +356,15 @@ class App extends React.Component<{}, AppState> {
                   scale={this.state.fontSize / 12}
                   clock={this.state.clock}
                 />
+              </Flyout>
+            ) : null}
+            {this.state.inspector ? (
+              <Flyout
+                label="Debug"
+                fontSize={this.state.fontSize}
+                offset={"inspector".length + 1}
+              >
+                <Debugger />
               </Flyout>
             ) : null}
 

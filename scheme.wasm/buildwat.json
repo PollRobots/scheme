@@ -57,25 +57,34 @@
       "module": "io",
       "name": "write",
       "index": "$io-write",
-      "params": ["i32"]
+      "params": [
+        "i32"
+      ]
     },
     {
       "module": "process",
       "name": "exit",
       "index": "$process-exit",
-      "params": ["i32"]
+      "params": [
+        "i32"
+      ]
     },
     {
       "module": "unicode",
       "name": "loadData",
       "index": "$unicode-load-data",
-      "params": ["i32", "i32"]
+      "params": [
+        "i32",
+        "i32"
+      ]
     },
     {
-      "module":"file",
+      "module": "file",
       "name": "read",
       "index": "$file-read",
-      "params": ["i32"],
+      "params": [
+        "i32"
+      ],
       "result": "i32"
     }
   ],
@@ -124,6 +133,11 @@
       "name": "gGcNotCollectedCount",
       "type": "global",
       "index": "$g-gc-not-collected-count"
+    },
+    {
+      "name": "gDebug",
+      "type": "global",
+      "index": "$g-debug"
     },
     {
       "name": "strFromCodePoints",

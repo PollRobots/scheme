@@ -1,23 +1,35 @@
 import { SchemeRuntime } from "../SchemeRuntime";
+import { SchemeType } from "../SchemeType";
 import * as messages from "./messages";
+
+type ResponseResolver = (msg: messages.WorkerMessage) => void;
 
 class SchemeWorker {
   private runtime?: SchemeRuntime;
   private working_: boolean = false;
+  private idCounter: number = 0x1000_0000;
+  private readonly pendingResponses: Map<number, ResponseResolver> = new Map();
 
   constructor() {
     console.log("Started runtime worker");
     self.addEventListener("message", (ev) => this.onMessage(ev));
     this.onWrite = this.onWrite.bind(this);
+    this.onDebug = this.onDebug.bind(this);
+  }
+
+  nextId() {
+    return ++this.idCounter;
   }
 
   postMessage(
     msg:
-      | messages.StatusResponse
+      | messages.DebugBreak
+      | messages.EnvResponse
+      | messages.GcResponse
       | messages.OutputMessage
       | messages.PrintResponse
       | messages.StartedMessage
-      | messages.GcResponse
+      | messages.StatusResponse
   ) {
     self.postMessage(msg);
   }
@@ -40,9 +52,76 @@ class SchemeWorker {
       this.onHeapRequest(cmd);
     } else if (messages.isGcRequest(cmd)) {
       this.onGcRequest(cmd);
-    } else {
-      console.error("Unexpected message:", cmd);
+    } else if (messages.isEnableDebug(cmd)) {
+      this.onEnableDebug(cmd);
+    } else if (messages.isEnvRequest(cmd)) {
+      this.onEnvRequest(cmd);
     }
+
+    const resolver = this.pendingResponses.get(cmd.id);
+    if (resolver) {
+      this.pendingResponses.delete(cmd.id);
+      resolver(cmd);
+    }
+  }
+
+  getResponse(id: number): Promise<messages.WorkerMessage> {
+    return new Promise<messages.WorkerMessage>((resolve) => {
+      this.pendingResponses.set(id, resolve);
+    });
+  }
+
+  private onEnvRequest(cmd: messages.EnvRequest) {
+    if (!this.runtime) {
+      this.onStatus(cmd);
+      return;
+    }
+
+    const heap = this.runtime.heapItem(cmd.env);
+    const hashtable = heap[1];
+    const parent = heap[2];
+
+    const [capacity, count] = this.runtime.heapItem(hashtable, 2);
+    const entries: messages.EnvEntry[] = [];
+    let offset = 8;
+    for (let i = 0; i < capacity; i++, offset += 16) {
+      const hashtableEntry = this.runtime.heapItem(hashtable + offset, 4);
+      const [digestLow, digestHigh, key, val] = hashtableEntry;
+
+      if (
+        digestLow === digestHigh &&
+        (digestHigh == 0 || digestHigh == 0xffff_ffff)
+      ) {
+        // either empty or tombstone entry
+        continue;
+      }
+      entries.push({
+        name: this.runtime.getString(key),
+        value: this.printPtr(val),
+      });
+    }
+
+    if (entries.length !== count) {
+      console.warn(
+        `Environment ${cmd.env}, expecting ${count}, found ${entries.length}`
+      );
+    }
+
+    this.postMessage({
+      type: "env-resp",
+      id: cmd.id,
+      ptr: cmd.env,
+      next: parent,
+      entries: entries,
+    });
+  }
+
+  private onEnableDebug(cmd: messages.EnableDebug) {
+    if (!this.runtime) {
+      return;
+    }
+    this.runtime.gDebug = cmd.enabled;
+    this.onStatus(cmd);
   }
 
   private onGcRequest(cmd: messages.GcRequest) {
@@ -101,18 +180,25 @@ class SchemeWorker {
       this.postMessage({ type: "print-resp", id: cmd.id, content: "" });
       return;
     }
+    this.postMessage({
+      type: "print-resp",
+      id: cmd.id,
+      content: this.printPtr(cmd.ptr),
+    });
+  }
+
+  private printPtr(ptr: number) {
+    if (!this.runtime) {
+      return "";
+    }
     const output: string[] = [];
     const listener = (str: string) => {
       output.push(str);
     };
     this.runtime.addEventListener("write-priority", listener);
-    this.runtime.print(cmd.ptr);
+    this.runtime.print(ptr);
     this.runtime.removeEventListener("write-priority", listener);
-    this.postMessage({
-      type: "print-resp",
-      id: cmd.id,
-      content: output.join(""),
-    });
+    return output.join("");
   }
 
   private async onInput(cmd: messages.InputMessage) {
@@ -130,6 +216,7 @@ class SchemeWorker {
     if (!this.runtime) {
       this.runtime = await SchemeRuntime.load();
       this.runtime.addEventListener("write", this.onWrite);
+      this.runtime.addEventListener("debug", this.onDebug);
     }
     if (this.runtime.stopped) {
       await this.runtime.start();
@@ -143,6 +230,47 @@ class SchemeWorker {
     this.onStatus();
   }
 
+  private onDebug(ptr: number, resolver: () => void) {
+    if (!this.runtime) {
+      resolver();
+      return;
+    }
+
+    const root = this.runtime.heapItem(ptr);
+    if ((root[0] & SchemeType.Mask) !== SchemeType.Cont) {
+      console.log("expecting continuation");
+      resolver();
+      return;
+    }
+    const first = this.runtime.heapItem(root[2]);
+    if ((first[0] & SchemeType.Mask) !== SchemeType.Cont) {
+      console.log("expecting continuation");
+      resolver();
+      return;
+    }
+    const firstCont = this.runtime.heapItem(first[1]);
+    const firstArg = this.printPtr(firstCont[2]);
+    const second = this.runtime.heapItem(first[2]);
+    if ((second[0] & SchemeType.Mask) !== SchemeType.Cont) {
+      console.log("expecting continuation");
+      resolver();
+      return;
+    }
+    const secondCont = this.runtime.heapItem(second[1]);
+    const secondArg = this.printPtr(secondCont[2]);
+
+    const msgId = this.nextId();
+    this.postMessage({
+      type: "debug-break",
+      id: msgId,
+      ptr: ptr,
+      env: firstCont[1],
+      expr: `(${firstArg} ${secondArg.slice(1)}`,
+    });
+
+    this.getResponse(msgId).then(() => resolver());
+  }
+
   private onStatus(cmd?: messages.WorkerMessage) {
     if (!this.runtime || this.runtime.stopped) {
       this.postMessage({
@@ -150,6 +278,7 @@ class SchemeWorker {
         id: cmd ? cmd.id : -1,
         status: "stopped",
         memorySize: 0,
+        debugging: false,
       });
     } else {
       const memorySize = this.runtime.memory.buffer.byteLength;
@@ -159,6 +288,7 @@ class SchemeWorker {
           id: cmd ? cmd.id : -1,
           status: "waiting",
           memorySize: memorySize,
+          debugging: this.runtime.gDebug,
         });
       } else if (this.runtime.partial) {
         this.postMessage({
@@ -166,6 +296,7 @@ class SchemeWorker {
           id: cmd ? cmd.id : -1,
           status: "partial",
           memorySize: memorySize,
+          debugging: this.runtime.gDebug,
         });
       } else {
         this.postMessage({
@@ -173,6 +304,7 @@ class SchemeWorker {
           id: cmd ? cmd.id : -1,
           status: this.runtime.waiting ? "waiting" : "running",
           memorySize: memorySize,
+          debugging: this.runtime.gDebug,
         });
       }
     }

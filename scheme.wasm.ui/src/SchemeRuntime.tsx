@@ -2,8 +2,14 @@ import pako from "pako";
 import { SchemeType } from "./SchemeType";
 
 type WriteCallback = (str: string) => void;
+type DebugCallback = (ptr: number, resolver: () => void) => void;
 
 class RuntimeExit extends Error {}
+
+interface ImportPromiseResolver {
+  resolver: (ptr: number) => void;
+  promise: number;
+}
 
 export class SchemeRuntime {
   private readonly module_: WebAssembly.Module;
@@ -13,14 +19,12 @@ export class SchemeRuntime {
   private readonly lines_: string[] = [];
   private readonly writePriorityCallbacks_: WriteCallback[] = [];
   private readonly writeCallbacks_: WriteCallback[] = [];
+  private readonly debugCallbacks_: DebugCallback[] = [];
   private initialized_: boolean = false;
   private env_: number = 0;
   private partial_: boolean = false;
   private waiting_: boolean = false;
-  private readonly promises_: Map<
-    number,
-    { resolver: (ptr: number) => void; promise: number }
-  > = new Map();
+  private readonly promises_: Map<number, ImportPromiseResolver> = new Map();
 
   constructor(module: WebAssembly.Module) {
     this.module_ = module;
@@ -28,33 +32,39 @@ export class SchemeRuntime {
 
   addEventListener(event: "write", callback: WriteCallback): void;
   addEventListener(event: "write-priority", callback: WriteCallback): void;
+  addEventListener(event: "debug", callback: DebugCallback): void;
 
-  addEventListener(event: "write" | "write-priority", callback: WriteCallback) {
+  addEventListener(event: unknown, callback: unknown) {
     if (event === "write") {
-      this.writeCallbacks_.push(callback);
-    } else {
-      this.writePriorityCallbacks_.push(callback);
+      this.writeCallbacks_.push(callback as WriteCallback);
+    } else if (event === "write-priority") {
+      this.writePriorityCallbacks_.push(callback as WriteCallback);
+    } else if (event === "debug") {
+      this.debugCallbacks_.push(callback as DebugCallback);
     }
   }
 
   removeEventListener(event: "write", callback: WriteCallback): void;
   removeEventListener(event: "write-priority", callback: WriteCallback): void;
+  removeEventListener(event: "debug", callback: DebugCallback): void;
 
-  removeEventListener(
-    event: "write" | "write-priority",
-    callback: WriteCallback
-  ) {
+  removeEventListener(event: unknown, callback: unknown) {
     if (event === "write") {
       const index = this.writeCallbacks_.findIndex((el) => el === callback);
       if (index >= 0) {
         this.writeCallbacks_.splice(index, 1);
       }
-    } else {
+    } else if (event === "write-priority") {
       const index = this.writePriorityCallbacks_.findIndex(
         (el) => el === callback
       );
       if (index >= 0) {
         this.writePriorityCallbacks_.splice(index, 1);
+      }
+    } else if (event === "debug") {
+      const index = this.debugCallbacks_.findIndex((el) => el === callback);
+      if (index >= 0) {
+        this.debugCallbacks_.splice(index, 1);
       }
     }
   }
@@ -143,6 +153,14 @@ export class SchemeRuntime {
       .value as number;
   }
 
+  get gDebug(): boolean {
+    return ((this.exports.gDebug as WebAssembly.Global).value as number) != 0;
+  }
+
+  set gDebug(value: boolean) {
+    (this.exports.gDebug as WebAssembly.Global).value = value ? 1 : 0;
+  }
+
   strFromCodePoints(ptr: number, len: number): number {
     return (
       this.exports.strFromCodePoints as (ptr: number, len: number) => number
@@ -205,8 +223,8 @@ export class SchemeRuntime {
     (this.exports.free as (ptr: number) => void)(ptr);
   }
 
-  heapItem(ptr: number): Uint32Array {
-    return new Uint32Array(this.memory.buffer.slice(ptr, ptr + 12));
+  heapItem(ptr: number, size: number = 3): Uint32Array {
+    return new Uint32Array(this.memory.buffer.slice(ptr, ptr + size * 4));
   }
 
   pokeMemory(ptr: number, data: ArrayBuffer) {
@@ -226,6 +244,37 @@ export class SchemeRuntime {
     }
     const symbol = this.heapItem(heapWords[1]);
     return this.getString(symbol[1]) == "eof";
+  }
+
+  isDebugBreak(ptr: number) {
+    const heapWords = this.heapItem(ptr);
+    if ((heapWords[0] & SchemeType.Mask) != SchemeType.Cont) {
+      return false;
+    }
+    // continuation is conveniently the same size as a heap item
+    const continuation = this.heapItem(heapWords[1]);
+    // check the continuation function
+    // %debug-fn is defined as -2 in builtins.wat
+    return continuation[0] == 0xffff_fffe; //-2;
+  }
+
+  async addDebugPromise(ptr: number): Promise<number> {
+    if (this.debugCallbacks_.length) {
+      const p = new Promise<void>((resolve) => {
+        try {
+          if (this.debugCallbacks_.length == 0) {
+            resolve();
+          } else {
+            this.debugCallbacks_[0](ptr, resolve);
+          }
+        } catch (err) {
+          console.error(err);
+          resolve();
+        }
+      });
+      await p;
+    }
+    return this.heapItem(ptr)[2];
   }
 
   isImportPromise(ptr: number) {
@@ -312,7 +361,7 @@ export class SchemeRuntime {
     return strPtr;
   }
 
-  private getString(ptr: number) {
+  getString(ptr: number) {
     const len = new Uint32Array(this.memory.buffer.slice(ptr, ptr + 4))[0];
     const utf8 = new Uint8Array(len);
     utf8.set(new Uint8Array(this.memory.buffer.slice(ptr + 4, ptr + len + 4)));
@@ -416,7 +465,10 @@ export class SchemeRuntime {
         } else if (expr != 0) {
           while (true) {
             const result = this.eval(this.env_, expr);
-            if (this.isImportPromise(result)) {
+            if (this.isDebugBreak(result)) {
+              expr = await this.addDebugPromise(result);
+              continue;
+            } else if (this.isImportPromise(result)) {
               expr = await this.addImportPromise(result);
               continue;
             } else if (result != 0 && !this.isNil(result)) {

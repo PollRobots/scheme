@@ -58,6 +58,8 @@
 (global $g-slash            (mut i32) (i32.const 0))
 (global $g-curr-version     (mut i32) (i32.const 0))
 
+(global $g-debug            (mut i32) (i32.const 0))
+
 (global $g-eval-count (mut i32) (i32.const 0))
 (%define %gc-threshold () (i32.const 256))
 (%define %gc-small-threshold () (i32.const 16))
@@ -1089,6 +1091,12 @@
 
           (br $b_eval_cont)))
 
+      ;; This is a debug break, send it to the other side, which will return
+      ;; the next continuation frame to continue.
+      (if (i32.eq (local.get $fn) (%debug-fn)) (then
+        (global.set $g-curr-cont (i32.const 0))
+        (return (local.get $cont-stack))))
+
       ;; this is a promise from the "other-side" (the host), so we will return
       ;; this, and resume when the host sends it back to us.
       (if (i32.eq (local.get $fn) (%cont-import-promise)) (then
@@ -1253,6 +1261,7 @@
   (local $type i32)
   (local $result i32)
   (local $op i32)
+  (local $cont i32)
 
   (local.set $type (%get-type $args))
 
@@ -1282,10 +1291,12 @@
           (call $print-symbol (global.get $g-newline))
           (%ginc $g-dump-eval-indent)))
 
+
+
       ;; return apply(env, eval(env, car(args)), cdr(args))
       ;; this is represented in continuation passing as...
       ;;  eval(env, car(args)) => cont-apply(env, args)
-      (return (call $cont-alloc
+      (local.set $cont (call $cont-alloc
           (%eval-fn) ;; eval
           (local.get $env)
           (%car-l $args)
@@ -1293,7 +1304,17 @@
             (select (%cont-apply) (%cont-apply-def) (i32.eq (local.get $eval-fn) (%eval-fn)))
             (local.get $env)
             (%cdr-l $args)
-            (i32.const 0))))))
+            (i32.const 0))))
+
+      (if (global.get $g-debug) (then
+        (local.set $cont (call $cont-alloc
+          (%debug-fn)
+          (i32.const 0)
+          (i32.const 0)
+          (local.get $cont)))
+      ))
+
+      (return (local.get $cont))))
 
   ;; default:
   ;; return args

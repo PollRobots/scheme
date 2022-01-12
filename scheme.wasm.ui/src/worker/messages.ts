@@ -1,3 +1,5 @@
+import { FlushValues } from "pako";
+
 export interface WorkerMessage {
   type: string;
   id: number;
@@ -21,6 +23,7 @@ export interface StatusResponse extends WorkerMessage {
   type: "status-resp";
   status: "stopped" | "waiting" | "running" | "partial";
   memorySize: number;
+  debugging: boolean;
 }
 
 export function isStatusResponse(value: any): value is StatusResponse {
@@ -33,7 +36,8 @@ export function isStatusResponse(value: any): value is StatusResponse {
       value.status === "waiting" ||
       value.status === "running" ||
       value.status === "partial") &&
-    typeof value.memorySize === "number"
+    typeof value.memorySize === "number" &&
+    typeof value.debugging === "boolean"
   );
 }
 
@@ -191,5 +195,89 @@ export function isGcResponse(value: any): value is GcResponse {
     typeof value.notCollected === "number" &&
     typeof value.totalCollected === "number" &&
     typeof value.totalNotCollected === "number"
+  );
+}
+
+export interface EnableDebug extends WorkerMessage {
+  type: "enable-debug";
+  enabled: boolean;
+}
+
+export function isEnableDebug(value: any): value is EnableDebug {
+  return (
+    value &&
+    value.type === "enable-debug" &&
+    typeof value.id === "number" &&
+    typeof value.enabled === "boolean"
+  );
+}
+
+export interface DebugBreak extends WorkerMessage {
+  type: "debug-break";
+  ptr: number;
+  env: number;
+  expr: string;
+}
+
+export function isDebugBreak(value: any): value is DebugBreak {
+  return (
+    value &&
+    value.type === "debug-break" &&
+    typeof value.id === "number" &&
+    typeof value.ptr === "number" &&
+    typeof value.env === "number" &&
+    typeof value.expr === "string"
+  );
+}
+
+export interface DebugStep extends WorkerMessage {
+  type: "debug-step";
+}
+
+export function isDebugStep(value: any): value is DebugStep {
+  return isWorkerMessage(value) && value.type === "debug-step";
+}
+
+export interface EnvRequest extends WorkerMessage {
+  type: "env-req";
+  env: number;
+}
+
+export function isEnvRequest(value: any): value is EnvRequest {
+  return (
+    value &&
+    value.type === "env-req" &&
+    typeof value.id === "number" &&
+    typeof value.env === "number"
+  );
+}
+
+export interface EnvEntry {
+  name: string;
+  value: string;
+}
+
+export function isEnvEntry(value: any): value is EnvEntry {
+  return (
+    value && typeof value.name === "string" && typeof value.value === "string"
+  );
+}
+
+export interface EnvResponse extends WorkerMessage {
+  type: "env-resp";
+  ptr: number;
+  next: number;
+  entries: EnvEntry[];
+}
+
+export function isEnvResponse(value: any): value is EnvResponse {
+  return (
+    value &&
+    value.type === "env-resp" &&
+    typeof value.id === "number" &&
+    typeof value.ptr === "number" &&
+    typeof value.next === "number" &&
+    Array.isArray(value.entries) &&
+    (value.entries as any[]).every(isEnvEntry)
   );
 }

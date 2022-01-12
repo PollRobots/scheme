@@ -21,6 +21,8 @@ export const RuntimeStatus: React.FunctionComponent = (props) => {
     }
   };
 
+  const debugging = () => (runtime && runtime.debugging ? "(debugging)" : null);
+
   const memsize = (size: number) => {
     if (size < 1024) {
       return `${size} bytes`;
@@ -59,6 +61,7 @@ export const RuntimeStatus: React.FunctionComponent = (props) => {
         }}
       >
         Status: {status()}
+        {debugging()}
         <EmergencyStop
           msgs={["Stop Runtime", "Confirm"]}
           disabled={!runtime || runtime.stopped || !runtime.loaded}
