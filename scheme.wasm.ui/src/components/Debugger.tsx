@@ -106,6 +106,7 @@ export const Debugger: React.FunctionComponent = (props) => {
       ...kButtonStyle,
       background: theme.blue,
       borderColor: theme.base00,
+      color: theme.foreground,
       opacity: debugInfo.ptr == 0 ? 0.5 : undefined,
     };
   };

@@ -78,6 +78,8 @@ export const RuntimeStatus: React.FunctionComponent = (props) => {
           }}
           lastStyle={{
             background: theme.red,
+            color: theme.boldForeground,
+            fontWeight: "bolder",
           }}
           onAction={() => {
             if (runtime) {
