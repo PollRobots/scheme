@@ -298,12 +298,12 @@ data: u32[size] -- the words of the number, words themselves are little
 
       (local.set $carry (i64.or
           (i64.shl (local.get $carry) (i64.const 32))
-          (i64.extend_i32_u (i32.load (local.get $ptr)))))
+          (i64.load32_u (local.get $ptr))))
 
       (if (i64.ne (local.get $carry) (i64.const 0)) (then
           (local.set $quot (i64.div_u (local.get $carry) (i64.const 10)))
-          (local.set $carry (i64.rem_u (local.get $carry) (i64.const 10)))))
-          (i32.store (local.get $ptr) (i32.wrap_i64 (local.get $quot)))
+          (local.set $carry (i64.rem_u (local.get $carry) (i64.const 10)))
+          (i64.store32 (local.get $ptr) (local.get $quot))))
 
       (%plus-eq $ptr 4)
       (%dec $len)
