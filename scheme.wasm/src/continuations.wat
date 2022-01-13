@@ -2,7 +2,7 @@
 
 Continuations.
 
-Continuations are stored in a separate slab. 
+Continuations are stored in a separate slab.
 
 Continuation Block
   size: i32       -- Size of the block
@@ -11,7 +11,7 @@ Continuation Block
   next: i32 ptr   -- ptr to the next continuation block (if any)
 
 Continuation:
-  fn: i32         -- function index in the builtins-table, 
+  fn: i32         -- function index in the builtins-table,
   env: i32 env    -- environment
   args: i32 list  -- arguments to the continuation
 
@@ -19,7 +19,7 @@ Continuation:
 
 ;)
 
-(%define %continuation-block-count () (i32.const 32))
+(%define %continuation-block-count () (i32.const 256))
 
 (global $g-continuations (mut i32) (i32.const 0))
 
@@ -48,12 +48,12 @@ Continuation:
   (local $count i32)
 
   (local.set $count (%continuation-block-count))
-  (local.set $block (call $malloc 
-      (i32.add 
+  (local.set $block (call $malloc
+      (i32.add
         (i32.const 16) ;; header
         (i32.mul (local.get $count) (i32.const 12))))) ;; number of continuations * 12
 
-  (local.set $ptr (i32.add (local.get $block) (i32.const 16))) 
+  (local.set $ptr (i32.add (local.get $block) (i32.const 16)))
 
   (i32.store offset=0 (local.get $block) (local.get $count))  ;; size
   (i32.store offset=4 (local.get $block) (i32.const 0))       ;; count
@@ -65,7 +65,7 @@ Continuation:
       (br_if $b_end (i32.eqz (local.get $count)))
 
       (local.set $next-ptr (i32.add (local.get $ptr) (i32.const 12)))
-      (i32.store 
+      (i32.store
         (local.get $ptr)
         (select
           (local.get $next-ptr)
@@ -82,9 +82,9 @@ Continuation:
   (return (call $heap-alloc
       (global.get $g-heap)
       (%cont-type)
-      (call $cont-alloc-inner 
-        (local.get $fn) 
-        (local.get $env) 
+      (call $cont-alloc-inner
+        (local.get $fn)
+        (local.get $env)
         (local.get $args))
       (local.get $next))))
 
@@ -143,8 +143,8 @@ Continuation:
 
       (if (i32.ge_u (local.get $ptr) (local.get $start))
         (then
-          (local.set $end (i32.add 
-              (local.get $start) 
+          (local.set $end (i32.add
+              (local.get $start)
               (i32.mul (local.get $size) (i32.const 12))))
           (if (i32.lt_u (local.get $ptr) (local.get $end))
             (then
@@ -154,7 +154,7 @@ Continuation:
               ;; set free to ptr
               (i32.store offset=8 (local.get $block) (local.get $ptr))
               ;; decrement count
-              (i32.store offset=4 
+              (i32.store offset=4
                 (local.get $block)
                 (i32.sub
                   (i32.load offset=4 (local.get $block))
@@ -166,4 +166,3 @@ Continuation:
 
   ;; TODO message that attempted to free invalid continuation
   (unreachable))
-
