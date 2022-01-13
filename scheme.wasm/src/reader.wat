@@ -1,6 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; the reader can get the next token from an input stream
-;; when a token is requested 
+;; when a token is requested
 ;;   it reads a character at a time,
 ;;     reading from the io module (using $io-read():i32) as necessary
 ;;   characters are accumulated in an input buffer until a space or delimiter is reached
@@ -29,10 +29,10 @@
 
   ;; allocate a buffer for 16 characters
   ;; accum = malloc(16 * 4)
-  (local.set $accum (call $malloc (i32.const 64))) 
+  (local.set $accum (call $malloc (i32.const 64)))
 
   ;; reader = malloc(28)
-  (local.set $reader (call $malloc (i32.const 28))) 
+  (local.set $reader (call $malloc (i32.const 28)))
 
   ;; clear input and in-off to 0
   ;; reader[0] = 0
@@ -49,7 +49,7 @@
 
   ;; set external source
   (i32.store offset=24 (local.get $reader) (local.get $external))
-  
+
   ;; return reader
   (return (local.get $reader))
 )
@@ -80,6 +80,7 @@
   (local $in-off i32)     ;; code point offset within input string
   (local $char i32)       ;; code point of the current character
   (local $prev-char i32)  ;; code point of the current character
+  (local $prev-off i32)   ;; code point offset of the previous character
   (local $first i32)      ;; is this the first character
   (local $is-string i32)  ;; is this a string
   (local $acc-off i32)    ;; accumulator offset
@@ -92,6 +93,7 @@
   (local $digit i32)
   (local $is-line-comment i32) ;; is this a comment til the end of line
   (local $nested-comment i32) ;; the current nested comment depth
+  (local $temp64 i64) ;; return value from str-next-code-point
 
   ;; input = reader[0];
   (local.set $input (i32.load (local.get $reader)))
@@ -125,15 +127,14 @@
     ;; prev-char = char
     (local.set $prev-char (local.get $char))
     ;; char = str-code-point-at
-    (local.set $char (call $str-code-point-at (local.get $input) (local.get $in-off)))
+    (local.set $temp64 (call $str-next-code-point (local.get $input) (local.get $in-off)))
     ;; if (char == -1)
-    (if (i32.eq (local.get $char) (i32.const -1))
-      ;; {
+    (if (i64.eqz (local.get $temp64))
       (then
         (local.set $input (call $primitive-read (local.get $reader)))
 
         ;; if (input == 0) return 0;
-        (if (i32.eqz (local.get $input)) (then 
+        (if (i32.eqz (local.get $input)) (then
             ;; if nothing has been accumulated, then return 0
             (if (i32.eqz (local.get $acc-off)) (then (return (i32.const 0))))
             ;; return what we have so far.
@@ -150,12 +151,10 @@
         (br $forever))
       ;; } else {
       (else
+        (local.set $prev-off (local.get $in-off))
+        (%unpack-64-l $temp64 $in-off $char)
         ;; reader.in-off = in-off++
-        (i32.store
-          offset=4
-          (local.get $reader)
-          (local.tee $in-off (i32.add (local.get $in-off) (i32.const 1)))
-        )))
+        (i32.store offset=4 (local.get $reader) (local.get $in-off))))
 
     ;; if (first) {
     (if (local.get $first)
@@ -231,7 +230,7 @@
 
     (if (local.get $is-line-comment) (then
         ;; skip everything until we see a newline, then reset
-        (if (i32.eq (local.get $char) (i32.const 0x0A)) (then 
+        (if (i32.eq (local.get $char) (i32.const 0x0A)) (then
             ;; newline, reset to first
             (local.set $first (i32.const 1))
             (local.set $is-line-comment (i32.const 0))))
@@ -278,7 +277,7 @@
               (then
                 (if (i32.eq (local.get $char) (i32.const 0x3b)) ;; ';'
                   (then
-                    (i32.store 
+                    (i32.store
                       (i32.add (local.get $accum) (%word-size-l $acc-off))
                       (local.get $hex-value)
                     )
@@ -298,7 +297,7 @@
                   (if (i32.lt_u (local.get $digit) (i32.const 6))
                     (then
                       (%plus-eq $digit 10)
-                      (br $b_digit) 
+                      (br $b_digit)
                     )
                   )
                   ;; check if digit is in range 0x61-66 a-f
@@ -306,12 +305,12 @@
                   (if (i32.lt_u (local.get $digit) (i32.const 6))
                     (then
                       (%plus-eq $digit 10)
-                      (br $b_digit) 
+                      (br $b_digit)
                     )
                   )
 
                   ;; not a hex digit
-                  (i32.store 
+                  (i32.store
                     (i32.add (local.get $accum) (%word-size-l $acc-off))
                     (i32.const 0xFFFD)
                   )
@@ -389,7 +388,7 @@
               )
             )
 
-            (i32.store 
+            (i32.store
               (i32.add (local.get $accum) (%word-size-l $acc-off))
               (local.get $char)
             )
@@ -416,7 +415,7 @@
                 (br $forever)
               )
             )
-            (i32.store 
+            (i32.store
               (i32.add (local.get $accum) (%word-size-l $acc-off))
               (local.get $char)
             )
@@ -432,7 +431,7 @@
         ;; anything else is accumulated
 
         (block $b_done
-          ;; if this is open-paren, check 
+          ;; if this is open-paren, check
           ;;    if accum buffer is ['#'], then this is a vector start
           ;;    if accum buffer is ['#', 'u', '8'], then this is a bytevector start
           (if (i32.eq (local.get $char) (i32.const 0x28)) ;; open-paren 0x28
@@ -481,10 +480,10 @@
               (i32.store
                 offset=4
                 (local.get $reader)
-                (local.tee $in-off (i32.sub (local.get $in-off) (i32.const 1))))
+                (local.tee $in-off (local.get $prev-off)))
               (br $b_done)))
 
-          ;; check if this is a character, if so accept almost anything as the 
+          ;; check if this is a character, if so accept almost anything as the
           ;; third character this allows #\  for space and #\( etc.
           (block $b_char
             (br_if $b_char (i32.ne (local.get $acc-off) (i32.const 2)))
@@ -503,7 +502,7 @@
               (i32.store
                 offset=4
                 (local.get $reader)
-                (local.tee $in-off (i32.sub (local.get $in-off) (i32.const 1))))
+                (local.tee $in-off (local.get $prev-off)))
               (br $b_done)))
 
           ;; } else if (!is-whitespace(char)) {
@@ -550,12 +549,12 @@
   (local.set $old-size (i32.load offset=12 (local.get $reader)))
 
   ;; new size is old-size * 1.5
-  (local.set $new-size (i32.shr_u 
-      (i32.mul (local.get $old-size) (i32.const 3)) 
+  (local.set $new-size (i32.shr_u
+      (i32.mul (local.get $old-size) (i32.const 3))
       (i32.const 1)))
   (local.tee $new-accum (call $malloc (%word-size-l $new-size)))
 
-  (call $memcpy 
+  (call $memcpy
     (local.get $new-accum)
     (local.get $old-accum)
     (%word-size-l $old-size))
@@ -622,7 +621,7 @@
           (%alloc-str (call $str-dup (local.get $input)))
           (local.get $cache-write)))))
 
-  ;; reader.input = input 
+  ;; reader.input = input
   (i32.store (local.get $reader) (local.get $input))
   ;; return input
   (return (local.get $input)))
@@ -639,7 +638,7 @@
   (local $head i32)
 
 
-  ;; head = reader.cache-write 
+  ;; head = reader.cache-write
   (local.set $head (i32.load offset=20 (local.get $reader)))
   ;; reversed = reverse-impl(head)
   (local.set $reversed (call $reverse-impl (local.get $head)))

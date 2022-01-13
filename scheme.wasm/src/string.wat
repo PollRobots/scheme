@@ -200,12 +200,114 @@
       (br $b_start)))
 
   (if (local.get $byte-len) (then
-      ;; the final character is not entirely contained within this string. 
+      ;; the final character is not entirely contained within this string.
       ;; Again, consider returning an error here.
       (unreachable)))
 
   ;; return cp-len
   (return (local.get $cp-len)))
+
+(func $str-next-code-point (param $str i32) (param $offset i32) (result i64)
+  (local $byte-len i32) ;; the byte length of the string
+  (local $ptr i32)      ;; current pointer to utf-8 characters
+  (local $remains i32)  ;; number of bytes after the offset
+  (local $byte i32)     ;; the current byte
+  (local $cp i32)       ;; the code point
+
+  (local.set $byte-len (i32.load (local.get $str)))
+
+  (if (i32.ge_u (local.get $offset) (local.get $byte-len)) (then
+      ;; past the end of the string
+      (return (i64.const 0))))
+
+  (local.set $remains (i32.sub (local.get $byte-len) (local.get $offset)))
+  (local.set $ptr (i32.add
+    (i32.add  (local.get $str) (local.get $offset))
+    (i32.const 4)))
+
+  ;; get first byte
+  (local.set $byte (i32.load8_u (local.get $ptr)))
+  ;; check for single byte code point 0x0xxxxxxx
+  (if (i32.lt_u (local.get $byte) (i32.const 0x80)) (then
+      ;; single byte code point
+      (%inc $offset)
+      (return (%pack-64-l $offset $byte))))
+
+  ;; check for two byte code point 0x110xxxxx 0x10xxxxxx
+  (if (i32.eq (i32.and (local.get $byte) (i32.const 0xE0)) (i32.const 0xC0))
+    (then
+      ;; two byte code point
+      (if (i32.lt_u (local.get $remains) (i32.const 2)) (then
+          ;; Too few bytes remaining in the string
+          (return (i64.const 0))))
+
+      (local.set $cp (i32.or
+          (i32.shl
+            (i32.and (local.get $byte) (i32.const 0x1F))
+            (i32.const 6))
+          (i32.and
+            (i32.load8_u offset=1 (local.get $ptr))
+            (i32.const 0x3F))))
+      (%plus-eq $offset 2)
+      (return (%pack-64-l $offset $cp))))
+
+  ;; check for three byte code point 0x1110xxxx 0x10xxxxxx 0x10xxxxxx
+  (if (i32.eq (i32.and (local.get $byte) (i32.const 0xF0)) (i32.const 0xE0))
+    (then
+      ;; three byte code point
+      (if (i32.lt_u (local.get $remains) (i32.const 3)) (then
+          ;; Too few bytes remaining in the string
+          (return (i64.const 0))))
+
+      (local.set $cp (i32.or
+          (i32.or
+            (i32.shl
+              (i32.and (local.get $byte) (i32.const 0x0F))
+              (i32.const 12))
+            (i32.shl
+              (i32.and
+                (i32.load8_u offset=1 (local.get $ptr))
+                (i32.const 0x3F))
+              (i32.const 6)))
+          (i32.and
+            (i32.load8_u offset=2 (local.get $ptr))
+            (i32.const 0x3F))))
+
+      (%plus-eq $offset 3)
+      (return (%pack-64-l $offset $cp))))
+
+  ;; check for four byte code point 0x11110xxx 0x10xxxxxx 0x10xxxxxx 0x10xxxxxx
+  (if (i32.eq (i32.and (local.get $byte) (i32.const 0xF8)) (i32.const 0xF0))
+    (then
+      ;; four byte code point
+      (if (i32.lt_u (local.get $remains) (i32.const 4)) (then
+          ;; Too few bytes remaining in the string
+          (return (i64.const 0))))
+
+      (local.set $cp (i32.or
+          (i32.or
+            (i32.or
+              (i32.shl
+                (i32.and (local.get $byte) (i32.const 0x07))
+                (i32.const 18))
+              (i32.shl
+                (i32.and
+                  (i32.load8_u offset=1 (local.get $ptr))
+                  (i32.const 0x3F))
+                (i32.const 12)))
+            (i32.shl
+              (i32.and
+                (i32.load8_u offset=2 (local.get $ptr))
+                (i32.const 0x3F))
+              (i32.const 6)))
+          (i32.and
+            (i32.load8_u offset=3 (local.get $ptr))
+            (i32.const 0x3F))))
+
+      (%plus-eq $offset 4)
+      (return (%pack-64-l $offset $cp))))
+
+  (return (i64.const 0)))
 
 (func $str-code-point-at (param $ptr i32) (param $at i32) (result i32)
   (local $byte-len i32) ;; the byte length of the string
@@ -213,7 +315,7 @@
   (local $byte i32)     ;; the current byte
   (local $end i32)      ;; ptr to end of string
 
-  (if (i32.eqz (local.get $ptr)) (then 
+  (if (i32.eqz (local.get $ptr)) (then
       (unreachable)))
 
   ;; byte-len = *ptr
@@ -253,16 +355,16 @@
             ;; if (cp-len == at) {
             (if (i32.eq (local.get $cp-len) (local.get $at)) (then
                 ;; 0b110xxxxx 0b10xxxxxx
-                ;; return ((byte & 0x1f) << 6) | (ptr[1] & 0x3F) 
+                ;; return ((byte & 0x1f) << 6) | (ptr[1] & 0x3F)
                 (return (i32.or
-                  (i32.shl 
-                    (i32.and (local.get $byte) (i32.const 0x1F)) 
+                  (i32.shl
+                    (i32.and (local.get $byte) (i32.const 0x1F))
                     (i32.const 6))
-                  (i32.and 
-                    (i32.load8_u offset=1 (local.get $ptr)) 
+                  (i32.and
+                    (i32.load8_u offset=1 (local.get $ptr))
                     (i32.const 0x3F))))))
 
-            (%plus-eq $ptr 2) 
+            (%plus-eq $ptr 2)
             (%minus-eq $byte-len 2)
             (br $code-point)))
 
@@ -275,19 +377,19 @@
             (if (i32.eq (local.get $cp-len) (local.get $at)) (then
                 ;; 0b1110xxxx 0b10xxxxxx 0b10xxxxxx
                 ;; return ((byte & 0xF) << 12) | ((ptr[1] & 0x3f) << 6) | (ptr[2] & 0x3f)
-                (return 
-                  (i32.or 
+                (return
+                  (i32.or
                     (i32.or
-                      (i32.shl 
-                        (i32.and (local.get $byte) (i32.const 0xF)) 
+                      (i32.shl
+                        (i32.and (local.get $byte) (i32.const 0xF))
                         (i32.const 12))
-                      (i32.shl 
-                        (i32.and 
-                          (i32.load8_u offset=1 (local.get $ptr)) 
-                          (i32.const 0x3f)) 
+                      (i32.shl
+                        (i32.and
+                          (i32.load8_u offset=1 (local.get $ptr))
+                          (i32.const 0x3f))
                         (i32.const 6)))
-                    (i32.and 
-                      (i32.load8_u offset=2 (local.get $ptr)) 
+                    (i32.and
+                      (i32.load8_u offset=2 (local.get $ptr))
                       (i32.const 0x3f))))))
 
             (%plus-eq $ptr 3)
@@ -308,21 +410,21 @@
                   (i32.or
                     (i32.or
                       (i32.or
-                        (i32.shl 
-                          (i32.and (local.get $byte) (i32.const 0x7)) 
+                        (i32.shl
+                          (i32.and (local.get $byte) (i32.const 0x7))
                           (i32.const 18))
-                        (i32.shl 
-                          (i32.and 
-                            (i32.load8_u offset=1 (local.get $ptr)) 
-                            (i32.const 0x3F)) 
+                        (i32.shl
+                          (i32.and
+                            (i32.load8_u offset=1 (local.get $ptr))
+                            (i32.const 0x3F))
                           (i32.const 12)))
-                      (i32.shl 
-                        (i32.and 
-                          (i32.load8_u offset=2 (local.get $ptr)) 
-                          (i32.const 0x3F)) 
+                      (i32.shl
+                        (i32.and
+                          (i32.load8_u offset=2 (local.get $ptr))
+                          (i32.const 0x3F))
                         (i32.const 6)))
-                    (i32.and 
-                        (i32.load8_u offset=3 (local.get $ptr)) 
+                    (i32.and
+                        (i32.load8_u offset=3 (local.get $ptr))
                         (i32.const 0x3F))))))
 
             (%plus-eq $ptr 4)
@@ -345,8 +447,8 @@
   (local $byte i32)     ;; the current byte
   (local $char i32)     ;; the current encoded code point
   (local $end i32)      ;; ptr to the end of the string
-  
-  (if (i32.eqz (local.get $ptr)) (then 
+
+  (if (i32.eqz (local.get $ptr)) (then
     (unreachable)))
 
   ;; byte-len = *ptr
@@ -433,7 +535,7 @@
           ;; top 5 bits should be lte 0x10
           ;; if (((char & 0x7) << 2) | ((char & 0x3000)>>12)> 0x10)
           (if (i32.gt_u
-                (i32.or 
+                (i32.or
                   (i32.shl (i32.and (local.get $char) (i32.const 0x7)) (i32.const 2))
                   (i32.shr_u (i32.and (local.get $char) (i32.const 0x3000)) (i32.const 12)))
                 (i32.const 0x10))
@@ -442,7 +544,7 @@
         (%plus-eq $ptr 4)
         (%minus-eq $byte-len 4)
         (br $b_start)))
-                      
+
       (return (i32.const 0))))
 
   ;; if (byte-len < 0) {
@@ -473,10 +575,10 @@
       (local.set $second (i32.or (i32.and (local.get $cp) (i32.const 0x3F)) (i32.const 0x80)))
       ;; first = (((cp >> 6) & 0x1f) | 0xc0)
       (local.set $first (i32.or (i32.and (i32.shr_u (local.get $cp) (i32.const 6)) (i32.const 0x1F)) (i32.const 0xC0)))
-      ;; return first | second 
-      (return 
-        (i32.or 
-          (local.get $first) 
+      ;; return first | second
+      (return
+        (i32.or
+          (local.get $first)
           (i32.shl (local.get $second) (i32.const 8))
         )
       )
@@ -487,7 +589,7 @@
     (then
       (if (i32.le_u (local.get $cp) (i32.const 0xdfff))
         (then
-          ;; half of a surrogate pair, not valid in utf-8 
+          ;; half of a surrogate pair, not valid in utf-8
           ;; return 0xFFFD
           (return (call $utf8-from-code-point (i32.const 0xFFFD)))
         )
@@ -504,7 +606,7 @@
       (local.set $second (i32.or (i32.and (i32.shr_u (local.get $cp) (i32.const 6)) (i32.const 0x3F)) (i32.const 0x80)))
   ;;   first = (((cp >> 16) * 0xF) | 0xE0)
       (local.set $first (i32.or (i32.and (i32.shr_u (local.get $cp) (i32.const 12)) (i32.const 0xF)) (i32.const 0xE0)))
-  ;;   return first | second << 8 | third < 16 
+  ;;   return first | second << 8 | third < 16
       (return
         (i32.or
           (i32.or
@@ -547,7 +649,7 @@
   ;;   return 0xFFFD
   (return (call $utf8-from-code-point (i32.const 0xFFFD)))
   ;; }
-  
+
 )
 
 (func $utf8-code-point-size (param $cp i32) (result i32)
@@ -569,7 +671,7 @@
   ;; } else if (cp < 0x10000) {
   (if (i32.lt_u (local.get $cp) (i32.const 0x10000))
     (then
-      ;; return 3 
+      ;; return 3
       (return (i32.const 3))
     )
   )
@@ -641,7 +743,7 @@
       (local.set $mask (i32.shr_u (i32.const -1) (i32.shl (i32.sub (i32.const 4) (local.get $a-len)) (i32.const 3))))
 
       ;; if ((*a & mask) != (*b & mask)) return 0
-      (if 
+      (if
         (i32.ne
           (i32.and (i32.load (local.get $a)) (local.get $mask))
           (i32.and (i32.load (local.get $b)) (local.get $mask))
@@ -657,7 +759,7 @@
 
 (func $str-from-code-points
   (param $ptr i32)  ;; pointer to an arry of 32bit code point values
-  (param $len i32)  ;; number of code points 
+  (param $len i32)  ;; number of code points
   (result i32)      ;; an allocated string containing all the code poitns
 
   (local $byte-len i32) ;; the byte length of the output string
@@ -739,7 +841,7 @@
       ;; acc-len += 8 * cp-len
       (local.set $acc-len
         (i32.add
-          (local.get $acc-len) 
+          (local.get $acc-len)
           (i32.shl (local.get $cp-len) (i32.const 3))
         )
       )
@@ -853,13 +955,13 @@
             ;; 0b1110xxxx 0b10xxxxxx 0b10xxxxxx
             ;; *dest = ((char & 0xF) << 12) | ((char & 0x3f00) >> 2) | ((char & 0x3f0000) >> 16)
             (i32.store
-              (local.get $dest) 
-              (i32.or 
+              (local.get $dest)
+              (i32.or
                 (i32.or
                   (i32.shl (i32.and (local.get $char) (i32.const 0xF)) (i32.const 12))
                   (i32.shr_u (i32.and (local.get $char) (i32.const 0x3f00)) (i32.const 2))) ;; >> 8 then << 6
                 (i32.shr_u (i32.and (local.get $char) (i32.const 0x3f0000)) (i32.const 16))))
-            
+
             (%plus-eq $ptr 3)
             (%minus-eq $byte-len 3)
             (br $b_cp)))
@@ -874,7 +976,7 @@
 
             ;; 0b11110xxx 0b10xxxxxx 0b10xxxxxx 0b10xxxxxx
             ;; *dest = ((char & 0x7) << 18) | ((char & 0x3f00) << 4) | ((char & 0x3f0000) >> 10) | ((char & 0x3f000000) >> 24)
-            (i32.store 
+            (i32.store
               (local.get $dest)
               (i32.or
                 (i32.or
@@ -898,7 +1000,7 @@
       (%inc $cp-len)
 
       (br $b_start)))
-  
+
   (return (local.get $cp-len)))
 
 (func $str-cmp (param $left-ptr i32) (param $right-ptr i32) (param $ci i32) (result i32)
@@ -941,7 +1043,7 @@
             ;; single byte
             ;; *dest = (byte & 0x7F)
             (local.set $left-cp (i32.and (local.get $left-byte) (i32.const 0x7F)))
-            
+
             (%inc $left-ptr)
             (%dec $left-byte-len)
             (br $b_left_cp)))
@@ -971,13 +1073,13 @@
             (br_if $b_end (i32.le_s (local.get $left-byte-len) (i32.const 2)))
             ;; char = byte  | (uint16 *)ptr[1] << 8
             (local.set $char (i32.or
-              (local.get $left-byte) 
+              (local.get $left-byte)
               (i32.shl (i32.load16_u offset=1 (local.get $left-ptr)) (i32.const 8))))
 
             ;; 0b1110xxxx 0b10xxxxxx 0b10xxxxxx
             ;; *dest = ((char & 0xF) << 12) | ((char & 0x3f00) >> 2) | ((char & 0x3f0000) >> 16)
             (local.set $left-cp
-              (i32.or 
+              (i32.or
                 (i32.or
                   (i32.shl (i32.and (local.get $char) (i32.const 0xF)) (i32.const 12))
                   (i32.shr_u (i32.and (local.get $char) (i32.const 0x3f00)) (i32.const 2))) ;; >> 8 then << 6
@@ -1019,7 +1121,7 @@
             ;; single byte
             ;; *dest = (byte & 0x7F)
             (local.set $right-cp (i32.and (local.get $right-byte) (i32.const 0x7F)))
-            
+
             (%inc $right-ptr)
             (%dec $right-byte-len)
             (br $b_right_cp)))
@@ -1055,7 +1157,7 @@
             ;; 0b1110xxxx 0b10xxxxxx 0b10xxxxxx
             ;; *dest = ((char & 0xF) << 12) | ((char & 0x3f00) >> 2) | ((char & 0x3f0000) >> 16)
             (local.set $right-cp
-              (i32.or 
+              (i32.or
                 (i32.or
                   (i32.shl (i32.and (local.get $char) (i32.const 0xF)) (i32.const 12))
                   (i32.shr_u (i32.and (local.get $char) (i32.const 0x3f00)) (i32.const 2))) ;; >> 8 then << 6
@@ -1088,10 +1190,10 @@
             (%minus-eq $right-byte-len 4)
             (br $b_right_cp)))
 
-        (unreachable)) 
+        (unreachable))
 
       (if (local.get $ci)
-        (then 
+        (then
           (local.set $left-cp (call $char-downcase-impl (local.get $left-cp)))
           (local.set $right-cp (call $char-downcase-impl (local.get $right-cp)))))
 
@@ -1108,7 +1210,7 @@
   (if (i32.eq (local.get $left-byte-len) (local.get $right-byte-len))
     (then (return (i32.const 0))))
 
-  (return 
+  (return
     (select
       (i32.const -1)
       (i32.const 1)

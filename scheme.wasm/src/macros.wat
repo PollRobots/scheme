@@ -135,3 +135,6 @@
 (%define %unpack-64-hi-l (%packed) (%unpack-64-hi (local.get %packed)))
 (%define %unpack-64-lo (%packed) (i32.wrap_i64 %packed))
 (%define %unpack-64-lo-l (%packed) (%unpack-64-lo (local.get %packed)))
+(%define %unpack-64-l (%packed %hi %lo)
+  (local.set %hi (%unpack-64-hi-l %packed))
+  (local.set %lo (%unpack-64-lo-l %packed)))
