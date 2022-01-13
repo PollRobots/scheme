@@ -230,11 +230,8 @@ data: u32[size] -- the words of the number, words themselves are little
   (local $max-digits i32)
   (local $char-buffer i32)
   (local $char-ptr i32)
-  (local $ten i32)
-  (local $quot i32)
+  (local $work i32)
   (local $rem i32)
-  (local $div-res i64)
-  (local $digit i32)
   (local $actual-len i32)
   (local $res i32)
 
@@ -252,32 +249,22 @@ data: u32[size] -- the words of the number, words themselves are little
       (i32.add (local.get $char-buffer) (local.get $max-digits))
       (i32.const 1)))
 
-  (local.set $quot (call $mp-copy (local.get $ptr)))
-  (local.set $ten (call $mp-10-pow (i32.const 1)))
+  ;; Create a working copy of the number, this will be modified in place when
+  ;; dividing by 10
+  (local.set $work (call $mp-copy (local.get $ptr)))
   (local.set $actual-len (i32.const 0))
-  (if (local.get $sign)
-    (then (call $mp-neg (local.get $quot))))
 
   (block $b_end (loop $b_start
-      (br_if $b_end (i32.eqz (call $mp-log2 (local.get $quot))))
+      (br_if $b_end (i32.eqz (call $mp-log2 (local.get $work))))
 
-      (local.set $div-res (call $mp-div (local.get $quot) (local.get $ten)))
-      ;; quotient is in the high word, remainder in the low word
-      (call $mp-free (local.get $quot))
-      (local.set $quot (i32.wrap_i64 (i64.shr_u (local.get $div-res) (i64.const 32))))
-      (local.set $rem (i32.wrap_i64 (local.get $div-res)))
-      (local.set $digit (i32.wrap_i64 (call $mp-to-u64 (local.get $rem))))
-      (call $mp-free (local.get $rem))
-
-      (i32.store8 (local.get $char-ptr) (i32.add (local.get $digit) (i32.const 0x30)))
+      (local.set $rem (call $mp-div-by-10-ip (local.get $work)))
+      (i32.store8 (local.get $char-ptr) (i32.add (local.get $rem) (i32.const 0x30)))
 
       (%dec $char-ptr)
       (%inc $actual-len)
       (br $b_start)))
 
-  (if (i32.ne (local.get $quot) (global.get $g-mp-zero))
-    (then (call $mp-free (local.get $quot))))
-  (call $mp-free (local.get $ten))
+  (call $mp-free (local.get $work))
 
   (if (local.get $sign)
     (then
@@ -294,6 +281,36 @@ data: u32[size] -- the words of the number, words themselves are little
   (call $malloc-free (local.get $char-buffer))
 
   (return (local.get $res)))
+
+;; divide a number by 10 in place and return the remainder.
+(func $mp-div-by-10-ip (param $num i32) (result i32)
+  (local $len i32)
+  (local $carry i64)
+  (local $quot i64)
+  (local $ptr i32)
+
+  (local.set $len (%mp-len-l $num))
+  (local.set $ptr (i32.add (local.get $num) (i32.const 4)))
+  (local.set $carry (i64.const 0))
+
+  (block $end (loop $start
+      (br_if $end (i32.eqz (local.get $len)))
+
+      (local.set $carry (i64.or
+          (i64.shl (local.get $carry) (i64.const 32))
+          (i64.extend_i32_u (i32.load (local.get $ptr)))))
+
+      (if (i64.ne (local.get $carry) (i64.const 0)) (then
+          (local.set $quot (i64.div_u (local.get $carry) (i64.const 10)))
+          (local.set $carry (i64.rem_u (local.get $carry) (i64.const 10)))))
+          (i32.store (local.get $ptr) (i32.wrap_i64 (local.get $quot)))
+
+      (%plus-eq $ptr 4)
+      (%dec $len)
+      (br $start)))
+
+  (return (i32.wrap_i64 (local.get $carry))))
+
 
 (func $mp-char-base-digit (param $char i32) (param $base i32) (result i32)
   (local $digit i32)
