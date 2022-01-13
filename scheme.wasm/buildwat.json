@@ -105,6 +105,11 @@
       "index": "$g-reader"
     },
     {
+      "name": "gNil",
+      "type": "global",
+      "index": "$g-nil"
+    },
+    {
       "name": "gGcIsCollecting",
       "type": "global",
       "index": "$g-gc-collecting?"

@@ -2,7 +2,10 @@ import pako from "pako";
 import { SchemeType } from "./SchemeType";
 
 type WriteCallback = (str: string) => void;
-type DebugCallback = (ptr: number, resolver: () => void) => void;
+type DebugCallback = (
+  ptr: number,
+  resolver: (reslultStep: boolean) => void
+) => void;
 
 class RuntimeExit extends Error {}
 
@@ -121,6 +124,10 @@ export class SchemeRuntime {
 
   get gReader(): number {
     return (this.exports.gReader as WebAssembly.Global).value as number;
+  }
+
+  get gNil(): number {
+    return (this.exports.gNil as WebAssembly.Global).value as number;
   }
 
   get gGcIsCollecting(): boolean {
@@ -259,22 +266,50 @@ export class SchemeRuntime {
   }
 
   async addDebugPromise(ptr: number): Promise<number> {
-    if (this.debugCallbacks_.length) {
-      const p = new Promise<void>((resolve) => {
-        try {
-          if (this.debugCallbacks_.length == 0) {
-            resolve();
-          } else {
-            this.debugCallbacks_[0](ptr, resolve);
-          }
-        } catch (err) {
-          console.error(err);
-          resolve();
-        }
-      });
-      await p;
+    const heapCons = this.heapItem(ptr);
+    if (!this.debugCallbacks_.length) {
+      return heapCons[2];
     }
-    return this.heapItem(ptr)[2];
+    const p = new Promise<boolean>((resolve) => {
+      try {
+        if (this.debugCallbacks_.length == 0) {
+          resolve(false);
+        } else {
+          this.debugCallbacks_[0](ptr, resolve);
+        }
+      } catch (err) {
+        console.error(err);
+        resolve(false);
+      }
+    });
+    const evalFramePtr = heapCons[2];
+    const evalFrame = this.heapItem(evalFramePtr);
+    const argsFramePtr = evalFrame[2];
+    const argsFrame = this.heapItem(argsFramePtr);
+
+    const heapCont = this.heapItem(heapCons[1]);
+    if (heapCont[1] == 0 && heapCont[2] == 0) {
+      if (await p) {
+        // move the initial cons, two items down the continuation stack
+        heapCons[2] = argsFrame[2];
+        this.pokeMemory(ptr, heapCons.buffer);
+        argsFrame[2] = ptr;
+        this.pokeMemory(argsFramePtr, argsFrame.buffer);
+
+        //use the expression environtment
+        heapCont[1] = this.heapItem(evalFrame[1])[1];
+        // put a g-nil into the continuation frame object in the argument
+        // position (this allows the result to be prepended)
+        heapCont[2] = this.gNil;
+        this.pokeMemory(heapCons[1], heapCont.buffer);
+      }
+      return evalFramePtr;
+    } else {
+      await p;
+      heapCont[0] = -3; // skip value
+      this.pokeMemory(heapCons[1], heapCont.buffer);
+      return ptr;
+    }
   }
 
   isImportPromise(ptr: number) {

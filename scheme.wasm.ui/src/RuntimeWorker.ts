@@ -6,7 +6,7 @@ export interface DebugBreakEvent {
   ptr: number;
   env: number;
   expr: string;
-  step: () => void;
+  step: (resultStep: boolean) => void;
 }
 
 type DebugBreakHander = (evt: DebugBreakEvent) => void;
@@ -17,6 +17,16 @@ declare global {
     kWorkerScript: string;
   }
 }
+
+type SendableMessages =
+  | messages.DebugStep
+  | messages.EnableDebug
+  | messages.EnvRequest
+  | messages.GcRequest
+  | messages.HeapRequest
+  | messages.InputMessage
+  | messages.PrintRequest
+  | messages.StartMessage;
 
 export class RuntimeWorker {
   private loaded_: boolean = false;
@@ -89,9 +99,10 @@ export class RuntimeWorker {
     if (!this.loaded || !this.stopped) {
       return;
     }
-    const reqId = this.nextId();
-    this.postMessage({ type: "start", id: reqId });
-    const response = await this.getResponse(reqId);
+    const response = await this.sendMessage({
+      type: "start",
+      id: this.nextId(),
+    });
     if (messages.isStartedMessage(response)) {
       this.heap_ = response.heap;
     }
@@ -139,9 +150,11 @@ export class RuntimeWorker {
   }
 
   async print(ptr: number): Promise<string> {
-    const reqId = this.nextId();
-    this.postMessage({ type: "print-req", id: reqId, ptr: ptr });
-    const response = await this.getResponse(reqId);
+    const response = await this.sendMessage({
+      type: "print-req",
+      id: this.nextId(),
+      ptr: ptr,
+    });
     if (messages.isPrintResponse(response)) {
       return response.content;
     }
@@ -160,15 +173,17 @@ export class RuntimeWorker {
   }
 
   async gcRun(collect: boolean): Promise<messages.GcResponse> {
-    const reqId = this.nextId();
-    this.postMessage({ type: "gc-req", id: reqId, collect: collect });
-    const response = await this.getResponse(reqId);
+    const response = await this.sendMessage({
+      type: "gc-req",
+      id: this.nextId(),
+      collect: collect,
+    });
     if (messages.isGcResponse(response)) {
       return response;
     }
     return {
       type: "gc-resp",
-      id: reqId,
+      id: response.id,
       output: "",
       isCollecting: false,
       collectionCount: 0,
@@ -207,9 +222,11 @@ export class RuntimeWorker {
     if (!this.worker_) {
       return false;
     }
-    const reqId = this.nextId();
-    this.postMessage({ type: "enable-debug", id: reqId, enabled: enabled });
-    const response = await this.getResponse(reqId);
+    const response = await this.sendMessage({
+      type: "enable-debug",
+      id: this.nextId(),
+      enabled: enabled,
+    });
     if (messages.isStatusResponse(response)) {
       return response.debugging;
     }
@@ -220,9 +237,11 @@ export class RuntimeWorker {
     if (!this.worker_) {
       throw new Error("Invalid operation");
     }
-    const reqId = this.nextId();
-    this.postMessage({ type: "env-req", id: reqId, env: env });
-    const response = await this.getResponse(reqId);
+    const response = await this.sendMessage({
+      type: "env-req",
+      id: this.nextId(),
+      env: env,
+    });
     if (messages.isEnvResponse(response)) {
       return response;
     }
@@ -233,22 +252,18 @@ export class RuntimeWorker {
     return this.idCounter_++;
   }
 
-  private postMessage(
-    msg:
-      | messages.DebugStep
-      | messages.EnableDebug
-      | messages.EnvRequest
-      | messages.GcRequest
-      | messages.HeapRequest
-      | messages.InputMessage
-      | messages.PrintRequest
-      | messages.StartMessage
-  ) {
+  private postMessage(msg: SendableMessages) {
     if (!this.worker_) {
       console.error("Cannot post message, no worker!");
     } else {
       this.worker_.postMessage(msg);
     }
+  }
+
+  private sendMessage(msg: SendableMessages): Promise<messages.WorkerMessage> {
+    const promise = this.getResponse(msg.id);
+    this.postMessage(msg);
+    return promise;
   }
 
   private onMessage(evt: MessageEvent) {
@@ -285,13 +300,17 @@ export class RuntimeWorker {
 
   private onDebugBreak(cmd: messages.DebugBreak) {
     if (!this.debugListeners.length) {
-      this.postMessage({ type: "debug-step", id: cmd.id });
+      this.postMessage({ type: "debug-step", id: cmd.id, resultStep: false });
       return;
     }
     const event: DebugBreakEvent = {
       ...cmd,
-      step: () => {
-        this.postMessage({ type: "debug-step", id: cmd.id });
+      step: (resultStep: boolean) => {
+        this.postMessage({
+          type: "debug-step",
+          id: cmd.id,
+          resultStep: resultStep,
+        });
       },
     };
     this.debugListeners.forEach((el) => el(event));

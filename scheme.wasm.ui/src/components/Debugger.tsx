@@ -5,12 +5,22 @@ import { SchemeRuntimeContext } from "./SchemeRuntimeProvider";
 import { ThemeContext } from "./ThemeProvider";
 import { ToggleSwitch } from "./ToggleSwitch";
 import { EnvResponse } from "../worker/messages";
+import { RuntimeStatus } from "./RuntimeStatus";
 
 const kEmptyDebug: DebugBreakEvent = {
   ptr: 0,
   env: 0,
   expr: "",
-  step: () => {},
+  step: (resultStep: boolean) => {},
+};
+
+const kButtonStyle: React.CSSProperties = {
+  fontSize: "inherit",
+  minWidth: "7em",
+  minHeight: "1.5em",
+  margin: "0.25em",
+  border: `1px solid`,
+  borderRadius: "0.25em",
 };
 
 export const Debugger: React.FunctionComponent = (props) => {
@@ -20,6 +30,10 @@ export const Debugger: React.FunctionComponent = (props) => {
   const [debugInfo, setDebugInfo] =
     React.useState<DebugBreakEvent>(kEmptyDebug);
   const [environments, setEnvironments] = React.useState<EnvResponse[]>([]);
+  const history = React.useRef<string[]>([]);
+  const expressions = React.useRef<Map<number, string>>(new Map());
+  const [original, setOriginal] = React.useState("");
+  const waitFor = React.useRef({ ptr: 0 });
 
   const onStatus = () => {
     if (!runtime) {
@@ -33,11 +47,35 @@ export const Debugger: React.FunctionComponent = (props) => {
     ) {
       setDebugInfo(kEmptyDebug);
       setEnvironments([]);
+      history.current = [];
+      waitFor.current.ptr = 0;
+      expressions.current.clear();
     }
   };
 
+  const addHistory = (str: string) => {
+    history.current.unshift(genPrismString(str));
+  };
+
   const onDebugInfo = async (evt: DebugBreakEvent) => {
+    if (waitFor.current.ptr !== 0) {
+      if (evt.ptr !== waitFor.current.ptr) {
+        evt.step(false);
+        return;
+      } else {
+        waitFor.current.ptr = 0;
+      }
+    }
     setDebugInfo(evt);
+    if (expressions.current.has(evt.ptr)) {
+      const updatedOriginal = expressions.current.get(evt.ptr) as string;
+      setOriginal(updatedOriginal);
+      addHistory(`${evt.expr} ⇐ ${updatedOriginal}`);
+    } else {
+      expressions.current.set(evt.ptr, evt.expr);
+      setOriginal("");
+      addHistory(evt.expr);
+    }
     if (runtime) {
       let ptr = evt.env;
       let envs: EnvResponse[] = [];
@@ -63,28 +101,68 @@ export const Debugger: React.FunctionComponent = (props) => {
     };
   }, [runtime, enabled]);
 
+  const buttonStyle = (): React.CSSProperties => {
+    return {
+      ...kButtonStyle,
+      background: theme.blue,
+      borderColor: theme.base00,
+      opacity: debugInfo.ptr == 0 ? 0.5 : undefined,
+    };
+  };
+
   if (!runtime) {
     <div style={{ margin: "1em", color: theme.base00 }}>
       Runtime not available
     </div>;
   }
 
+  const genPrismString = (str: string) =>
+    Prism.highlight(str, Prism.languages.scheme, "scheme");
+
   return (
     <div style={{ padding: "0.5em" }}>
-      <div>
-        Debugging:{" "}
-        <ToggleSwitch
-          on={enabled}
-          onChange={() => {
-            runtime?.enableDebug(!enabled);
-            setEnabled(!enabled);
-          }}
-        />
-      </div>
-      <div>
-        <div style={{ lineHeight: "2em" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto" }}>
+        <div style={{ gridColumnStart: 1 }}>
+          Debugging:{" "}
+          <ToggleSwitch
+            on={enabled}
+            onChange={() => {
+              runtime?.enableDebug(!enabled);
+              setEnabled(!enabled);
+            }}
+          />
+        </div>
+        <div style={{ lineHeight: "2em", gridColumnStart: 1 }}>
           <span style={{ fontWeight: "bolder" }}>Ptr:</span> 0x
           {debugInfo.ptr.toString(16)}
+        </div>
+        <div style={{ gridColumnStart: 3, gridRowStart: 1 }}>
+          <RuntimeStatus />
+        </div>
+      </div>
+      <div>
+        <div
+          style={{
+            whiteSpace: "pre",
+            fontFamily: "'Source Code Pro', monospace",
+            margin: "0.5em 0",
+            width: "30em",
+            height: "10em",
+            overflowX: "hidden",
+            overflowY: "scroll",
+            display: "flex",
+            flexDirection: "column-reverse",
+            border: `solid 1px ${theme.base00}`,
+            background: theme.background,
+          }}
+          tabIndex={0}
+          title="History of evaluated expreessions"
+        >
+          {history.current
+            .filter((el, idx) => idx > 0)
+            .map((el, idx) => (
+              <div key={idx} dangerouslySetInnerHTML={{ __html: el }} />
+            ))}
         </div>
         <div
           style={{
@@ -95,17 +173,17 @@ export const Debugger: React.FunctionComponent = (props) => {
             margin: "0.5em 0",
             width: "30em",
             height: "10em",
-            overflowY: "visible",
+            overflowY: "scroll",
             border: `solid 1px ${theme.base00}`,
             background: theme.background,
           }}
+          title="Current expression being evaluated"
+          tabIndex={0}
           dangerouslySetInnerHTML={
             debugInfo.ptr
               ? {
-                  __html: Prism.highlight(
-                    debugInfo.expr,
-                    Prism.languages.scheme,
-                    "scheme"
+                  __html: genPrismString(
+                    debugInfo.expr + (original.length ? ` ⇐ ${original}` : "")
                   ),
                 }
               : undefined
@@ -113,21 +191,54 @@ export const Debugger: React.FunctionComponent = (props) => {
         />
         <div>
           <button
-            style={{
-              fontSize: "inherit",
-              minWidth: "7em",
-              minHeight: "1.5em",
-              margin: "0.25em",
-              background: theme.blue,
-              border: `1px solid ${theme.base00}`,
-              borderRadius: "0.25em",
-              color: theme.foreground,
-              opacity: debugInfo.ptr == 0 ? 0.5 : undefined,
-            }}
+            style={buttonStyle()}
             disabled={debugInfo.ptr == 0}
-            onClick={() => debugInfo.step()}
+            onClick={() => debugInfo.step(false)}
+            title="Evaluate the current expression"
           >
             Step
+          </button>
+          <button
+            style={buttonStyle()}
+            disabled={debugInfo.ptr == 0}
+            onClick={() => debugInfo.step(true)}
+            title="Evaluate the current expression, show the result when it is available"
+          >
+            Step w/Result
+          </button>
+          <button
+            style={buttonStyle()}
+            disabled={debugInfo.ptr == 0 || original.length > 0}
+            onClick={() => {
+              waitFor.current.ptr = debugInfo.ptr;
+              debugInfo.step(true);
+            }}
+            title="Evaluate the current expression and run until it returns a result"
+          >
+            Run to Result
+          </button>
+          <button
+            style={{
+              ...buttonStyle(),
+              backgroundColor:
+                waitFor.current.ptr === -1 ? theme.red : theme.blue,
+            }}
+            disabled={!enabled || !runtime || !runtime.waiting}
+            onClick={() => {
+              if (waitFor.current.ptr === -1) {
+                waitFor.current.ptr = 0;
+              } else {
+                waitFor.current.ptr = -1;
+                debugInfo.step(true);
+              }
+            }}
+            title={
+              waitFor.current.ptr === -1
+                ? "Interrupt Execution"
+                : "Run until idle"
+            }
+          >
+            {waitFor.current.ptr === -1 ? "Break" : "Run"}
           </button>
         </div>
         <div>
@@ -142,9 +253,10 @@ export const Debugger: React.FunctionComponent = (props) => {
                 maxHeight: "30em",
                 margin: "0.5em 0",
                 width: "30em",
-                border: `solid 1px ${theme.base00}`,
                 background: theme.background,
               }}
+              tabIndex={0}
+              title={`Environment 0x${el.ptr.toString(16)}`}
             >
               {el.entries
                 .filter(
@@ -152,7 +264,14 @@ export const Debugger: React.FunctionComponent = (props) => {
                     el.next || !entry.value.match(/^<(bui|spe|syn|lam)/)
                 )
                 .map((entry) => [
-                  <div id={`${el.ptr}.n.${entry.name}`}>{entry.name}</div>,
+                  <div
+                    style={{
+                      borderRight: `solid 0.25em ${theme.boldBackground}`,
+                    }}
+                    id={`${el.ptr}.n.${entry.name}`}
+                  >
+                    {entry.name}
+                  </div>,
                   <div id={`${el.ptr}.v.${entry.name}`}>{entry.value}</div>,
                 ])}
             </div>

@@ -232,10 +232,16 @@ export function isDebugBreak(value: any): value is DebugBreak {
 
 export interface DebugStep extends WorkerMessage {
   type: "debug-step";
+  resultStep: boolean;
 }
 
 export function isDebugStep(value: any): value is DebugStep {
-  return isWorkerMessage(value) && value.type === "debug-step";
+  return (
+    value &&
+    value.type === "debug-step" &&
+    typeof value.id === "number" &&
+    typeof value.resultStep === "boolean"
+  );
 }
 
 export interface EnvRequest extends WorkerMessage {

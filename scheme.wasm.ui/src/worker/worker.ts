@@ -4,6 +4,15 @@ import * as messages from "./messages";
 
 type ResponseResolver = (msg: messages.WorkerMessage) => void;
 
+type SendableMessages =
+  | messages.DebugBreak
+  | messages.EnvResponse
+  | messages.GcResponse
+  | messages.OutputMessage
+  | messages.PrintResponse
+  | messages.StartedMessage
+  | messages.StatusResponse;
+
 class SchemeWorker {
   private runtime?: SchemeRuntime;
   private working_: boolean = false;
@@ -21,17 +30,14 @@ class SchemeWorker {
     return ++this.idCounter;
   }
 
-  postMessage(
-    msg:
-      | messages.DebugBreak
-      | messages.EnvResponse
-      | messages.GcResponse
-      | messages.OutputMessage
-      | messages.PrintResponse
-      | messages.StartedMessage
-      | messages.StatusResponse
-  ) {
+  postMessage(msg: SendableMessages) {
     self.postMessage(msg);
+  }
+
+  sendMessage(msg: SendableMessages): Promise<messages.WorkerMessage> {
+    const promise = this.getResponse(msg.id);
+    this.postMessage(msg);
+    return promise;
   }
 
   onMessage(ev: MessageEvent) {
@@ -230,45 +236,66 @@ class SchemeWorker {
     this.onStatus();
   }
 
-  private onDebug(ptr: number, resolver: () => void) {
+  private onDebug(ptr: number, resolver: (resultStep: boolean) => void) {
     if (!this.runtime) {
-      resolver();
+      resolver(false);
       return;
     }
 
     const root = this.runtime.heapItem(ptr);
     if ((root[0] & SchemeType.Mask) !== SchemeType.Cont) {
       console.log("expecting continuation");
-      resolver();
+      resolver(false);
       return;
     }
-    const first = this.runtime.heapItem(root[2]);
-    if ((first[0] & SchemeType.Mask) !== SchemeType.Cont) {
-      console.log("expecting continuation");
-      resolver();
-      return;
-    }
-    const firstCont = this.runtime.heapItem(first[1]);
-    const firstArg = this.printPtr(firstCont[2]);
-    const second = this.runtime.heapItem(first[2]);
-    if ((second[0] & SchemeType.Mask) !== SchemeType.Cont) {
-      console.log("expecting continuation");
-      resolver();
-      return;
-    }
-    const secondCont = this.runtime.heapItem(second[1]);
-    const secondArg = this.printPtr(secondCont[2]);
+    const rootCont = this.runtime.heapItem(root[1]);
+    if (rootCont[1] === 0 && rootCont[2] === 0) {
+      const first = this.runtime.heapItem(root[2]);
+      if ((first[0] & SchemeType.Mask) !== SchemeType.Cont) {
+        console.log("expecting continuation");
+        resolver(false);
+        return;
+      }
+      const firstCont = this.runtime.heapItem(first[1]);
+      const firstArg = this.printPtr(firstCont[2]);
+      const second = this.runtime.heapItem(first[2]);
+      if ((second[0] & SchemeType.Mask) !== SchemeType.Cont) {
+        console.log("expecting continuation");
+        resolver(false);
+        return;
+      }
+      const secondCont = this.runtime.heapItem(second[1]);
+      const secondArg = this.printPtr(secondCont[2]);
 
-    const msgId = this.nextId();
-    this.postMessage({
-      type: "debug-break",
-      id: msgId,
-      ptr: ptr,
-      env: firstCont[1],
-      expr: `(${firstArg} ${secondArg.slice(1)}`,
-    });
+      this.sendMessage({
+        type: "debug-break",
+        id: this.nextId(),
+        ptr: ptr,
+        env: firstCont[1],
+        expr: `(${firstArg} ${secondArg.slice(1)}`,
+      }).then((response) => {
+        if (!messages.isDebugStep(response)) {
+          resolver(false);
+        } else {
+          resolver(response.resultStep);
+        }
+      });
+    } else {
+      const args = this.runtime.heapItem(rootCont[2]);
+      const expr =
+        (args[0] & SchemeType.Mask) === SchemeType.Cons
+          ? this.printPtr(args[1])
+          : this.printPtr(rootCont[2]);
 
-    this.getResponse(msgId).then(() => resolver());
+      // this is a result
+      this.sendMessage({
+        type: "debug-break",
+        id: this.nextId(),
+        ptr: ptr,
+        env: rootCont[1],
+        expr: expr,
+      }).then((response) => resolver(false));
+    }
   }
 
   private onStatus(cmd?: messages.WorkerMessage) {

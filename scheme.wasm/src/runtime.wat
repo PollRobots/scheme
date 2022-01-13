@@ -1095,7 +1095,14 @@
       ;; the next continuation frame to continue.
       (if (i32.eq (local.get $fn) (%debug-fn)) (then
         (global.set $g-curr-cont (i32.const 0))
+        (if (local.get $result) (then
+            (i32.store offset=8 (local.get $curr-cont) (local.get $args))))
         (return (local.get $cont-stack))))
+
+      ;; the debugger paused to look at a result, just move on with that result
+      (if (i32.eq (local.get $fn) (%debug-res-fn)) (then
+        (local.set $result (%car-l $args))
+        (br $b_eval_cont)))
 
       ;; this is a promise from the "other-side" (the host), so we will return
       ;; this, and resume when the host sends it back to us.

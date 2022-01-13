@@ -4,6 +4,7 @@
 (%define %eval-fn-def ()                      (i32.const 1))
 (%define %guard-fn ()                         (i32.const -1))
 (%define %debug-fn ()                         (i32.const -2))
+(%define %debug-res-fn ()                     (i32.const -3))
 
 (%define %special-if ()                       (i32.const 2))
 (%define %special-let ()                      (i32.const 3))
