@@ -282,7 +282,6 @@ while the working set is non-empty:
               (br $if_b_or_s_done)
             )
             ;; } else {
-            ;; assert(gc-is-untouched(ptr))
             (if (i32.eqz (call $gc-is-untouched (local.get $ptr))) (then
               (call $print-symbol (global.get $g-error))
               (call $print-symbol (global.get $g-space))
@@ -295,7 +294,6 @@ while the working set is non-empty:
               ;; oops, this should be safe or untouched, but is touched
               ;; treat as safe
               (br $if_b_or_s_done)))
-            (%assert (call $gc-is-untouched (local.get $ptr)))
             ;; if (type == %str-type) {
             ;; (call $print (global.get $g-collect))
             ;; (call $print-integer (i64.extend_i32_u (local.get $type)))
