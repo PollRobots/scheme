@@ -482,11 +482,13 @@
   (if (i32.eqz (call $all-numeric (local.get $args)))
     (then (return (call $argument-error (local.get $args)))))
 
-  ;; accum = 0
-  (local.set $accum (global.get $g-zero))
+  (if (i32.eq (local.get $args) (global.get $g-nil)) (then
+      (return (global.get $g-zero))))
+
+  (%pop-l $accum $args)
 
   (block $b_end (loop $b_start
-      (br_if $b_end (i32.eq (%get-type $args) (%nil-type)))
+      (br_if $b_end (i32.eq (local.get $args) (global.get $g-nil)))
 
       (%pop-l $num $args)
 
@@ -506,11 +508,13 @@
   (if (i32.eqz (call $all-numeric (local.get $args)))
     (then (return (call $argument-error (local.get $args)))))
 
-  ;; accum = 1
-  (local.set $accum (global.get $g-one))
+  (if (i32.eq (local.get $args) (global.get $g-nil)) (then
+      (return (global.get $g-one))))
+
+  (%pop-l $accum $args)
 
   (block $b_end (loop $b_start
-      (br_if $b_end (i32.eq (%get-type $args) (%nil-type)))
+      (br_if $b_end (i32.eq (local.get $args) (global.get $g-nil)))
 
       (%pop-l $num $args)
 
