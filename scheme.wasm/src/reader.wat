@@ -83,6 +83,7 @@
   (local $prev-off i32)   ;; code point offset of the previous character
   (local $first i32)      ;; is this the first character
   (local $is-string i32)  ;; is this a string
+  (local $is-identifier i32)  ;; is this an identifier (used for |<id>| syntax)
   (local $acc-off i32)    ;; accumulator offset
   (local $accum i32)
   (local $size i32)
@@ -189,6 +190,7 @@
         (if (i32.eq (local.get $char) (i32.const 0x22)) ;; quote
           (then
             (local.set $is-string (i32.const 1))
+            (local.set $is-identifier (i32.const 0))
             (local.set $escaping (i32.const 0))
             (local.set $hex-escape (i32.const 0))
             (local.set $hex-value (i32.const 0))
@@ -199,24 +201,36 @@
             (i32.store offset=4 (local.get $accum) (i32.const 0x74))
             (i32.store offset=8 (local.get $accum) (i32.const 0x72))
             (i32.store offset=12 (local.get $accum) (i32.const 0x20))
-            (local.set $acc-off (i32.const 4))
-          )
+            (local.set $acc-off (i32.const 4)))
           (else
-            ;; *accum = $char
-            (i32.store (local.get $accum) (local.get $char))
-            ;; acc-off = 1
-            (local.set $acc-off (i32.const 1))
-            (local.set $is-string (i32.const 0))
-          )
-        )
+            (if (i32.eq (local.get $char) (i32.const 0x7C)) ;; vertical-bar
+              (then
+                (local.set $is-string (i32.const 1))
+                (local.set $is-identifier (i32.const 1))
+                (local.set $escaping (i32.const 0))
+                (local.set $hex-escape (i32.const 0))
+                (local.set $hex-value (i32.const 0))
+                (local.set $ws-escape (i32.const 0))
+
+                ;; start token with 'tok '
+                (i32.store (local.get $accum) (i32.const 0x74))
+                (i32.store offset=4 (local.get $accum) (i32.const 0x6F))
+                (i32.store offset=8 (local.get $accum) (i32.const 0x6B))
+                (i32.store offset=12 (local.get $accum) (i32.const 0x20))
+                (local.set $acc-off (i32.const 4)))
+              (else
+                ;; *accum = $char
+                (i32.store (local.get $accum) (local.get $char))
+                ;; acc-off = 1
+                (local.set $acc-off (i32.const 1))
+                (local.set $is-string (i32.const 0))
+                (local.set $is-identifier (i32.const 0))))))
 
         ;; first = 0
         (local.set $first (i32.const 0))
         (local.set $is-line-comment (i32.const 0))
         (local.set $nested-comment (i32.const 0))
-        (br $forever)
-      )
-    )
+        (br $forever)))
 
     ;; if (acc-off >= size) {
     (if (i32.ge_u (local.get $acc-off) (local.get $size))
@@ -340,7 +354,7 @@
               )
               (if (i32.eq (local.get $char) (i32.const 0x62)) ;; '\b'
                 (then
-                  (local.set $char (i32.const 0x07)) ;; backspace
+                  (local.set $char (i32.const 0x08)) ;; backspace
                   (br $b_switch)
                 )
               )
@@ -362,51 +376,51 @@
                   (br $b_switch)
                 )
               )
-              (br_if $b_switch (i32.eq (local.get $char) (i32.const 0x22))) ;; '\"'
-              (br_if $b_switch (i32.eq (local.get $char) (i32.const 0x5c))) ;; '\\'
+              (if (i32.eqz (local.get $is-identifier)) (then
+                  ;; \" and \\ are only escapes in strings
+                  (br_if $b_switch (i32.eq (local.get $char) (i32.const 0x22))) ;; '\"'
+                  (br_if $b_switch (i32.eq (local.get $char) (i32.const 0x5c))))) ;; '\\'
+
               (br_if $b_switch (i32.eq (local.get $char) (i32.const 0x7c))) ;; '\|'
-              (if (i32.eq (local.get $char) (i32.const 0x78)) ;; '\x'
-                (then
+              (if (i32.eq (local.get $char) (i32.const 0x78)) (then ;; '\x'
                   (local.set $hex-escape (i32.const 1))
                   (local.set $hex-value (i32.const 0))
-                  (br $forever)
-                )
-              )
-              (if (call $is-whitespace (local.get $char))
-                (then
-                  (if (i32.eq (local.get $char) (i32.const 0x0A))
-                    (then
-                      (local.set $escaping (i32.const 0))
-                      (local.set $ws-escape (i32.const 0))
-                    )
-                    (else
-                      (local.set $ws-escape (i32.const 1))
-                    )
-                  )
-                  (br $forever)
-                )
-              )
+                  (br $forever)))
+
+              (if (i32.eqz (local.get $is-identifier)) (then
+                  (if (call $is-whitespace (local.get $char)) (then
+                      (if (i32.eq (local.get $char) (i32.const 0x0A))
+                        (then
+                          (local.set $escaping (i32.const 0))
+                          (local.set $ws-escape (i32.const 0)))
+                        (else
+                          (local.set $ws-escape (i32.const 1))))
+                      (br $forever)))))
             )
 
             (i32.store
               (i32.add (local.get $accum) (%word-size-l $acc-off))
-              (local.get $char)
-            )
+              (local.get $char))
             (%inc $acc-off)
             (local.set $escaping (i32.const 0))
-            (br $forever)
-          )
+            (br $forever))
           (else
-            ;; if (char == '"')
-            (if (i32.eq (local.get $char) (i32.const 0x22))
+            (if (local.get $is-identifier)
               (then
-                ;; end string
-                (return (call $str-from-code-points
-                  (local.get $accum)
-                  (local.get $acc-off)
-                ))
-              )
-            )
+                ;; if (char == '|')
+                (if (i32.eq (local.get $char) (i32.const 0x7C)) (then
+                    ;; end string
+                    (return (call $str-from-code-points
+                      (local.get $accum)
+                      (local.get $acc-off))))))
+              (else
+                ;; if (char == '"')
+                (if (i32.eq (local.get $char) (i32.const 0x22)) (then
+                    ;; end string
+                    (return (call $str-from-code-points
+                      (local.get $accum)
+                      (local.get $acc-off)))))))
+
             ;; if (char == '\')
             (if (i32.eq (local.get $char) (i32.const 0x5c)) ;; \
               (then
@@ -420,10 +434,8 @@
               (local.get $char)
             )
             (%inc $acc-off)
-            (br $forever)
-          )
-        )
-      )
+            (br $forever))))
+
       ;; } else {
       (else
         ;; * whitespace ends the string

@@ -57,6 +57,7 @@
 (global $g-quote            (mut i32) (i32.const 0))
 (global $g-slash            (mut i32) (i32.const 0))
 (global $g-curr-version     (mut i32) (i32.const 0))
+(global $g-parse            (mut i32) (i32.const 0))
 
 (global $g-debug            (mut i32) (i32.const 0))
 
@@ -121,6 +122,7 @@
   (global.set $g-lambda (%sym-64 0x6164626d616c 6)) ;; 'lambda'
   (global.set $g-quote (%sym-64 0x65746f7571 5)) ;; 'quote'
   (global.set $g-slash (%str %sym-32 32 "/"))
+  (global.set $g-parse (%str %sym-64 64 "parse"))
   (global.set $g-curr-version (%str %sym-192 192 (%version)))
 
   ;; global reader is attached to stdin
@@ -462,6 +464,21 @@
       (i32.store offset=4 (local.get $token-str) (i32.const 0x20727473))
       (return (%alloc-str (local.get $atom-str)))))
 
+  ;; if (short-str-start-with(token-str, 0, 'tok ', 4)) {
+  (if (call $short-str-start-with
+      (local.get $token-str)
+      (i32.const 0)
+      (i32.const 0x206b6f74)
+      (i32.const 4))
+    (then
+      (local.set $str-len (i32.load (local.get $token-str)))
+      (i32.store offset=4
+        (local.get $token-str)
+        (i32.sub (local.get $str-len) (i32.const 4)))
+      (local.set $atom-str (call $str-dup (i32.add (local.get $token-str) (i32.const 4))))
+      (i32.store offset=4 (local.get $token-str) (i32.const 0x206b6f74))
+      (return (%alloc-symbol (local.get $atom-str)))))
+
   ;; if token.str.startsWith('#\')
   (if (call $short-str-start-with
       (local.get $token-str)
@@ -473,24 +490,197 @@
   ;; atom = string->number-impl(token, 10, true)
   (local.set $atom (call $string->number-impl (local.get $token) (i32.const 10)))
   ;; if (is-truthy(atom)) {
-  (if (call $is-truthy (local.get $atom))
-    (then
-      ;; return atom
-      (return (local.get $atom))
-    )
-    ;; }
-  )
+  (if (call $is-truthy (local.get $atom)) (then
+      (return (local.get $atom))))
+
+  ;; should be an identifier
+  (local.set $atom (call $read-identifier (local.get $token-str)))
+  (if (call $is-truthy (local.get $atom)) (then
+      (return (local.get $atom))))
+
 
   ;; return heap-alloc(g-heap, %symbol-type, str-dup(token-str), 0)
-  (return
-    (call $heap-alloc
-      (global.get $g-heap)
-      (%symbol-type)
-      (call $str-dup (local.get $token-str))
-      (i32.const 0)
-    )
-  )
-)
+  (return (%alloc-error (global.get $g-parse) (local.get $token))))
+
+(func $read-identifier (param $str i32) (result i32)
+  (if (call $identifier? (local.get $str)) (then
+      (return (%alloc-symbol (call $str-dup (local.get $str))))))
+  (return (global.get $g-false)))
+
+(func $identifier? (param $str i32) (result i32)
+  (local $offset i32)
+  (local $temp64 i64)
+  (local $char i32)
+
+  (local.set $offset (i32.const 0))
+  (local.set $temp64 (call $str-next-code-point
+      (local.get $str)
+      (local.get $offset)))
+  (if (i64.eqz (local.get $temp64)) (then (return (i32.const 0))))
+  (%unpack-64-l $temp64 $offset $char)
+
+  ;; check if this is an initial, or a special initial
+  (if (i32.eqz (call $id-initial? (local.get $char))) (then
+      (return (call $read-peculiar-identifier (local.get $str)))))
+
+  (block $end (loop $start
+      (local.set $temp64 (call $str-next-code-point
+          (local.get $str)
+          (local.get $offset)))
+      (br_if $end (i64.eqz (local.get $temp64)))
+      (%unpack-64-l $temp64 $offset $char)
+
+      (block $check
+        (br_if $check (call $id-initial? (local.get $char)))
+        (br_if $check (call $id-digit? (local.get $char)))
+        (br_if $check (call $id-special-subsequent? (local.get $char)))
+        (return (i32.const 0)))
+
+      (br $start)))
+
+  (return (i32.const 1)))
+
+(func $read-peculiar-identifier (param $str i32) (result i32)
+  (local $offset i32)
+  (local $temp64 i64)
+  (local $char i32)
+
+  (local.set $offset (i32.const 0))
+  (local.set $temp64 (call $str-next-code-point
+      (local.get $str)
+      (local.get $offset)))
+  (if (i64.eqz (local.get $temp64)) (then (return (i32.const 0))))
+  (%unpack-64-l $temp64 $offset $char)
+
+  (;
+   ;    <peculiar-identifier> --> <explicit-sign>
+   ;        | <explicit-sign> <sign-subsequent> <subsequent>*
+   ;        | <explicit-sign> . <dot-subsequent> <subsequent>*
+   ;        | . <dot-subsequent> <subsequent>*
+   ;
+   ;    <explicit-sign> --> + -
+   ;    <sign-subsequent> --> <initial> | <explicit-sign> | @
+   ;    <dot-subsequent> --> <sign-subsequent> | .
+   ;)
+   (block $check-subsequent
+    (block $check-dot
+      (block $check-sign
+        (br_if $check-sign (i32.eq (local.get $char) (i32.const 0x2B))) ;; +
+        (br_if $check-sign (i32.eq (local.get $char) (i32.const 0x2D))) ;; -
+        ;; no explicit sign, check for dot
+        (br_if $check-dot (i32.eq (local.get $char) (i32.const 0x2E))) ;; .
+        ;; else no match
+        (return (i32.const 0)))
+
+      ;; we have an explicit sign, get next char
+      (local.set $temp64 (call $str-next-code-point
+          (local.get $str)
+          (local.get $offset)))
+      (if (i64.eqz (local.get $temp64)) (then
+          ;; just sign is still an identifier (+ or -)
+          (return (i32.const 1))))
+
+      (%unpack-64-l $temp64 $offset $char)
+      ;; sign then dot, move to check for dot-subsequent
+      (br_if $check-dot (i32.eq (local.get $char) (i32.const 0x2E))) ;; /
+
+      ;; check for sign-subsequent
+      (br_if $check-subsequent (call $id-initial? (local.get $char)))
+      (br_if $check-subsequent (i32.eq (local.get $char) (i32.const 0x2B))) ;; +
+      (br_if $check-subsequent (i32.eq (local.get $char) (i32.const 0x2D))) ;; -
+      (br_if $check-subsequent (i32.eq (local.get $char) (i32.const 0x40))) ;; @
+
+      ;; no match
+      (return (i32.const 0)))
+
+    (local.set $temp64 (call $str-next-code-point
+        (local.get $str)
+        (local.get $offset)))
+    ;; must be a dot-subsequent, othersize no match
+    (if (i64.eqz (local.get $temp64)) (then (return (global.get $g-false))))
+
+    (%unpack-64-l $temp64 $offset $char)
+    ;; check for dot-subsequent
+    (br_if $check-subsequent (call $id-initial? (local.get $char)))
+    (br_if $check-subsequent (i32.eq (local.get $char) (i32.const 0x2B))) ;; +
+    (br_if $check-subsequent (i32.eq (local.get $char) (i32.const 0x2D))) ;; -
+    (br_if $check-subsequent (i32.eq (local.get $char) (i32.const 0x40))) ;; @
+    (br_if $check-subsequent (i32.eq (local.get $char) (i32.const 0x2E))) ;; .
+
+    ;; no match
+    (return (i32.const 0)))
+
+  ;; check for <subsequent>*
+  ;; <subsequent> --> <initial> <digit> <special-subsequent>
+  (block $end (loop $start
+      (local.set $temp64 (call $str-next-code-point
+          (local.get $str)
+          (local.get $offset)))
+      (br_if $end (i64.eqz (local.get $temp64)))
+      (%unpack-64-l $temp64 $offset $char)
+
+      (block $check
+        (br_if $check (call $id-initial? (local.get $char)))
+        (br_if $check (call $id-digit? (local.get $char)))
+        (br_if $check (call $id-special-subsequent? (local.get $char)))
+        (return (i32.const 0)))
+
+      (br $start)))
+
+  (return (i32.const 1)))
+
+(func $id-initial? (param $char i32) (result i32)
+  ;; letter A-Z
+  (if (i32.ge_u (local.get $char) (i32.const 0x41)) (then
+      (if (i32.le_u (local.get $char) (i32.const 0x5A)) (then
+          (return (i32.const 1))))))
+
+  ;; letter a-z
+  (if (i32.ge_u (local.get $char) (i32.const 0x61)) (then
+      (if (i32.le_u (local.get $char) (i32.const 0x7A)) (then
+          (return (i32.const 1))))))
+
+  ;; special-initial
+  ;; ! #x21, $ #x24, % #x25, & #x26, * #x2A, / #x2F, : #x3A, < #x3C, = #x3D, > #x3E, ? #x3F, ^ #x5E, _ #x5F, ~ #x7E
+  ;; ! $ % & * / : < = > ? ^ #x5E, _ #x5F, ~ #x7E
+  (block $special
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x21))) ;; !
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x24))) ;; $
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x25))) ;; %
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x26))) ;; &
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x2A))) ;; *
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x2F))) ;; /
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x3A))) ;; :
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x3C))) ;; <
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x3D))) ;; =
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x3E))) ;; >
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x3F))) ;; ?
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x5E))) ;; ^
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x5F))) ;; _
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x7E))) ;; ~
+
+    (return (i32.const 0)))
+
+  (return (i32.const 1)))
+
+(func $id-digit? (param $char i32) (result i32)
+  ;; digit 0-9
+  (if (i32.ge_u (local.get $char) (i32.const 0x30)) (then
+      (if (i32.le_u (local.get $char) (i32.const 0x39)) (then
+          (return (i32.const 1))))))
+  (return (i32.const 0)))
+
+(func $id-special-subsequent? (param $char i32) (result i32)
+  ;; + - . @
+  (block $special
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x2B))) ;; +
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x2D))) ;; -
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x2E))) ;; .
+    (br_if $special (i32.eq (local.get $char) (i32.const 0x40))) ;; @
+
+    (return (i32.const 0)))
+
+  (return (i32.const 1)))
 
 (func $short-str-eq
   (param $str i32)            ;; a string pointer

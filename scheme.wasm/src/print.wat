@@ -46,7 +46,7 @@
     (if (i32.eq (local.get $type) (%symbol-type))
       (then
         ;; print-symbol(ptr[4])
-        (call $print-symbol (local.get $ptr))
+        (call $print-symbol-strict (local.get $ptr))
         ;; break
         (br $b_switch)))
 
@@ -416,10 +416,149 @@
   (call $io-write (local.get $str-ptr))
   (call $malloc-free (local.get $str-ptr)))
 
+(func $print-symbol-strict (param $sym i32)
+  (local $str i32)
+  (local $str-len i32)
+  (local $offset i32)
+  (local $char i32)
+  (local $temp i64)
+  (local $buffer i32)
+  (local $ptr i32)
+  (local $len i32)
+  (local $hex-start i32)
+  (local $hex-end i32)
+
+  (local.set $str (%car-l $sym))
+
+  (if (call $identifier? (local.get $str)) (then
+      (call $io-write (local.get $str))
+      (return)))
+
+  (local.set $offset (i32.const 0))
+  (local.set $str-len (i32.load (local.get $str)))
+  (local.set $buffer (call $malloc (i32.const 36)))
+  (local.set $len (i32.const 0))
+  (local.set $ptr (i32.add (local.get $buffer) (i32.const 4)))
+
+  (i32.store8 (local.get $ptr) (i32.const 0x7C))
+  (%inc $len)
+  (%inc $ptr)
+
+  (block $end (loop $start
+      (local.set $temp (call $str-next-code-point
+          (local.get $str)
+          (local.get $offset)))
+      (br_if $end (i64.eqz (local.get $temp)))
+
+      (%unpack-64-l $temp $offset $char)
+
+      (block $done (block $non-printable
+          (br_if $non-printable (i32.le_u (local.get $char) (i32.const 0x20)))
+          (br_if $non-printable (i32.ge_u (local.get $char) (i32.const 0x7f)))
+          (br_if $non-printable (i32.eq (local.get $char) (i32.const 0x7C)))
+          ;; this is a 'printable' symbol character
+          (i32.store8 (local.get $ptr) (local.get $char))
+          (%inc $len)
+          (%inc $ptr)
+          (if (i32.ge_u (local.get $len) (i32.const 32)) (then
+              (i32.store (local.get $buffer) (local.get $len))
+              (call $io-write (local.get $buffer))
+              (local.set $len (i32.const 0))
+              (local.set $ptr (i32.add (local.get $buffer) (i32.const 4)))))
+          (br $done))
+
+        ;; this is a 'non-printable'
+        ;; print anything thats in the buffer
+        (if (local.get $len) (then
+            (i32.store (local.get $buffer) (local.get $len))
+            (call $io-write (local.get $buffer))
+            (local.set $len (i32.const 0))
+            (local.set $ptr (i32.add (local.get $buffer) (i32.const 4)))))
+
+        (block $not-mnemonic (block $mnemonic
+            (if (i32.eq (local.get $char) (i32.const 0x7)) (then
+                ;; \a alarm
+                (i32.store16 (local.get $ptr) (i32.const 0x615C))
+                (br $mnemonic)))
+            (if (i32.eq (local.get $char) (i32.const 0x8)) (then
+                ;; \b backspace
+                (i32.store16 (local.get $ptr) (i32.const 0x625C))
+                (br $mnemonic)))
+            (if (i32.eq (local.get $char) (i32.const 0x9)) (then
+                ;; \t tab
+                (i32.store16 (local.get $ptr) (i32.const 0x745C))
+                (br $mnemonic)))
+            (if (i32.eq (local.get $char) (i32.const 0xa)) (then
+                ;; \n linefeed
+                (i32.store16 (local.get $ptr) (i32.const 0x6e5C))
+                (br $mnemonic)))
+            (if (i32.eq (local.get $char) (i32.const 0xd)) (then
+                ;; \r return
+                (i32.store16 (local.get $ptr) (i32.const 0x725C))
+                (br $mnemonic)))
+            (if (i32.eq (local.get $char) (i32.const 0x7c)) (then
+                ;; \| vertical line
+                (i32.store16 (local.get $ptr) (i32.const 0x7c5C))
+                (br $mnemonic)))
+            (br $not-mnemonic))
+
+          (%plus-eq $len 2)
+          (%plus-eq $ptr 2)
+          (br $done))
+
+        ;; add \x
+        (i32.store16 (local.get $ptr) (i32.const 0x785C))
+        (%plus-eq $len 2)
+        (%plus-eq $ptr 2)
+
+        (local.set $hex-start (local.tee $hex-end (local.get $ptr)))
+        (block $end-hex (loop $start-hex
+            (i32.store8
+              (local.get $ptr)
+              (call $hex-digit (i32.and (local.get $char) (i32.const 0xF))))
+            (%inc $len)
+            (%inc $ptr)
+            (local.set $char (i32.shr_u (local.get $char) (i32.const 4)))
+            (br_if $end-hex (i32.eqz (local.get $char)))
+            (%inc $hex-end)
+            (br $start-hex)))
+
+        ;; reverse from hex-start to hex-end
+        (block $rev-end (loop $rev-start
+            (br_if $rev-end (i32.ge_u (local.get $hex-start) (local.get $hex-end)))
+            ;; swap
+            (local.set $char (i32.load8_u (local.get $hex-start)))
+            (i32.store8 (local.get $hex-start) (i32.load8_u (local.get $hex-end)))
+            (i32.store8 (local.get $hex-end) (local.get $char))
+
+            (%inc $hex-start)
+            (%dec $hex-end)
+            (br $rev-start)))
+
+        (i32.store8 (local.get $ptr) (i32.const 0x3B)) ;; ';'
+        (%inc $len)
+        (%inc $ptr))
+
+      (br $start)))
+
+  (i32.store8 (local.get $ptr) (i32.const 0x7C))
+  (%inc $len)
+  (%inc $ptr)
+  (i32.store (local.get $buffer) (local.get $len))
+  (call $io-write (local.get $buffer))
+  (call $malloc-free (local.get $buffer)))
+
+(func $hex-digit (param $num i32) (result i32)
+  (if (i32.le_u (local.get $num) (i32.const 9)) (then
+      (return (i32.add (local.get $num) (i32.const 0x30)))))
+
+  (if (i32.le_u (local.get $num) (i32.const 0xF)) (then
+      (return (i32.add (local.get $num) (i32.const 0x37)))))
+
+  (unreachable))
+
 (func $print-symbol (param $sym i32)
-  ;; TODO handle symbols with non-standard characters
-  (call $io-write (i32.load offset=4 (local.get $sym)))
-)
+  (call $io-write (%car-l $sym)))
 
 (func $print-symbol-rep (param $sym i32) (param $count i32)
   (block $b_end
