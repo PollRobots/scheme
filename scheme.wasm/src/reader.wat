@@ -17,9 +17,12 @@
 ;;   i32  size        12      The size of the accumulation buffer
 ;;   i32  cache-read  16      The head of the read cache
 ;;   i32  cache-write 20      The tail of the write cache
-;;   i32  external    24      External source of data
+;;   i8   external    24      External source of data
+;;   i8   fold-case   25      Is this reader running with fold-case turned on
 ;;
-;;   SIZE             28
+;;   SIZE             26
+
+(%define %reader-size () (i32.const 26))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Create a new reader
@@ -32,7 +35,7 @@
   (local.set $accum (call $malloc (i32.const 64)))
 
   ;; reader = malloc(28)
-  (local.set $reader (call $malloc (i32.const 28)))
+  (local.set $reader (call $malloc (%reader-size)))
 
   ;; clear input and in-off to 0
   ;; reader[0] = 0
@@ -48,7 +51,8 @@
   (i32.store offset=20 (local.get $reader) (global.get $g-nil))
 
   ;; set external source
-  (i32.store offset=24 (local.get $reader) (local.get $external))
+  (i32.store8 offset=24 (local.get $reader) (local.get $external))
+  (i32.store8 offset=25 (local.get $reader) (i32.const 0))
 
   ;; return reader
   (return (local.get $reader))
@@ -95,6 +99,8 @@
   (local $is-line-comment i32) ;; is this a comment til the end of line
   (local $nested-comment i32) ;; the current nested comment depth
   (local $temp64 i64) ;; return value from str-next-code-point
+  (local $token i32) ;; the token to be returned
+  (local $folded i32) ;; the case folded token
 
   ;; input = reader[0];
   (local.set $input (i32.load (local.get $reader)))
@@ -410,9 +416,18 @@
                 ;; if (char == '|')
                 (if (i32.eq (local.get $char) (i32.const 0x7C)) (then
                     ;; end string
-                    (return (call $str-from-code-points
+                    (local.set $token (call $str-from-code-points
                       (local.get $accum)
-                      (local.get $acc-off))))))
+                      (local.get $acc-off)))
+
+                    ;; check if case-folding is required.
+                    (if (i32.load8_u offset=25 (local.get $reader)) (then
+                        (local.set $folded (call $string-downcase-impl
+                            (local.get $token)))
+                        (call $malloc-free (local.get $token))
+                        (local.set $token (local.get $folded))))
+
+                    (return (local.get $token)))))
               (else
                 ;; if (char == '"')
                 (if (i32.eq (local.get $char) (i32.const 0x22)) (then
@@ -533,23 +548,52 @@
           )
         ;; }
         )
-        ;; TODO end the string here.
         ;; return str-from-code-points(accum, acc-off)
-        (return (call $str-from-code-points
+        (local.set $token (call $str-from-code-points
           (local.get $accum)
-          (local.get $acc-off)
-        ))
-      )
-      ;; }
-    )
+          (local.get $acc-off)))
 
-    (br $forever)
-  )
-  ;; }
+        (block $no-directive (block $directive
+            (if (call $str-eq (local.get $token) (%car (global.get $g-fold-case)))
+              (then
+                (i32.store8 offset=25 (local.get $reader) (i32.const 1))
+                (br $directive)))
+            (if (call $str-eq (local.get $token) (%car (global.get $g-no-fold-case)))
+              (then
+                (i32.store8 offset=25 (local.get $reader) (i32.const 0))
+                (br $directive)))
+            (br $no-directive))
+
+            ;; directive is treated like a comment, so discard and reset
+            (local.set $acc-off (i32.const 0))
+            (local.set $first (i32.const 1))
+            (call $malloc-free (local.get $token))
+            (br $forever))
+
+        ;; check if fold-case applies
+        (if (i32.load8_u offset=25 (local.get $reader)) (then
+            (block $fold
+              (if (call $short-str-start-with
+                  (local.get $token)
+                  (i32.const 0)
+                  (i32.const 0x5C23) ;; #\
+                  (i32.const 2)) (then
+                  ;; this is a character
+                  (if (i32.eq (local.get $acc-off) (i32.const 3)) (then
+                    ;; with exactly three characters (#\x)
+                    ;; so no folding
+                    (br $fold)))))
+              ;; everything else can be folded, number, identifier, boolean
+              (local.set $folded (call $string-downcase-impl (local.get $token)))
+              (call $malloc-free (local.get $token))
+              (local.set $token (local.get $folded)))))
+
+        (return (local.get $token))))
+
+    (br $forever))
 
   ;; trap
-  unreachable
-)
+  (unreachable))
 
 (func $reader-grow-accum (param $reader i32) (result i32)
   (local $old-accum i32)

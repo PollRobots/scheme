@@ -56,9 +56,11 @@
 (global $g-lambda           (mut i32) (i32.const 0))
 (global $g-quote            (mut i32) (i32.const 0))
 (global $g-slash            (mut i32) (i32.const 0))
-(global $g-curr-version     (mut i32) (i32.const 0))
 (global $g-parse            (mut i32) (i32.const 0))
+(global $g-fold-case        (mut i32) (i32.const 0))
+(global $g-no-fold-case     (mut i32) (i32.const 0))
 
+(global $g-curr-version     (mut i32) (i32.const 0))
 (global $g-debug            (mut i32) (i32.const 0))
 
 (global $g-eval-count (mut i32) (i32.const 0))
@@ -123,6 +125,8 @@
   (global.set $g-quote (%sym-64 0x65746f7571 5)) ;; 'quote'
   (global.set $g-slash (%str %sym-32 32 "/"))
   (global.set $g-parse (%str %sym-64 64 "parse"))
+  (global.set $g-fold-case (%str %sym-128 128 "#!fold-case"))
+  (global.set $g-no-fold-case (%str %sym-128 128 "#!no-fold-case"))
   (global.set $g-curr-version (%str %sym-192 192 (%version)))
 
   ;; global reader is attached to stdin

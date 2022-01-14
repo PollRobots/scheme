@@ -449,57 +449,49 @@
 (func $string-downcase (param $env i32) (param $args i32) (result i32)
   (local $arg i32)
   (local $str i32)
+
+  (block $b_check (block $b_fail
+      (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
+      (local.set $arg (%car-l $args))
+      (br_if $b_fail (i32.ne (%get-type $arg) (%str-type)))
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
+
+  (return (%alloc-str (call $string-downcase-impl (%car-l $arg)))))
+
+(func $string-downcase-impl (param $str i32) (result i32)
   (local $cp-buffer i32)
   (local $cp-len i32)
   (local $result i32)
   (local $i i32)
   (local $ptr i32)
 
-  (block $b_check
-    (block $b_fail
-      (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
-      (local.set $arg (%car-l $args))
-      (br_if $b_fail (i32.ne (%get-type $arg) (%str-type)))
-      (local.set $str (%car-l $arg))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
-
   (local.set $cp-len (call $str-code-point-len (local.get $str)))
   (local.set $ptr
     (local.tee $cp-buffer
-      (call $malloc (%word-size-l $cp-len))
-    )
-  )
+      (call $malloc (%word-size-l $cp-len))))
+
   (local.set $i
     (call $str-to-code-points
       (local.get $str)
       (local.get $cp-buffer)
-      (local.get $cp-len)
-    )
-  )
+      (local.get $cp-len)))
 
-  (block $b_end
-    (loop $b_start
+  (block $b_end (loop $b_start
       (br_if $b_end (i32.eqz (local.get $i)))
 
       (i32.store
         (local.get $ptr)
-        (call $char-downcase-impl (i32.load (local.get $ptr)))
-      )
+        (call $char-downcase-impl (i32.load (local.get $ptr))))
 
       (%plus-eq $ptr 4)
       (%dec $i)
-      (br $b_start)
-    )
-  )
+      (br $b_start)))
 
   (local.set $result (call $str-from-code-points (local.get $cp-buffer) (local.get $cp-len)))
   (call $malloc-free (local.get $cp-buffer))
-
-  (return (%alloc-str (local.get $result)))
-)
+  (return (local.get $result)))
 
 (func $string-copy-impl (param $str i32) (param $start i32) (param $end i32) (result i32)
   (local $src-buffer i32)
