@@ -7,13 +7,40 @@
 
     (return (call $argument-error (local.get $args))))
 
-  (return (call $cont-include
-      (%cont-include)
+  (return (call $cont-include-impl
       (local.get $env)
-      (%alloc-cons (global.get $g-nil) (local.get $args)))))
+      (%alloc-cons (global.get $g-nil) (local.get $args))
+      (i32.const 0))))
 
-;; (cont-include <ingore> <string_1> <string_2> ...)
+;; (include-ci <string_1> <string_2> ...)
+(func $include-ci (param $env i32) (param $args i32) (result i32)
+  (block $check (block $fail
+      (br_if $fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 1)))
+      (br_if $fail (i32.eqz (call $all-string (local.get $args))))
+      (br $check))
+
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $cont-include-impl
+      (local.get $env)
+      (%alloc-cons (global.get $g-nil) (local.get $args))
+      (i32.const 1))))
+
+;; (cont-include <ignore> <string_1> <string_2> ...)
 (func $cont-include (param $env i32) (param $args i32) (result i32)
+  (return (call $cont-include-impl
+      (local.get $env)
+      (local.get $args)
+      (i32.const 0))))
+
+;; (cont-include-ci <ignore> <string_1> <string_2> ...)
+(func $cont-include-ci (param $env i32) (param $args i32) (result i32)
+  (return (call $cont-include-impl
+      (local.get $env)
+      (local.get $args)
+      (i32.const 1))))
+
+(func $cont-include-impl (param $env i32) (param $args i32) (param $is-ci i32) (result i32)
   (local $temp i32)
   (local $filename i32)
   (local $promise i32)
@@ -34,13 +61,27 @@
       (local.get $env)
       (local.get $promise)
       (call $cont-alloc
-        (%cont-include-read)
+        (select (%cont-include-read-ci) (%cont-include-read) (local.get $is-ci))
         (local.get $env)
         (local.get $args)
         (i32.const 0)))))
 
+
 ;; (cont-include-read <contents> <string_1> ...)
 (func $cont-include-read (param $env i32) (param $args i32) (result i32)
+  (return (call $cont-include-read-impl
+      (local.get $env)
+      (local.get $args)
+      (i32.const 0))))
+
+;; (cont-include-read-ci <contents> <string_1> ...)
+(func $cont-include-read-ci (param $env i32) (param $args i32) (result i32)
+  (return (call $cont-include-read-impl
+      (local.get $env)
+      (local.get $args)
+      (i32.const 1))))
+
+(func $cont-include-read-impl (param $env i32) (param $args i32) (param $is-ci i32) (result i32)
   (local $contents i32)
   (local $contents-type i32)
   (local $reader i32)
@@ -53,17 +94,17 @@
       (return (local.get $contents))))
 
   (if (i32.ne (local.get $contents-type) (%str-type)) (then
-      (return (%alloc-error-cons 
-          (%str %sym-64 64 "bad-read") 
-          (global.get $g-nil)))))
+      (return (%alloc-raise (%alloc-error-cons
+            (%str %sym-64 64 "bad-read")
+            (global.get $g-nil))))))
 
   ;; validate that input from the host is well formed.
   (if (i32.eqz (call $str-is-valid (%car-l $contents))) (then
-      (return (%alloc-error-cons 
-          (%str %sym-128 128 "invalid-string") 
-          (global.get $g-nil)))))
+      (return (%alloc-raise (%alloc-error-cons
+            (%str %sym-128 128 "invalid-string")
+            (global.get $g-nil))))))
 
-  ;; Crease a string reader.
+  ;; Create a string reader.
   (local.set $reader (call $reader-init (i32.const -1)))
   ;; Push the contents onto the read-cache.
   (i32.store offset=16
@@ -75,6 +116,10 @@
       ;; ")"
       (%alloc-str (call $str-from-32 (i32.const 1) (i32.const 0x29)))))
 
+  ;; tell the reader to fold case if necessary
+  (if (local.get $is-ci) (then
+      (i32.store8 offset=25 (local.get $reader) (i32.const 1))))
+
   (local.set $datum (call $read-with-reader (local.get $reader)))
   (call $reader-free (local.get $reader))
   (if (i32.eq (%get-type $datum) (%error-type)) (then
@@ -85,9 +130,7 @@
       (local.get $env)
       (local.get $datum)
       (call $cont-alloc
-        (%cont-include)
+        (select (%cont-include-ci) (%cont-include) (local.get $is-ci))
         (local.get $env)
         (local.get $args)
         (i32.const 0)))))
-
-

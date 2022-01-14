@@ -221,8 +221,11 @@
 (%define %builtin-numerator ()                (i32.const 214))
 (%define %builtin-denominator ()              (i32.const 215))
 (%define %builtin-rationalize ()              (i32.const 216))
+(%define %builtin-include-ci ()               (i32.const 217))
+(%define %cont-include-ci ()                  (i32.const 218))
+(%define %cont-include-read-ci ()             (i32.const 219))
 
-(table $table-builtin 217 anyfunc)
+(table $table-builtin 220 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
   (local $quote i32)
@@ -411,6 +414,7 @@
   (%add-builtin (%str %sym-128 128 "numerator") (%builtin-numerator))
   (%add-builtin (%str %sym-128 128 "denominator") (%builtin-denominator))
   (%add-builtin (%str %sym-128 128 "rationalize") (%builtin-rationalize))
+  (%add-builtin (%str %sym-128 128 "include-ci") (%builtin-include-ci))
 
   (%add-special (%sym-32 0x6669 2) (%special-if))               ;; 'if'
   (%add-special (global.get $g-let) (%special-let))             ;; 'let'
@@ -484,6 +488,8 @@
 (elem $table-builtin (%cont-for-each) $cont-for-each)
 (elem $table-builtin (%cont-include) $cont-include)
 (elem $table-builtin (%cont-include-read) $cont-include-read)
+(elem $table-builtin (%cont-include-ci) $cont-include-ci)
+(elem $table-builtin (%cont-include-read-ci) $cont-include-read-ci)
 
 (elem $table-builtin (%builtin-add) $num-add)
 (elem $table-builtin (%builtin-sub) $num-sub)
@@ -651,3 +657,4 @@
 (elem $table-builtin (%builtin-numerator) $numerator)
 (elem $table-builtin (%builtin-denominator) $denominator)
 (elem $table-builtin (%builtin-rationalize) $rationalize)
+(elem $table-builtin (%builtin-include-ci) $include-ci)
