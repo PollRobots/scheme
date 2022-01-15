@@ -189,16 +189,17 @@ async function main() {
     .option("-t, --tempfile <tempfile>", "Save the intermediate WAT file")
     .option("-m, --macros", "Use macro expansion")
     .option("-f, --force", "Build even if output is older than inputs")
+    .option("-v, --validate", "Validate files")
     .argument("<config>", "build configuration file");
 
   program.parse();
-  const opts =
-    program.opts<{
-      output: string;
-      tempfile?: string;
-      macros?: boolean;
-      force?: boolean;
-    }>();
+  const opts = program.opts<{
+    output: string;
+    tempfile?: string;
+    macros?: boolean;
+    force?: boolean;
+    validate?: boolean;
+  }>();
 
   const config = JSON.parse(await fs.readFile(program.args[0], "utf-8"));
   if (!isBuildWatConfig(config)) {
@@ -237,26 +238,28 @@ async function main() {
 
   contents.push(...makeSuffix(config));
   let joined = contents.join("\n");
+  let broken = false;
 
   if (opts.macros) {
     try {
       const parsed = parse(joined);
-      const expanded = emit(parsed);
+      const expanded = emit(parsed, !!opts.validate);
       console.log("Expanded macros");
       joined = expanded.join("");
     } catch (e) {
       console.error("Error expanding macros");
-      console.error(
-        Reflect.has(e as object, "message")
-          ? (e as { message: string }).message
-          : e
-      );
+      console.error(e instanceof Error ? e.message : e);
+      broken = true;
     }
   }
 
   if (opts.tempfile) {
     await fs.writeFile(opts.tempfile, joined, "utf-8");
     console.log(`Intermediate file written as '${opts.tempfile}'`);
+  }
+  if (broken) {
+    process.exitCode = 1;
+    process.exit();
   }
   const module = wabtModule.parseWat(
     opts.tempfile || "buildwat.tmp",

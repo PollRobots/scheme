@@ -305,12 +305,12 @@
   (if (i32.eqz (local.get $type))
     ;; cannot allocate an empty cell
     ;; trap
-    (then unreachable))
+    (then (unreachable)))
 
   ;; if (type > kMaxType) ) {
   (if (i32.gt_u (local.get $type) (%max-heap-type))
     ;; trap
-    (then unreachable))
+    (then (unreachable)))
 
   ;; heap[4] = empty-ptr[4]
   (i32.store offset=4
@@ -361,17 +361,13 @@
 (func $intern-symbol (param $str i32) (param $heap-ptr i32)
   (local $new-interned i32)
 
-  (local.set $new-interned
-    (call $hashtable-add
+  (local.set $new-interned (call $hashtable-add
       (global.get $g-interned)
       (local.get $str)
-      (local.get $heap-ptr)
-    )
-  )
-  (if (i32.ne (local.get $new-interned) (global.get $g-interned))
-    (global.set $g-interned (local.get $new-interned))
-  )
-)
+      (local.get $heap-ptr)))
+
+  (if (i32.ne (local.get $new-interned) (global.get $g-interned)) (then
+    (global.set $g-interned (local.get $new-interned)))))
 
 (func $heap-free (param $heap i32) (param $ptr i32)
   (local $size i32)
@@ -401,7 +397,7 @@
     (if (i32.rem_u (i32.sub (local.get $ptr) (local.get $heap)) (i32.const 12))
       ;; ptr doesn't point to a slot
       ;; trap
-      (then unreachable)
+      (then (unreachable))
       ;; }
     )
 
@@ -429,7 +425,7 @@
   (if (i32.eqz (local.get $next-ptr))
     ;; can't find a heap that owns this ptr
     ;; trap
-    (then unreachable)
+    (then (unreachable))
   ;; }
   )
 

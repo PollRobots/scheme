@@ -91,25 +91,25 @@
         (br $b_switch)))
 
     ;; case error:
-    (if (i32.eq (local.get $type (%error-type)))
+    (if (i32.eq (local.get $type) (%error-type))
       (then
         (call $print-error (local.get $ptr))
         (br $b_switch)))
 
     ;; case values:
-    (if (i32.eq (local.get $type (%values-type)))
+    (if (i32.eq (local.get $type) (%values-type))
       (then
         (call $print-cons (%car-l $ptr) (%cdr-l $ptr) (i32.const 0))
         (br $b_switch)))
 
     ;; case vector:
-    (if (i32.eq (local.get $type (%vector-type)))
+    (if (i32.eq (local.get $type) (%vector-type))
       (then
         (call $print-vector (local.get $ptr))
         (br $b_switch)))
 
     ;; case bytevector:
-    (if (i32.eq (local.get $type (%bytevector-type)))
+    (if (i32.eq (local.get $type) (%bytevector-type))
       (then
         (call $print-bytevector (local.get $ptr))
         (br $b_switch)))
@@ -128,14 +128,14 @@
           (local.get $ptr))
         (br $b_switch)))
 
-    (if (i32.eq (local.get $type (%syntax-rules-type))) (then
+    (if (i32.eq (local.get $type) (%syntax-rules-type)) (then
         (call $print-other
           (global.get $g-syntax-rules)
           (local.get $type)
           (local.get $ptr))
         (br $b_switch)))
 
-    (if (i32.eq (local.get $type (%rational-type))) (then
+    (if (i32.eq (local.get $type) (%rational-type)) (then
         (call $print (%car-l $ptr))
         (call $print-symbol (global.get $g-slash))
         (call $print (%cdr-l $ptr))

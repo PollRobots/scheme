@@ -191,7 +191,7 @@
 
         ;; add to accumulator
         ;; assert(acc-off == 0)
-        (if (local.get $acc-off) (then unreachable))
+        (if (local.get $acc-off) (then (unreachable)))
 
         (if (i32.eq (local.get $char) (i32.const 0x22)) ;; quote
           (then

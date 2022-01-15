@@ -241,7 +241,7 @@
     )
   )
   (if (i32.ne (local.get $check-len) (local.get $cp-len))
-    (then unreachable)
+    (then (unreachable))
   )
   (i32.store
     (i32.add (local.get $cp-buffer) (%word-size-l $offset))

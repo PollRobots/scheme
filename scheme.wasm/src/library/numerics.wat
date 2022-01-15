@@ -832,9 +832,9 @@
       (local.set $radix (%car (%cdr-l $args)))
       (%chk-type $b_fail $radix %i64-type)
       (br_if $b_fail (i32.ne (%get-type $radix) (%i64-type)))
-      (br_if $b_fail (i64.gt_u (local.tee $temp64 (i64.load offset=4
-              (local.get $radix))
-              (i64.const 16))))
+      (br_if $b_fail (i64.gt_u
+          (local.tee $temp64 (i64.load offset=4 (local.get $radix)))
+          (i64.const 16)))
       (local.set $radix (i32.wrap_i64 (local.get $temp64)))
       (br_if $b_check (i32.eq (local.get $radix) (i32.const 16)))
       (br_if $b_check (i32.eq (local.get $radix) (i32.const 10)))
@@ -863,9 +863,9 @@
       (br_if $b_fail (i32.ne (local.get $args-len) (i32.const 2)))
       (local.set $radix (%car (%cdr-l $args)))
       (%chk-type $b_fail $radix %i64-type)
-      (br_if $b_fail (i64.gt_u (local.tee $temp64 (i64.load offset=4
-              (local.get $radix))
-              (i64.const 16))))
+      (br_if $b_fail (i64.gt_u
+          (local.tee $temp64 (i64.load offset=4 (local.get $radix)))
+          (i64.const 16)))
       (local.set $radix (i32.wrap_i64 (local.get $temp64)))
       (br_if $b_check (i32.eq (local.get $radix) (i32.const 10)))
       ;; fail if radix is not 10 and type is real.

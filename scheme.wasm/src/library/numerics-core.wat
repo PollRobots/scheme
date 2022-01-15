@@ -330,7 +330,7 @@
 
   (local.set $num-type (%get-type $num))
 
-  (if (i32.eq (local.get $num-type (%i64-type)))
+  (if (i32.eq (local.get $num-type) (%i64-type))
     (then
       (local.set $temp-64 (i64.load offset=4 (local.get $num)))
       ;; There is one negative number that has no positive 64-bit integer, promote to big-int
@@ -576,11 +576,11 @@
 
   (local.set $num-type (%get-type $num))
 
-  (if (i32.eq (local.get $num-type) (%i64-type))
-    (return (call $num-core-int-sqrt-64 (local.get $num))))
+  (if (i32.eq (local.get $num-type) (%i64-type)) (then
+    (return (call $num-core-int-sqrt-64 (local.get $num)))))
 
-  (if (i32.eq (local.get $num-type) (%big-int-type))
-    (return (call $num-core-int-sqrt-big-int (local.get $num))))
+  (if (i32.eq (local.get $num-type) (%big-int-type)) (then
+    (return (call $num-core-int-sqrt-big-int (local.get $num)))))
 
   (return (i32.const 0)))
 

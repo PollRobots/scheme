@@ -1251,7 +1251,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
 
     (block $b_end (loop $b_start
         (if (call $mp-abs-gt? (local.get $testor) (local.get $rem))
-          (then nop)
+          (then (nop))
           (else
             ;; subtract testor from rem
             (local.set $rem (call $mp-sub-eq (local.get $rem) (local.get $testor)))
@@ -1433,7 +1433,7 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
 
       (block $b_shifted
         (if (i32.lt_u (local.get $src-ptr) (local.get $ptr))
-          (then unreachable))
+          (then (unreachable)))
 
         (if (i32.eq (local.get $src-ptr) (local.get $ptr))
           (then

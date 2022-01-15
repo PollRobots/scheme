@@ -11,7 +11,7 @@
 ;; HashTableEntry := (size 16)
 ;;    i64 digest (offset 0)  -- digest of str
 ;;    i32 str    (offset 8)  -- key
-;;    i32 data   (offset 12) -- data value 
+;;    i32 data   (offset 12) -- data value
 
 (func $hashtable-init (param $capacity i32) (result i32)
   (local $size i32) ;; total size of the hashtable
@@ -31,7 +31,7 @@
 
   ;; mallocZero(ptr, size);
   (call $malloc-zero (local.get $ptr) (local.get $size))
-  
+
   ;; ptr[0] = capacity
   (i32.store (local.get $ptr) (local.get $capacity))
 
@@ -49,13 +49,13 @@
   (local.set $capacity (i32.load (local.get $hashtable)))
   ;; count = hashtable[4]
   (local.set $count (i32.load offset=4 (local.get $hashtable)))
-  
+
 
   ;; slot = 0
   (local.set $slot (i32.const 0))
   ;; slot-ptr = hashtable + 8
   (local.set $slot-ptr (i32.add (local.get $hashtable) (i32.const 8)))
-  
+
   ;; while (slot != capacity) {
   (block $w_end
     (loop $w_start
@@ -98,7 +98,7 @@
   ;; if (count) {
   (if (local.get $count)
     ;; trap
-    (then unreachable)
+    (then (unreachable))
   ;; }
   )
 )
@@ -159,13 +159,13 @@
   ;; while (true)
   (loop $forever
     (if (i32.ge_u (local.get $slot) (local.get $capacity))
-      (then unreachable)
+      (then (unreachable))
     )
   ;; {
     ;; slot-ptr = ptr + 8 + 16 * slot
     (local.set $slot-ptr
-      (i32.add 
-        (i32.add 
+      (i32.add
+        (i32.add
           (local.get $ptr)
           (i32.const 8)
         )
@@ -184,7 +184,7 @@
       (block $b_or
         ;; skip next check if slot-digest == empty(0)
         (br_if $b_or (i64.eqz (local.get $slot-digest)))
-        ;; if slot-digest != tombstone(-1) then skip 
+        ;; if slot-digest != tombstone(-1) then skip
         (br_if $b_end (i64.ne (local.get $slot-digest) (i64.const -1)))
       )
 
@@ -203,7 +203,7 @@
       (return (local.get $ptr))
     )
     ;; } else {
-    ;; slot = (slot + 1 ) % capacity 
+    ;; slot = (slot + 1 ) % capacity
     (local.set $slot (i32.rem_u
       (i32.add (local.get $slot) (i32.const 1))
       (local.get $capacity))
@@ -212,7 +212,7 @@
 
     (br $forever)
   )
-  unreachable
+  (unreachable)
   ;; }
 )
 
@@ -246,7 +246,7 @@
   (block $b_end
     (loop $b_start
       ;; break if i >= capacity
-      (br_if $b_end (i32.ge_u (local.get $i) (local.get $capacity))) 
+      (br_if $b_end (i32.ge_u (local.get $i) (local.get $capacity)))
 
       ;; digest = *ptr
       (local.set $digest (i64.load (local.get $ptr)))
@@ -254,7 +254,7 @@
       ;; skip slots that have a zero digest or tombstone digest
       ;; if (digest && digest != -1) {
       (if (i64.ne (local.get $digest) (i64.const 0))
-        (then 
+        (then
           (if (i64.ne (local.get $digest) (i64.const -1))
             (then
               ;; str = *(ptr + 8)
@@ -317,7 +317,7 @@
       (br_if $b_end (i32.eqz (local.get $count)))
 
       ;; slot-ptr = ptr + 8 + slot-ptr * 16
-      (local.set $slot-ptr 
+      (local.set $slot-ptr
         (i32.add
           (i32.add
             (local.get $ptr)
@@ -361,7 +361,7 @@
       (br $b_start)
     )
   )
-  
+
   ;; return 0
   (return (local.get $capacity))
 )
@@ -389,10 +389,10 @@
       (return (i32.const 0))
     )
   )
-  
+
   ;; slot-ptr = ptr + 8 + slot-ptr * 16
   ;; slot-ptr = ptr + 8 + slot-ptr << 4
-  (local.set $slot-ptr 
+  (local.set $slot-ptr
     (i32.add
       (i32.add (local.get $ptr) (i32.const 8))
       (i32.shl (local.get $slot) (i32.const 4))
@@ -449,7 +449,7 @@
 
   ;; slot-ptr = ptr + 8 + slot * 16
   ;; slot-ptr = ptr + 8 + slot << 4
-  (local.set $slot-ptr 
+  (local.set $slot-ptr
     (i32.add
       (i32.add (local.get $ptr) (i32.const 8))
       (i32.shl (local.get $slot) (i32.const 4))
@@ -466,7 +466,7 @@
   (local.set $count (i32.load offset=4 (local.get $ptr)))
   ;; ptr[4] = count - 1
   (i32.store
-    (i32.add (local.get $ptr) (i32.const 4)) 
+    (i32.add (local.get $ptr) (i32.const 4))
     (i32.sub (local.get $count) (i32.const 1))
   )
 
@@ -501,7 +501,7 @@
 
   ;; slot-ptr = ptr + 8 + slot * 16
   ;; slot-ptr = ptr + 8 + slot << 4
-  (local.set $slot-ptr 
+  (local.set $slot-ptr
     (i32.add
       (i32.add (local.get $ptr) (i32.const 8))
       (i32.shl (local.get $slot) (i32.const 4))

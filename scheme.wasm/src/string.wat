@@ -6,7 +6,7 @@
   ;; if (len > 4) {
   (if (i32.gt_u (local.get $len) (i32.const 4))
   ;;   trap
-    (then unreachable)
+    (then (unreachable))
   )
   ;; }
 
@@ -28,7 +28,7 @@
   ;; if (len > 8) {
   (if (i32.gt_u (local.get $len) (i32.const 8))
   ;;   trap
-    (then unreachable)
+    (then (unreachable))
   )
   ;; }
 
@@ -50,7 +50,7 @@
   ;; if (len > 16) {
   (if (i32.gt_u (local.get $len) (i32.const 16))
   ;;   trap
-    (then unreachable)
+    (then (unreachable))
   )
   ;; }
 
@@ -83,7 +83,7 @@
   ;; if (len > 24) {
   (if (i32.gt_u (local.get $len) (i32.const 24))
     ;; trap
-    (then unreachable)
+    (then (unreachable))
   )
   ;; } else if (len <= 8) {
   (if (i32.le_s (local.get $len) (i32.const 8))
@@ -121,7 +121,7 @@
   ;; if (ptr == 0) {
   (if (i32.eqz (local.get $ptr))
     ;; trap
-    (then unreachable)
+    (then (unreachable))
   )
   ;; }
 
@@ -137,7 +137,7 @@
   ;; if (ptr == 0) {
   (if (i32.eqz (local.get $ptr))
     ;; trap
-    (then unreachable)
+    (then (unreachable))
   )
   ;; }
 
@@ -339,9 +339,9 @@
         (if (i32.eqz (i32.and (local.get $byte) (i32.const 0x80))) (then
             ;; single byte
             ;; if (cp-len == at) {
-            (if (i32.eq (local.get $cp-len) (local.get $at))
+            (if (i32.eq (local.get $cp-len) (local.get $at)) (then
             ;;   return (byte & 0x7F)
-              (return (i32.and (local.get $byte) (i32.const 0x7F))))
+              (return (i32.and (local.get $byte) (i32.const 0x7F)))))
 
             (%inc $ptr)
             (%dec $byte-len)
@@ -892,7 +892,7 @@
   ;; if (ptr == 0) {
   (if (i32.eqz (local.get $ptr))
     ;; trap
-    (then unreachable)
+    (then (unreachable))
   )
   ;; }
 

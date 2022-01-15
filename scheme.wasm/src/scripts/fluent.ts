@@ -55,8 +55,7 @@ export function* map<T, V>(iter: Iterable<T>, mapFn: (el: T) => V): Generator<V>
 export function* filter<T>(iter: Iterable<T>, predicate: (el:T) => boolean): Generator<T> {
   for (const el of iter) {
     if (predicate(el)) {
-      yield el; 
+      yield el;
     }
   }
 }
-

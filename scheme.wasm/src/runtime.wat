@@ -433,7 +433,7 @@
   (local $atom-str i32)
   (local $atom i32)
 
-  (if (i32.ne (%get-type $token) (%str-type)) (then unreachable))
+  (if (i32.ne (%get-type $token) (%str-type)) (then (unreachable)))
 
   ;; token-str == token[4]
   (local.set $token-str (i32.load offset=4 (local.get $token)))
@@ -695,7 +695,7 @@
   ;; if (short-str-len > 4) {
   (if (i32.gt_u (local.get $short-str-len) (i32.const 4))
     ;; trap
-    (then unreachable))
+    (then (unreachable)))
 
   ;; if (*str != short-str-len) {
   (if (i32.ne (i32.load (local.get $str)) (local.get $short-str-len))
@@ -1055,7 +1055,8 @@
                       (i32.mul (local.get $exponent) (local.get $radix))
                       (local.get $digit)))
                   (if (i32.and (local.get $exponent) (i32.const 0x8000_0000))
-                    (local.set $exponent-overflow (i32.const 1)))
+                    (then
+                      (local.set $exponent-overflow (i32.const 1))))
 
                   (%inc $exponent-digits)
                   (br $b_exp)))
@@ -1305,11 +1306,10 @@
           (return (local.get $cont-stack))))
 
       ;; some other function is the continuation
-      (local.get $env)
-      (local.get $args)
-      (local.get $fn)
-      call_indirect $table-builtin (type $builtin-type)
-      (local.set $result))
+      (local.set $result (call_indirect $table-builtin (type $builtin-type)
+          (local.get $env)
+          (local.get $args)
+          (local.get $fn))))
 
     ;; done with this item, so pop it off the cont-stack
     (local.set $cont-stack (%cdr-l $cont-stack))
@@ -1580,11 +1580,10 @@
               (%cdr-l $op)
               (local.get $args)))))
 
-      (local.get $env)
-      (local.get $args)
-      (local.get $fn)
-      call_indirect $table-builtin (type $builtin-type)
-      (return)))
+      (return (call_indirect $table-builtin (type $builtin-type)
+          (local.get $env)
+          (local.get $args)
+          (local.get $fn)))))
 
   (if (i32.eq (local.get $op-type) (%syntax-rules-type)) (then
       (return (call $apply-syntax-rules
@@ -1627,13 +1626,12 @@
   (local.set $args (call $reverse-impl (local.get $temp)))
 
   (if (i32.eq (local.get $op-type) (%builtin-type)) (then
-      (local.get $env)
-      (local.get $args)
-      (i32.load offset=4 (local.get $op))
-      call_indirect $table-builtin (type $builtin-type)
-      (return)))
+      (return (call_indirect $table-builtin (type $builtin-type)
+        (local.get $env)
+        (local.get $args)
+        (i32.load offset=4 (local.get $op))))))
 
-  (if (i32.eq (local.get $op-type (%lambda-type))) (then
+  (if (i32.eq (local.get $op-type) (%lambda-type)) (then
       (return (call $apply-lambda
         (local.get $env)
         (local.get $op)
@@ -1658,8 +1656,8 @@
   (%pop-l $stack $args)
   (%push-l $val $stack)
 
-  (if (i32.eq (%get-type $args) (%nil-type))
-    (return (local.get $stack)))
+  (if (i32.eq (%get-type $args) (%nil-type)) (then
+    (return (local.get $stack))))
 
   (return (call $cont-alloc
       (%eval-fn) ;; eval
@@ -1723,10 +1721,10 @@
           (%cdr-l $op)
           (local.get $args)))))
 
-  (local.get $env)
-  (local.get $args)
-  (local.get $fn)
-  call_indirect $table-builtin (type $builtin-type))
+  (return (call_indirect $table-builtin (type $builtin-type)
+      (local.get $env)
+      (local.get $args)
+      (local.get $fn))))
 
 (func $apply-lambda (param $env i32) (param $lambda i32) (param $args i32) (result i32)
   (local $closure i32)
@@ -1839,7 +1837,7 @@
     (if (i32.eq (%get-type $args) (%nil-type))
       ;; TODO return an error for too few args
       ;; trap
-      (then unreachable)
+      (then (unreachable))
     ;; }
     )
 

@@ -17,7 +17,7 @@
       (br_if $b_end (i32.eq (local.get $f-type) (%nil-type)))
       ;; if (f-type != cons) trap
       (if (i32.ne (local.get $f-type) (%cons-type))
-        (then unreachable)
+        (then (unreachable))
       )
 
       ;; fval = car(formals)
@@ -33,7 +33,7 @@
   )
 
   ;; return heap-alloc(heap, lambda-type, env, args)
-  (return 
+  (return
     (call $heap-alloc
       (global.get $g-heap)
       (%lambda-type)

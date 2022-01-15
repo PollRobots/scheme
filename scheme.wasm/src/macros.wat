@@ -91,7 +91,7 @@
 (%define %word-size-l (%val) (i32.shl (local.get %val) (i32.const 2)))
 (%define %word-size (%val) (i32.shl %val (i32.const 2)))
 
-(%define %assert (%cond) (if (i32.eqz %cond) (then unreachable)))
+(%define %assert (%cond) (if (i32.eqz %cond) (then (unreachable))))
 
 (%define %assert-cons (%arg) (%assert (i32.eq (%get-type %arg) (%cons-type))))
 

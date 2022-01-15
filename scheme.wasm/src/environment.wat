@@ -41,7 +41,7 @@
   (if (i32.ne (%get-type $key) (%symbol-type))
     ;; trap
     ;; TODO: return error
-    (then unreachable)
+    (then (unreachable))
   ;; }
   )
 
@@ -55,7 +55,7 @@
   (if (call $hashtable-has (local.get $hashtable) (local.get $key-str))
     ;; trap
     ;; TODO: return error
-    (then unreachable)
+    (then (unreachable))
   ;; }
   )
 

@@ -161,7 +161,7 @@
 
       (local.set $flags (%get-flags $arg))
       (br_if $b_end (i32.eqz (i32.and (local.get $flags) (i32.const 1))))
-      (%set-flags $arg (i32.and (local.get $flags (i32.const 0xFE))))
+      (%set-flags $arg (i32.and (local.get $flags) (i32.const 0xFE)))
 
       (local.set $arg (%cdr-l $arg))
       (br $b_start)))

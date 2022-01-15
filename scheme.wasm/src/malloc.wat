@@ -128,7 +128,7 @@
   ;; if (res < 0)
   (if (i32.lt_s (local.get $oldsize) (i32.const 0))
     ;; trap
-    (then unreachable)
+    (then (unreachable))
   )
 
   ;; memsize = memory.size << 16
@@ -171,7 +171,7 @@
     (then
       local.get $ptr
       global.get $malloc-hdr-offset
-      unreachable
+      (unreachable)
     )
   )
 
@@ -192,7 +192,7 @@
     (then
       local.get $h_next
       local.get $hdr
-      unreachable
+      (unreachable)
     )
   )
 
@@ -212,7 +212,7 @@
         (then
           local.get $hdr
           local.get $curr
-          unreachable
+          (unreachable)
         )
       )
 
@@ -228,7 +228,7 @@
             (then
               local.get $fend
               local.get $curr
-              unreachable
+              (unreachable)
             )
           )
 
@@ -278,7 +278,7 @@
                 (then
                   local.get $fend
                   local.get $c_next
-                  unreachable
+                  (unreachable)
                 )
               )
             )
@@ -341,7 +341,7 @@
   ;; trap
   (i32.const 42)
   (i32.const 42)
-  unreachable
+  (unreachable)
 )
 
 (func $malloc-zero (param $ptr i32) (param $size i32)
