@@ -1,7 +1,8 @@
 (define have-prelude? #f)
-(cond 
+(cond
   ((not have-prelude?)
-    (include 
+    (include
+      "delay.scm"
       "pair.scm"
       "numerics.scm"
       "procedures.scm")
