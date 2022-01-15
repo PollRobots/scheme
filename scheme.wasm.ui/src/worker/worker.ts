@@ -7,6 +7,7 @@ type ResponseResolver = (msg: messages.WorkerMessage) => void;
 type SendableMessages =
   | messages.DebugBreak
   | messages.EnvResponse
+  | messages.ErrorMessage
   | messages.GcResponse
   | messages.OutputMessage
   | messages.PrintResponse
@@ -18,6 +19,7 @@ class SchemeWorker {
   private working_: boolean = false;
   private idCounter: number = 0x1000_0000;
   private readonly pendingResponses: Map<number, ResponseResolver> = new Map();
+  private readonly output: string[] = [];
 
   constructor() {
     console.log("Started runtime worker");
@@ -123,7 +125,7 @@ class SchemeWorker {
   }
 
   private onEnableDebug(cmd: messages.EnableDebug) {
-    if (!this.runtime) {
+    if (!this.runtime || this.runtime.stopped) {
       return;
     }
     this.runtime.gDebug = cmd.enabled;
@@ -131,7 +133,7 @@ class SchemeWorker {
   }
 
   private onGcRequest(cmd: messages.GcRequest) {
-    if (!this.runtime) {
+    if (!this.runtime || this.runtime.stopped) {
       this.onStatus(cmd);
       return;
     }
@@ -158,7 +160,7 @@ class SchemeWorker {
   }
 
   private onHeapRequest(cmd: messages.HeapRequest) {
-    if (!this.runtime) {
+    if (!this.runtime || this.runtime.stopped) {
       return;
     }
     const hdr = new Uint32Array(this.runtime.heapItem(cmd.ptr));
@@ -182,7 +184,7 @@ class SchemeWorker {
   }
 
   private onPrint(cmd: messages.PrintRequest) {
-    if (!this.runtime) {
+    if (!this.runtime || this.runtime.stopped) {
       this.postMessage({ type: "print-resp", id: cmd.id, content: "" });
       return;
     }
@@ -194,7 +196,7 @@ class SchemeWorker {
   }
 
   private printPtr(ptr: number) {
-    if (!this.runtime) {
+    if (!this.runtime || this.runtime.stopped) {
       return "";
     }
     const output: string[] = [];
@@ -208,36 +210,68 @@ class SchemeWorker {
   }
 
   private async onInput(cmd: messages.InputMessage) {
-    if (!this.runtime) {
+    if (!this.runtime || this.runtime.stopped) {
       return;
     }
     this.working_ = true;
     this.onStatus();
     await this.runtime.processLine(cmd.content);
     this.working_ = false;
+    this.flushOutput();
     this.onStatus();
   }
 
+  errorToString(err: unknown): string {
+    if (err instanceof Error) {
+      if (err.stack) {
+        return err.stack;
+      }
+      return err.message;
+    } else {
+      return (err as any).toString();
+    }
+  }
+
   private async onStart(cmd: messages.StartMessage) {
-    if (!this.runtime) {
-      this.runtime = await SchemeRuntime.load();
-      this.runtime.addEventListener("write", this.onWrite);
-      this.runtime.addEventListener("debug", this.onDebug);
+    try {
+      if (!this.runtime) {
+        this.runtime = await SchemeRuntime.load();
+        this.runtime.addEventListener("write", this.onWrite);
+        this.runtime.addEventListener("debug", this.onDebug);
+      }
+      if (this.runtime.stopped) {
+        await this.runtime.start();
+      }
+      this.postMessage({
+        type: "started",
+        id: cmd.id,
+        heap: this.runtime.gHeap,
+      });
+    } catch (err) {
+      this.postMessage({
+        type: "error",
+        id: cmd.id,
+        err: this.errorToString(err),
+      });
     }
-    if (this.runtime.stopped) {
-      await this.runtime.start();
-    }
-    this.postMessage({ type: "started", id: cmd.id, heap: this.runtime.gHeap });
     this.onStatus();
   }
 
   private onWrite(text: string) {
+    this.output.push(text);
+    // accumulate until there is a new line
+    if (text.includes("\n")) {
+      this.flushOutput();
+    }
+  }
+  private flushOutput() {
+    const text = this.output.join("");
+    this.output.splice(0, this.output.length);
     this.postMessage({ type: "output", id: -1, content: text });
-    this.onStatus();
   }
 
   private onDebug(ptr: number, resolver: (resultStep: boolean) => void) {
-    if (!this.runtime) {
+    if (!this.runtime || this.runtime.stopped) {
       resolver(false);
       return;
     }

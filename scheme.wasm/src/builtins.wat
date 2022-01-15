@@ -224,8 +224,9 @@
 (%define %builtin-include-ci ()               (i32.const 217))
 (%define %cont-include-ci ()                  (i32.const 218))
 (%define %cont-include-read-ci ()             (i32.const 219))
+(%define %builtin-panic ()                    (i32.const 220))
 
-(table $table-builtin 220 anyfunc)
+(table $table-builtin 221 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
   (local $quote i32)
@@ -415,6 +416,7 @@
   (%add-builtin (%str %sym-128 128 "denominator") (%builtin-denominator))
   (%add-builtin (%str %sym-128 128 "rationalize") (%builtin-rationalize))
   (%add-builtin (%str %sym-128 128 "include-ci") (%builtin-include-ci))
+  (%add-builtin (%str %sym-64 64 "panic") (%builtin-panic))
 
   (%add-special (%sym-32 0x6669 2) (%special-if))               ;; 'if'
   (%add-special (global.get $g-let) (%special-let))             ;; 'let'
@@ -658,3 +660,4 @@
 (elem $table-builtin (%builtin-denominator) $denominator)
 (elem $table-builtin (%builtin-rationalize) $rationalize)
 (elem $table-builtin (%builtin-include-ci) $include-ci)
+(elem $table-builtin (%builtin-panic) $panic)

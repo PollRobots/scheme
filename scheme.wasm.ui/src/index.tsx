@@ -292,9 +292,21 @@ class App extends React.Component<{}, AppState> {
       if (!this.runtime.loaded) {
         await this.runtime.load();
         this.setState({ first: false });
-        await this.runtime.start();
+        if (!(await this.runtime.start())) {
+          this.onWrite(
+            "raw",
+            "\x1B[0;31mUnable to load wasm. " +
+              "\x1B[0;94mIt's unlikely that trying again will help ‾\\_(シ)_/‾ \x1B[0m\n\n"
+          );
+        }
       } else if (!this.runtime || this.runtime.stopped) {
-        await this.runtime.start();
+        if (!(await this.runtime.start())) {
+          this.onWrite(
+            "raw",
+            "\x1B[0;31mUnable to start runtime. " +
+              "\x1B[0;94mIt's unlikely that trying again will help ‾\\_(シ)_/‾ \x1B[0m\n\n"
+          );
+        }
       } else if (this.runtime.waiting) {
         return;
       }

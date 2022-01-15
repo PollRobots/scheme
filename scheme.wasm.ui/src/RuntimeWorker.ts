@@ -91,21 +91,26 @@ export class RuntimeWorker {
     this.loaded_ = true;
     this.status_ = "stopped";
     this.worker_.addEventListener("message", (evt) => this.onMessage(evt));
-    this.worker_.addEventListener("error", console.error);
-    this.worker_.addEventListener("error", console.error);
+    this.worker_.addEventListener("error", (err) => this.onWorkerError(err));
+    this.worker_.addEventListener("messageerror", (err) =>
+      console.error("Worker Message Error:", err)
+    );
   }
 
-  async start() {
+  async start(): Promise<boolean> {
     if (!this.loaded || !this.stopped) {
-      return;
+      throw new Error("Invalid Operation");
     }
     const response = await this.sendMessage({
       type: "start",
       id: this.nextId(),
     });
-    if (messages.isStartedMessage(response)) {
+    if (messages.isErrorMessage(response)) {
+      return false;
+    } else if (messages.isStartedMessage(response)) {
       this.heap_ = response.heap;
     }
+    return true;
   }
 
   addEventListener(type: "status", handler: StatusEventHandler): void;
@@ -206,13 +211,9 @@ export class RuntimeWorker {
     this.heap_ = undefined;
     this.memorySize_ = 0;
     this.pendingResponses.clear();
-    this.onOutput({
-      type: "output",
-      id: -1,
-      content: `
+    this.onOutput(`
 \x1B[0;31mscheme runtime terminated\x1B[0m
-`,
-    });
+`);
     this.statusListeners.forEach((el) => {
       el();
     });
@@ -252,6 +253,10 @@ export class RuntimeWorker {
     return this.idCounter_++;
   }
 
+  private onWorkerError(err: ErrorEvent) {
+    this.onOutput(`\x1B[0;31m${err.message}\x1B[0m`);
+  }
+
   private postMessage(msg: SendableMessages) {
     if (!this.worker_) {
       console.error("Cannot post message, no worker!");
@@ -281,6 +286,8 @@ export class RuntimeWorker {
       this.onMemory(cmd);
     } else if (messages.isDebugBreak(cmd)) {
       this.onDebugBreak(cmd);
+    } else if (messages.isErrorMessage(cmd)) {
+      this.onErrorMessage(cmd);
     }
 
     if (this.pendingResponses.has(cmd.id)) {
@@ -290,6 +297,10 @@ export class RuntimeWorker {
         resolver(cmd);
       }
     }
+  }
+
+  private onErrorMessage(cmd: messages.ErrorMessage) {
+    this.onOutput(`\x1B[0;31m${cmd.err}\x1B[0m`);
   }
 
   private getResponse(id: number): Promise<messages.WorkerMessage> {
@@ -329,8 +340,15 @@ export class RuntimeWorker {
     });
   }
 
-  private onOutput(msg: messages.OutputMessage) {
-    this.pendingOutput.push(msg.content);
+  private onOutput(text: string): void;
+  private onOutput(msg: messages.OutputMessage): void;
+
+  private onOutput(arg: unknown): unknown {
+    if (typeof arg === "string") {
+      this.pendingOutput.push(arg);
+    } else if (messages.isOutputMessage(arg)) {
+      this.pendingOutput.push(arg.content);
+    }
 
     if (this.outputCounter > 0) {
       return;

@@ -41,6 +41,15 @@ export function isStatusResponse(value: any): value is StatusResponse {
   );
 }
 
+export interface ErrorMessage extends WorkerMessage {
+  type: "error";
+  err: string;
+}
+
+export function isErrorMessage(value: any): value is ErrorMessage {
+  return value && value.type === "error" && typeof value.err === "string";
+}
+
 export interface OutputMessage extends WorkerMessage {
   type: "output";
   content: string;
