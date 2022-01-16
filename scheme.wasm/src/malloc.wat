@@ -167,13 +167,9 @@
   (local $n_size i32)
 
   ;; if (ptr < malloc-hdr_offset + 8)
-  (if (i32.lt_u (local.get $ptr) (i32.add (global.get $malloc-hdr-offset) (i32.const 8)))
-    (then
-      local.get $ptr
-      global.get $malloc-hdr-offset
-      (unreachable)
-    )
-  )
+  (if (i32.lt_u (local.get $ptr)
+      (i32.add (global.get $malloc-hdr-offset) (i32.const 8)))
+    (then (unreachable)))
 
   ;; hdr = ptr - 8
   (local.set $hdr (i32.sub (local.get $ptr) (i32.const 8)))
@@ -187,14 +183,8 @@
   (local.set $fend (i32.add (local.get $ptr) (local.get $h_size)))
 
   ;; if (h_next != hdr)
-  (if (i32.ne (local.get $h_next) (local.get $hdr))
-    ;; trap
-    (then
-      local.get $h_next
-      local.get $hdr
-      (unreachable)
-    )
-  )
+  (if (i32.ne (local.get $h_next) (local.get $hdr)) (then
+      (unreachable)))
 
   ;; prev = malloc-hdr_offset
   (local.set $prev (global.get $malloc-hdr-offset))
@@ -207,14 +197,9 @@
       (br_if $w_end (i32.eqz (local.get $curr)))
 
       ;; if (hdr == curr)
-      (if (i32.eq (local.get $hdr) (local.get $curr))
-        ;; trap, double free
-        (then
-          local.get $hdr
-          local.get $curr
-          (unreachable)
-        )
-      )
+      (if (i32.eq (local.get $hdr) (local.get $curr)) (then
+          ;; double free
+          (unreachable)))
 
       ;; c_next, c_size = malloc-load-list(curr)
       (%malloc-load-list-l $curr $c_next $c_size)
@@ -223,14 +208,9 @@
       (if (i32.lt_u (local.get $hdr) (local.get $curr))
         (then
           ;; if (fend > curr)
-          (if (i32.gt_u (local.get $fend) (local.get $curr))
-            ;; trap, blocks overlap
-            (then
-              local.get $fend
-              local.get $curr
-              (unreachable)
-            )
-          )
+          (if (i32.gt_u (local.get $fend) (local.get $curr)) (then
+              ;; blocks overlap
+              (unreachable)))
 
           ;; if (fend == curr)
           (if (i32.eq (local.get $fend) (local.get $curr))
@@ -271,23 +251,14 @@
           ;; the free block is immediately adjacent (after) to the current block
 
           ;; if (c_next != 0 && fend > c_next)
-          (if (i32.ne (local.get $c_next) (i32.const 0))
-            (then
-              (if (i32.gt_u (local.get $fend) (local.get $c_next))
-                ;; trap, blocks overlap
-                (then
-                  local.get $fend
-                  local.get $c_next
-                  (unreachable)
-                )
-              )
-            )
-          )
+          (if (i32.ne (local.get $c_next) (i32.const 0)) (then
+              (if (i32.gt_u (local.get $fend) (local.get $c_next)) (then
+                  ;; blocks overlap
+                  (unreachable)))))
 
           ;; merge blocks
           ;; if (fend == c_next)
-          (if (i32.eq (local.get $fend) (local.get $c_next)
-            )
+          (if (i32.eq (local.get $fend) (local.get $c_next))
             (then
               ;; merge with current and next
               ;; n_next, n_size = malloc-load-list(c_next)
@@ -296,11 +267,9 @@
               (%malloc-store-list
                 (local.get $curr)
                 (local.get $n_next)
-                (i32.add (i32.add (i32.add (local.get $c_size) (local.get $h_size)) (local.get $n_size)) (i32.const 16))
-              )
+                (i32.add (i32.add (i32.add (local.get $c_size) (local.get $h_size)) (local.get $n_size)) (i32.const 16)))
               ;; return
-              (return)
-            )
+              (return))
             (else
               ;; merge with current block (i.e. extend current block)
               ;; malloc-store-list(curr, c_next, c_size + h_size + 8)
@@ -309,40 +278,26 @@
                 (local.get $c_next)
                 (i32.add (i32.add (local.get $c_size) (local.get $h_size)) (i32.const 8)))
               ;; return
-              (return)
-            )
-          )
-        )
+              (return))))
         (else
           ;; if (c_next == 0)
-          (if (i32.eqz (local.get $c_next))
-            (then
+          (if (i32.eqz (local.get $c_next)) (then
               ;; this is the last block, so make the free block the last block
               ;; malloc-store-list(hdr, c_next, h_size)
               (%malloc-store-list (local.get $hdr) (i32.const 0) (local.get $h_size))
               ;; malloc-store-list(curr, hdr, c_size)
               (%malloc-store-list-l $curr $hdr $c_size)
 
-              (return)
-            )
-            ;; otherwise keep going to the next free block
-          )
-        )
-      )
+              (return)))))
 
       ;; prev = curr
       (local.set $prev (local.get $curr))
       ;; curr = c_next
       (local.set $curr (local.get $c_next))
-      (br $w_start)
-    )
-  )
+      (br $w_start)))
 
   ;; trap
-  (i32.const 42)
-  (i32.const 42)
-  (unreachable)
-)
+  (unreachable))
 
 (func $malloc-zero (param $ptr i32) (param $size i32)
   (local $rounded i32)

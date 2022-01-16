@@ -52,7 +52,11 @@ function validateModule(module: List) {
     );
   }
 
-  for (const elem of fluent.skip(module.getSignificantElements(), 1)) {
+  validateModuleLevel(fluent.skip(module.getSignificantElements(), 1));
+}
+
+function validateModuleLevel(elements: Generator<ParsedWat>) {
+  for (const elem of elements) {
     if (isAtom(elem)) {
       throw new Error(`Unexpected atom in module ${elem.token.line}`);
     } else if (isList(elem)) {
@@ -60,7 +64,7 @@ function validateModule(module: List) {
         continue;
       }
       if (elem.isMacroScope) {
-        // TODO, handle macro scope
+        validateModuleLevel(fluent.skip(elem.getSignificantElements(), 1));
         continue;
       }
 
@@ -308,6 +312,7 @@ const kInstructionValidators: Map<string, Validator> = new Map([
   ["local.set", localSetValidator],
   ["local.tee", localSetValidator],
   ["loop", blockValidator],
+  ["memory.size", thunkValidator],
   ["nop", thunkValidator],
   ["return", returnValidator],
   ["select", selectValidator],
@@ -317,6 +322,23 @@ const kInstructionValidators: Map<string, Validator> = new Map([
 
 const kUnaryInstructions = [
   "drop",
+  "f32.abs",
+  "f32.ceil",
+  "f32.convert_i32_s",
+  "f32.convert_i32_u",
+  "f32.convert_i64_s",
+  "f32.convert_i64_u",
+  "f32.demote_f64",
+  "f32.eqz",
+  "f32.floor",
+  "f32.max",
+  "f32.min",
+  "f32.nearest",
+  "f32.neg",
+  "f32.reinterpret_i32",
+  "f32.reinterpret_i64",
+  "f32.sqrt",
+  "f32.trunc",
   "f64.abs",
   "f64.ceil",
   "f64.convert_i32_s",
@@ -325,8 +347,11 @@ const kUnaryInstructions = [
   "f64.convert_i64_u",
   "f64.eqz",
   "f64.floor",
+  "f64.max",
+  "f64.min",
   "f64.nearest",
   "f64.neg",
+  "f64.promote_f32",
   "f64.reinterpret_i64",
   "f64.sqrt",
   "f64.trunc",
@@ -334,6 +359,15 @@ const kUnaryInstructions = [
   "i32.ctz",
   "i32.eqz",
   "i32.popcnt",
+  "i32.reinterpret_f32",
+  "i32.trunc_f32_s",
+  "i32.trunc_f32_u",
+  "i32.trunc_f64_s",
+  "i32.trunc_f64_u",
+  "i32.trunc_sat_f32_s",
+  "i32.trunc_sat_f32_u",
+  "i32.trunc_sat_f64_s",
+  "i32.trunc_sat_f64_u",
   "i32.wrap_i64",
   "i64.clz",
   "i64.ctz",
@@ -341,9 +375,16 @@ const kUnaryInstructions = [
   "i64.extend_i32_s",
   "i64.extend_i32_u",
   "i64.popcnt",
+  "i64.reinterpret_f64",
+  "i64.trunc_f32_s",
+  "i64.trunc_f32_u",
   "i64.trunc_f64_s",
   "i64.trunc_f64_u",
-  "i64.reinterpret_f64",
+  "i64.trunc_sat_f32_s",
+  "i64.trunc_sat_f32_u",
+  "i64.trunc_sat_f64_s",
+  "i64.trunc_sat_f64_u",
+  "memory.grow",
 ];
 
 kUnaryInstructions.forEach((el) =>
@@ -351,64 +392,76 @@ kUnaryInstructions.forEach((el) =>
 );
 
 const kBinaryInstructions = [
-  "i32.eq",
-  "i32.ne",
-  "i32.gt_s",
-  "i32.gt_u",
-  "i32.lt_s",
-  "i32.lt_u",
-  "i32.ge_s",
-  "i32.ge_u",
-  "i32.le_s",
-  "i32.le_u",
+  "f32.add",
+  "f32.div",
+  "f32.eq",
+  "f32.ge",
+  "f32.gt",
+  "f32.le",
+  "f32.lt",
+  "f32.mul",
+  "f32.ne",
+  "f32.sub",
+  "f64.add",
+  "f64.div",
+  "f64.eq",
+  "f64.ge",
+  "f64.gt",
+  "f64.le",
+  "f64.lt",
+  "f64.mul",
+  "f64.ne",
+  "f64.sub",
   "i32.add",
-  "i32.sub",
-  "i32.mul",
+  "i32.and",
   "i32.div_s",
   "i32.div_u",
+  "i32.eq",
+  "i32.ge_s",
+  "i32.ge_u",
+  "i32.gt_s",
+  "i32.gt_u",
+  "i32.le_s",
+  "i32.le_u",
+  "i32.lt_s",
+  "i32.lt_u",
+  "i32.mul",
+  "i32.ne",
+  "i32.or",
   "i32.rem_s",
   "i32.rem_u",
-  "i32.and",
-  "i32.or",
-  "i32.xor",
-  "i32.shr_u",
-  "i32.shr_s",
-  "i32.shl",
   "i32.rotl",
-  "i64.eq",
-  "i64.ne",
-  "i64.gt_s",
-  "i64.gt_u",
-  "i64.lt_s",
-  "i64.lt_u",
-  "i64.ge_s",
-  "i64.ge_u",
-  "i64.le_s",
-  "i64.le_u",
+  "i32.rotr",
+  "i32.shl",
+  "i32.shr_s",
+  "i32.shr_u",
+  "i32.sub",
+  "i32.xor",
   "i64.add",
-  "i64.sub",
-  "i64.mul",
+  "i64.and",
   "i64.div_s",
   "i64.div_u",
+  "i64.eq",
+  "i64.ge_s",
+  "i64.ge_u",
+  "i64.gt_s",
+  "i64.gt_u",
+  "i64.le_s",
+  "i64.le_u",
+  "i64.lt_s",
+  "i64.lt_u",
+  "i64.mul",
+  "i64.ne",
+  "i64.or",
   "i64.rem_s",
   "i64.rem_u",
-  "i64.and",
-  "i64.or",
-  "i64.xor",
-  "i64.shr_u",
-  "i64.shr_s",
-  "i64.shl",
   "i64.rotl",
-  "f64.eq",
-  "f64.ne",
-  "f64.gt",
-  "f64.lt",
-  "f64.ge",
-  "f64.le",
-  "f64.add",
-  "f64.sub",
-  "f64.mul",
-  "f64.div",
+  "i64.rotr",
+  "i64.shl",
+  "i64.shr_s",
+  "i64.shr_u",
+  "i64.sub",
+  "i64.xor",
 ];
 
 kBinaryInstructions.forEach((el) =>
@@ -416,20 +469,20 @@ kBinaryInstructions.forEach((el) =>
 );
 
 const kLoadInstructions = [
-  "i32.load",
-  "i32.load8_u",
-  "i32.load8_s",
-  "i32.load16_u",
-  "i32.load16_s",
-  "i64.load",
-  "i64.load8_u",
-  "i64.load8_s",
-  "i64.load16_u",
-  "i64.load16_s",
-  "i64.load32_u",
-  "i64.load32_s",
   "f32.load",
   "f64.load",
+  "i32.load",
+  "i32.load16_s",
+  "i32.load16_u",
+  "i32.load8_s",
+  "i32.load8_u",
+  "i64.load",
+  "i64.load16_s",
+  "i64.load16_u",
+  "i64.load32_s",
+  "i64.load32_u",
+  "i64.load8_s",
+  "i64.load8_u",
 ];
 
 kLoadInstructions.forEach((el) =>
@@ -437,15 +490,15 @@ kLoadInstructions.forEach((el) =>
 );
 
 const kStoreInstructions = [
-  "i32.store",
-  "i32.store8",
-  "i32.store16",
-  "i64.store",
-  "i64.store8",
-  "i64.store16",
-  "i64.store32",
   "f32.store",
   "f64.store",
+  "i32.store",
+  "i32.store16",
+  "i32.store8",
+  "i64.store",
+  "i64.store16",
+  "i64.store32",
+  "i64.store8",
 ];
 
 kStoreInstructions.forEach((el) =>
@@ -570,19 +623,13 @@ function loadValidator(funcName: Atom, context: ValidatorContext, list: List) {
   }
   if (elements.length != 1) {
     throw new Error(
-      `${first} should have 1 argument, found ${
-         elements.length
-      } in ${funcName} at line ${first.token.line}`
+      `${first} should have 1 argument, found ${elements.length} in ${funcName} at line ${first.token.line}`
     );
   }
   validateInstruction(funcName, context, elements[0]);
 }
 
-function storeValidator(
-  funcName: Atom,
-  context: ValidatorContext,
-  list: List
-) {
+function storeValidator(funcName: Atom, context: ValidatorContext, list: List) {
   const elements = Array.from(list.getSignificantElements());
   const first = elements.shift() as Atom;
   const offset = assertAtomMatchOptional(elements[0], /^offset=\d+$/);
@@ -591,9 +638,7 @@ function storeValidator(
   }
   if (elements.length != 2) {
     throw new Error(
-      `${first} should have 2 arguments, found ${
-        elements.length
-      } in ${funcName} at line ${first.token.line}`
+      `${first} should have 2 arguments, found ${elements.length} in ${funcName} at line ${first.token.line}`
     );
   }
   validateInstruction(funcName, context, elements[0]);
