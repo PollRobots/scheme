@@ -40,25 +40,25 @@
 (func $sin-impl (param $v f64) (result f64)
   (local $t f64)
 
-  (if (i32.or 
-      (call $ieee-inf? (local.get $v)) 
+  (if (i32.or
+      (call $ieee-inf? (local.get $v))
       (call $ieee-nan? (local.get $v))) (then
       (return (f64.const nan))))
 
   ;; if |x| <= π/4 --> call inner impl
-  (if (f64.le (f64.abs (local.get $v)) (%kPIbyFour)) (then 
+  (if (f64.le (f64.abs (local.get $v)) (%kPIbyFour)) (then
     (return (call $sin-inner-impl (local.get $v)))))
 
   ;; sin(-x) = -sin(x)
-  (if (f64.lt (local.get $v) (f64.const 0)) (then 
+  (if (f64.lt (local.get $v) (f64.const 0)) (then
     (return (f64.neg (call $sin-impl (f64.neg (local.get $v)))))))
 
   ;; large numbers will necessarily lose accuracy...
   ;; scale anything larger than 2π
   (if (f64.ge (local.get $v) (%kTwoPI)) (then
-    ;; t = v / 2π 
+    ;; t = v / 2π
     (local.set $t (f64.div (local.get $v) (%kTwoPI)))
-    ;; t = t - ⌊t⌋ 
+    ;; t = t - ⌊t⌋
     (local.set $t (f64.sub (local.get $t) (f64.floor (local.get $t))))
     ;; v = t·2π
     (return (call $sin-impl (f64.mul (local.get $t) (%kTwoPI))))))
@@ -67,9 +67,9 @@
   (if (f64.gt (local.get $v) (%kPI)) (then
     (return (f64.neg (call $sin-impl (f64.sub (local.get $v) (%kPI)))))))
 
-  ;; sin(π/2 + x) = -sin(x)
+  ;; sin(π/2 + x) = sin(x)
   (if (f64.gt (local.get $v) (%kPIbyTwo)) (then
-    (return (f64.neg (call $sin-impl (f64.sub (local.get $v) (%kPIbyTwo)))))))
+    (return (call $sin-impl (f64.sub (%kPI) (local.get $v))))))
 
   ;; sin(π/4 + x) = cos(π/2 - x)
   (if (f64.gt (local.get $v) (%kPIbyFour)) (then
@@ -81,25 +81,25 @@
 (func $cos-impl (param $v f64) (result f64)
   (local $t f64)
 
-  (if (i32.or 
-      (call $ieee-inf? (local.get $v)) 
+  (if (i32.or
+      (call $ieee-inf? (local.get $v))
       (call $ieee-nan? (local.get $v))) (then
       (return (f64.const nan))))
 
   ;; if |x| <= π/4 --> call inner impl
-  (if (f64.le (f64.abs (local.get $v)) (%kPIbyFour)) (then 
+  (if (f64.le (f64.abs (local.get $v)) (%kPIbyFour)) (then
     (return (call $cos-inner-impl (local.get $v)))))
 
   ;; cos(-x) = cos(x)
-  (if (f64.lt (local.get $v) (f64.const 0)) (then 
+  (if (f64.lt (local.get $v) (f64.const 0)) (then
     (local.set $v (f64.neg (local.get $v)))))
 
   ;; large numbers will necessarily lose accuracy...
   ;; scale anything larger than 2π
   (if (f64.ge (local.get $v) (%kTwoPI)) (then
-    ;; t = v / 2π 
+    ;; t = v / 2π
     (local.set $t (f64.div (local.get $v) (%kTwoPI)))
-    ;; t = t - ⌊t⌋ 
+    ;; t = t - ⌊t⌋
     (local.set $t (f64.sub (local.get $t) (f64.floor (local.get $t))))
     ;; v = t·2π
     (return (call $cos-impl (f64.mul (local.get $t) (%kTwoPI))))))
@@ -114,9 +114,7 @@
 
   ;; cos(π/4 + x) = sin(π/2 - x)
   (if (f64.gt (local.get $v) (%kPIbyFour)) (then
-    (return (call $sin-inner-impl (f64.sub
-        (f64.add (%kPIbyFour) (%kPIbyTwo))
-        (local.get $v))))))
+    (return (call $sin-inner-impl (f64.sub (%kPIbyTwo) (local.get $v))))))
 
   ;; shouldn't be possible to get here
   (unreachable))
@@ -128,7 +126,7 @@
   (local $p f64)
 
   ;; sin(ε) = ε
-  (if (f64.le (f64.abs (local.get $x)) (f64.const 1e-8)) (then 
+  (if (f64.le (f64.abs (local.get $x)) (f64.const 1e-8)) (then
       (return (local.get $x))))
 
   ;; -1/3!
@@ -170,7 +168,7 @@
       (f64.add
         (%kF11) ;; -1/11
         (f64.mul (local.get $x2) (%kF13)))))) ;; x²/13!
-      
+
   ;; <-- x - x³/3! + x⁵/5! - x⁷/7! + x⁹/9! - x¹¹/11! + x¹³/13!
   ;;     x - x³/3! + x⁵p
   ;;     x + x³(-1/3! + x²p)
@@ -198,13 +196,13 @@
   ;; 1/8!
   (%define %kF8 ()  (f64.const 0.0000248015873015873))
   ;; -1/10!
-  (%define %kF10 ()  (f64.const 2.755731922398589e-7))
+  (%define %kF10 ()  (f64.const -2.755731922398589e-7))
   ;; 1/12!
-  (%define %kF12 ()  (f64.const -2.08767569878681e-9))
+  (%define %kF12 ()  (f64.const 2.08767569878681e-9))
   ;; -1/14!
-  (%define %kF14 ()  (f64.const 1.147074559772972e-11))
+  (%define %kF14 ()  (f64.const -1.147074559772972e-11))
   ;; 1/16!
-  (%define %kF16 ()  (f64.const -4.779477332387385e-14))
+  (%define %kF16 ()  (f64.const 4.779477332387385e-14))
 
   ;; cos(x) ≅ 1 - x²/2! + x⁴/4! - x⁶/6! + x⁸/8! - x¹⁰/10! + x¹²/12! - x¹⁴/14!
 
