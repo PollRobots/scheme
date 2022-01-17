@@ -736,11 +736,11 @@
   (local.set $top (%unpack-64-hi (call $num-core-div-rem
         (local.get $top)
         (local.get $gcd)
-        (i32.const 1))))
+        (i32.const 0))))
   (local.set $bottom (%unpack-64-hi (call $num-core-div-rem
         (local.get $bottom)
         (local.get $gcd)
-        (i32.const 1))))
+        (i32.const 0))))
 
   (if (i32.eq (%get-type $bottom) (%i64-type)) (then
       (if (i64.eq (i64.load offset=4 (local.get $bottom)) (i64.const 1)) (then
@@ -757,6 +757,7 @@
   (local $temp i32)
 
   (local.set $a (call $num-core-abs (local.get $a)))
+  (local.set $b (call $num-core-abs (local.get $b)))
 
   (loop $forever
     (if (i32.eq (%get-type $a) (%big-int-type)) (then
