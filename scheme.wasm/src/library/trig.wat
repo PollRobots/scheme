@@ -1,3 +1,10 @@
+%( trigonometry
+
+(%define %kPI ()        (f64.const 3.14159265358979323846))
+(%define %kPIbyTwo ()   (f64.const 1.57079632679489661923))
+(%define %kPIbyFour ()  (f64.const 0.78539816339744830962))
+(%define %kTwoPI ()     (f64.const 6.28318530717958647693))
+
 (func $sin (param $env i32) (param $args i32) (result i32)
   (local $num-args i32)
   (local $num i32)
@@ -49,10 +56,45 @@
 
   (return (%alloc-f64 (call $tan-impl (f64.load offset=4 (local.get $num))))))
 
-(%define %kPI ()        (f64.const 3.14159265358979323846))
-(%define %kPIbyTwo ()   (f64.const 1.57079632679489661923))
-(%define %kPIbyFour ()  (f64.const 0.78539816339744830962))
-(%define %kTwoPI ()     (f64.const 6.28318530717958647693))
+;; (atan <z>)
+;; (atan <y> <x>)
+(func $atan (param $env i32) (param $args i32) (result i32)
+  (local $num-args i32)
+  (local $num i32)
+  (local $y i32)
+  (local $x i32)
+  (local $y64 f64)
+  (local $x64 f64)
+
+  (block $one_arg (block $two_arg (block $fail
+        (local.set $num-args (call $list-len (local.get $args)))
+        (br_if $fail (i32.eqz (call $all-numeric (local.get $args))))
+
+        (br_if $one_arg (i32.eq (local.get $num-args) (i32.const 1)))
+        (br_if $two_arg (i32.eq (local.get $num-args) (i32.const 2))))
+
+      (return (call $argument-error (local.get $args))))
+
+    ;; two arguments
+    (local.set $y (call $inexact-impl (%car-l $args)))
+    (local.set $x (call $inexact-impl (%car (%cdr-l $args))))
+
+    (local.set $y64 (f64.load offset=4 (local.get $y)))
+    (local.set $x64 (f64.load offset=4 (local.get $x)))
+
+    (if (f64.le (local.get $y64) (local.get $x64)) (then
+        (return (%alloc-f64 (call $atan-impl (f64.div
+                (local.get $y64)
+                (local.get $x64)))))))
+
+    (return (%alloc-f64 (f64.sub
+          (%kPIbyTwo)
+          (call $atan-impl (f64.div (local.get $x64) (local.get $y64)))))))
+
+  ;; one argument
+  (local.set $num (call $inexact-impl (%car-l $args)))
+
+  (return (%alloc-f64 (call $atan-impl (f64.load offset=4 (local.get $num))))))
 
 (func $sin-impl (param $v f64) (result f64)
   (local $t f64)
@@ -259,19 +301,43 @@
 
 (func $tan-impl (param $v f64) (result f64)
   (local $t f64)
+  (local $ta f64)
+  (local $tb f64)
+
+  (%define %kTan0.25 () (f64.const 0.25534192122103627))
+  (%define %kTan0.5  () (f64.const 0.5463024898437905))
 
   (if (i32.or
       (call $ieee-inf? (local.get $v))
       (call $ieee-nan? (local.get $v))) (then
       (return (f64.const nan))))
 
-  ;; if |x| <= π/4 --> call inner impl
-  (if (f64.le (f64.abs (local.get $v)) (%kPIbyFour)) (then
-    (return (call $tan-inner-impl (local.get $v)))))
-
   ;; tan -x = - tan x
   (if (f64.lt (local.get $v) (f64.const 0)) (then
     (return (f64.neg (call $tan-impl (f64.neg (local.get $v)))))))
+
+  ;; if x <= π/4 --> call inner impl
+  (if (f64.le (local.get $v) (%kPIbyFour)) (then
+    (if (f64.le (local.get $v) (f64.const 0.25)) (then
+      (return (call $tan-inner-impl (local.get $v)))))
+    ;; tan a + b = (tan a + tan b) / (1 - tan a · tan b)
+    (if (f64.le (local.get $v) (f64.const 0.5)) (then
+      ;; a = 0.25
+      (local.set $ta (%kTan0.25))
+      ;; b = x - 0.25
+      (local.set $tb (call $tan-inner-impl
+          (f64.sub (local.get $v) (f64.const 0.25))))
+      (return (f64.div
+        (f64.add (local.get $ta) (local.get $tb))
+        (f64.sub (f64.const 1) (f64.mul (local.get $ta) (local.get $tb)))))))
+    ;; a = 0.5
+    (local.set $ta (%kTan0.5))
+    ;; b = x - 0.5
+    (local.set $tb (call $tan-inner-impl
+        (f64.sub (local.get $v) (f64.const 0.5))))
+    (return (f64.div
+      (f64.add (local.get $ta) (local.get $tb))
+      (f64.sub (f64.const 1) (f64.mul (local.get $ta) (local.get $tb)))))))
 
   ;; large numbers will necessarily lose accuracy...
   ;; scale anything larger than π
@@ -302,9 +368,10 @@
   (local $x4 f64)
   (local $x6 f64)
   (local $p f64)
+
   (;
 
-   ; constanst for Taylor series for tan
+   ; constants for Taylor series for tan
    ; defined as B_2n·-4^n·(1 - 4^2) / (2n!)
    (map inexact '(1 1/3 2/15 17/315 62/2835 1382/155925 21844/6081075 929569/638512875))
    (1 0.3333333333333333 0.13333333333333333 0.05396825396825397 0.021869488536155203 0.008863235529902197 0.003592128036572481 0.0014558343870513183)
@@ -359,3 +426,128 @@
         (f64.mul            ;; x⁶p
           (local.get $x6)
           (local.get $p))))))
+
+(func $atan-impl (param $x f64) (result f64)
+  (local $v f64)
+
+  (%define %kAtan0.25 () (f64.const 0.24497866312686415417208248121128))
+  (%define %kAtan0.5  () (f64.const 0.46364760900080611621425623146121))
+  (%define %kAtan0.75 () (f64.const 0.64350110879328438680280922871732))
+
+  (if (call $ieee-nan? (local.get $x)) (then
+      (return (f64.const nan))))
+
+  ;; arctangent -x = -arctangent x
+  (if (f64.lt (local.get $x) (f64.const 0)) (then
+      (return (f64.neg (call $atan-impl (f64.neg (local.get $x)))))))
+
+  ;; it's a convenient conceit that arctangent ∞ = π/2
+  ;; more properly lim_{x → ∞} arctangent x = π/2
+  (if (call $ieee-inf? (local.get $x)) (then
+      (return (%kPIbyTwo))))
+
+  ;; below this threshold we can't distinguish between x and arctangent x
+  (if (f64.lt (local.get $x) (f64.const 1.0e-27)) (then
+      (return (local.get $x))))
+
+  ;; arctangent 1/x = π/2 - arctangent x
+  (if (f64.gt (local.get $x) (f64.const 1)) (then
+      (return (f64.sub
+          (%kPIbyTwo)
+          (call $atan-impl (f64.div (f64.const 1) (local.get $x)))))))
+
+  ;; when x < ¼ then we can calculate arctan using the taylor series in
+  ;; a reasonable number of terms (12) to reach 53 bits of precision
+  (if (f64.le (local.get $x) (f64.const 0.25)) (then
+      (return (call $atan-inner-impl (local.get $x)))))
+
+  (if (f64.le (local.get $x) (f64.const 0.5)) (then
+      (local.set $v (f64.div
+          (f64.sub (local.get $x) (f64.const 0.25))
+          (f64.add
+            (f64.const 1)
+            (f64.mul (f64.const 0.25) (local.get $x)))))
+      (return (f64.add
+          (%kAtan0.25)
+          (call $atan-inner-impl (local.get $v))))))
+
+  (if (f64.le (local.get $x) (f64.const 0.75)) (then
+      (local.set $v (f64.div
+          (f64.sub (local.get $x) (f64.const 0.5))
+          (f64.add
+            (f64.const 1)
+            (f64.mul (f64.const 0.5) (local.get $x)))))
+      (return (f64.add
+          (%kAtan0.5)
+          (call $atan-inner-impl (local.get $v))))))
+
+  (if (f64.le (local.get $x) (f64.const 1)) (then
+      (local.set $v (f64.div
+          (f64.sub (local.get $x) (f64.const 0.75))
+          (f64.add
+            (f64.const 1)
+            (f64.mul (f64.const 0.75) (local.get $x)))))
+      (return (f64.add
+          (%kAtan0.75)
+          (call $atan-inner-impl (local.get $v))))))
+
+  (unreachable))
+
+(func $atan-inner-impl (param $x f64) (result f64)
+  (local $x2 f64)
+  (local $x6 f64)
+  (local $p f64)
+  (local $q f64)
+
+  ;; (map inexact '(-1/3 1/5 -1/7 1/9 -1/11 1/13 -1/15 1/17 -1/19 1/21 -1/23 1/25))
+  ;; (-0.3333333333333333 0.2 -0.14285714285714285 0.1111111111111111 -0.09090909090909091 0.07692307692307693 -0.06666666666666667 0.058823529411764705 -0.05263157894736842 0.047619047619047616 -0.043478260869565216 0.04)
+  (%define %kT3 () (f64.const -0.3333333333333333))
+  (%define %kT5 () (f64.const 0.2))
+  (%define %kT7 () (f64.const -0.14285714285714285))
+  (%define %kT9 () (f64.const 0.1111111111111111))
+  (%define %kT11 () (f64.const -0.09090909090909091))
+  (%define %kT13 () (f64.const 0.07692307692307693))
+  (%define %kT15 () (f64.const -0.06666666666666667))
+  (%define %kT17 () (f64.const 0.058823529411764705))
+  (%define %kT19 () (f64.const -0.05263157894736842))
+  (%define %kT21 () (f64.const 0.047619047619047616))
+  (%define %kT23 () (f64.const -0.043478260869565216))
+  (%define %kT25 () (f64.const 0.04))
+
+  (local.set $x2 (f64.mul (local.get $x) (local.get $x)))
+  (local.set $x6 (f64.mul
+      (local.get $x2)
+      (f64.mul (local.get $x2) (local.get $x2))))
+
+  ;; p = a₁₅ + x²(a₁₇ + a₁₉x²) + x⁶(a₂₁ + a₂₃x²)
+  (local.set $p (f64.add (f64.add
+        (%kT15)
+        (f64.mul
+          (local.get $x2)
+          (f64.add (%kT17) (f64.mul (%kT19) (local.get $x2)))))
+      (f64.mul
+        (local.get $x6)
+        (f64.add (%kT21) (f64.mul (%kT23) (local.get $x2))))))
+
+  ;; q = a₇ + x²(a₉ + a₁₁x²) + x⁶(a₁₃ + x²p)
+  (local.set $q (f64.add (f64.add
+        (%kT7)
+        (f64.mul
+          (local.get $x2)
+          (f64.add (%kT9) (f64.mul (%kT11) (local.get $x2)))))
+      (f64.mul
+        (local.get $x6)
+        (f64.add (%kT13) (f64.mul (local.get $p) (local.get $x2))))))
+
+  ;; <-- x (1 + x²(a₃ + a₅x²) + x⁶q)
+  (return (f64.mul
+      (local.get $x)
+      (f64.add (f64.add
+        (f64.const 1)
+        (f64.mul
+          (local.get $x2)
+          (f64.add (%kT3) (f64.mul (%kT5) (local.get $x2)))))
+      (f64.mul
+        (local.get $x6) (local.get $q))))))
+
+)%
