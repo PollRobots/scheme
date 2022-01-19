@@ -78,3 +78,5 @@
           root
           (expt x 0.5))))
     (else (expt x 0.5))))
+(define pi (* 4 (atan 1)))
+(define (acos x) (- (* pi 0.5) (asin x)))

@@ -96,6 +96,24 @@
 
   (return (%alloc-f64 (call $atan-impl (f64.load offset=4 (local.get $num))))))
 
+;; (asin <z>)
+(func $asin (param $env i32) (param $args i32) (result i32)
+  (local $num-args i32)
+  (local $num i32)
+
+  (block $check (block $fail
+      (local.set $num-args (call $list-len (local.get $args)))
+      (br_if $fail (i32.ne (local.get $num-args) (i32.const 1)))
+      (br_if $fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br $check))
+
+    (return (call $argument-error (local.get $args))))
+
+  ;; one argument
+  (local.set $num (call $inexact-impl (%car-l $args)))
+
+  (return (%alloc-f64 (call $asin-impl (f64.load offset=4 (local.get $num))))))
+
 (func $sin-impl (param $v f64) (result f64)
   (local $t f64)
 
@@ -549,5 +567,98 @@
           (f64.add (%kT3) (f64.mul (%kT5) (local.get $x2)))))
       (f64.mul
         (local.get $x6) (local.get $q))))))
+
+(func $asin-impl (param $x f64) (result f64)
+  (if (i32.or
+      (call $ieee-inf? (local.get $x))
+      (call $ieee-nan? (local.get $x))) (then
+      (return (f64.const nan))))
+
+  (if (f64.gt (f64.abs (local.get $x)) (f64.const 1)) (then
+      (return (f64.const nan))))
+
+  ;; arcsine -x = -arcsine x
+  (if (f64.lt (local.get $x) (f64.const 0)) (then
+      (return (f64.neg (call $asin-impl (f64.neg (local.get $x)))))))
+
+  (return (call $asin-inner-impl (local.get $x))))
+
+(func $asin-inner-impl (param $x f64) (result f64)
+  (local $x2 f64)
+  (local $x6 f64)
+  (local $p f64)
+  (local $q f64)
+  (local $y f64)
+
+  ;; for values less than 0.25, use taylor series directly
+  (if (f64.le (local.get $x) (f64.const 0.25)) (then
+      ;; TODO implement taylor series
+      (;
+        (map inexact '(1 1/6 3/40 5/112 35/1152 63/2816 231/13312 143/10240 6435/557056 12155/1245184 46189/5505024))
+        (1 0.16666666666666666 0.075 0.044642857142857144 0.030381944444444444 0.022372159090909092 0.017352764423076924 0.01396484375 0.011551800896139705 0.009761609529194078 0.008390335809616815)
+      ;)
+      (%define %kT3 ()   (f64.const 0.16666666666666666))
+      (%define %kT5 ()   (f64.const 0.075))
+      (%define %kT7 ()   (f64.const 0.044642857142857144))
+      (%define %kT9 ()   (f64.const 0.030381944444444444))
+      (%define %kT11 ()  (f64.const 0.022372159090909092))
+      (%define %kT13 ()  (f64.const 0.017352764423076924))
+      (%define %kT15 ()  (f64.const 0.01396484375))
+      (%define %kT17 ()  (f64.const 0.011551800896139705))
+      (%define %kT19 ()  (f64.const 0.009761609529194078))
+      (%define %kT21 ()  (f64.const 0.008390335809616815))
+
+      ;; sin⁻¹ x = x + a₃x³ + a₅x⁵ + a₇x⁷ + a₉x⁹ + a₁₁x¹¹ + a₁₃x¹³ + a₁₅x¹⁵ + a₁₇x¹⁷ + a₁₉x¹⁹ + a₂₁x²¹
+      ;; p = a₁₃ + x²(a₁₅ + a₁₇x²) + x⁶(a₁₉ + a₂₁x²)
+      ;; q = a₅ + x²(a₇ + a₉x²) + x⁶(a₁₁ + px²)
+      ;; <-- x(1 + x²(a₃ + qx²))
+
+      (local.set $x2 (f64.mul (local.get $x) (local.get $x)))
+      (local.set $x6 (f64.mul (f64.mul (local.get $x2) (local.get $x2)) (local.get $x2)))
+
+      ;; p = a₁₃ + x²(a₁₅ + a₁₇x²) + x⁶(a₁₉ + a₂₁x²)
+      (local.set $p (f64.add (f64.add
+            (%kT13)
+            (f64.mul
+              (local.get $x2)
+              (f64.add (%kT15) (f64.mul (%kT17) (local.get $x2)))))
+          (f64.mul
+            (local.get $x6)
+            (f64.add (%kT19) (f64.mul (%kT21) (local.get $x2))))))
+      ;; q = a₅ + x²(a₇ + a₉x²) + x⁶(a₁₁ + px²)
+      (local.set $q (f64.add (f64.add
+            (%kT5)
+            (f64.mul
+              (local.get $x2)
+              (f64.add (%kT7) (f64.mul (%kT9) (local.get $x2)))))
+          (f64.mul
+            (local.get $x6)
+            (f64.add (%kT11) (f64.mul (local.get $p) (local.get $x2))))))
+      ;; <-- x(1 + x²(a₃ + qx²))
+      (return (f64.mul
+        (local.get $x)
+        (f64.add
+          (f64.const 1)
+          (f64.mul
+            (local.get $x2)
+            (f64.add (%kT3) (f64.mul (local.get $q) (local.get $x2)))))))))
+
+  ;; arcsine x = arcsine 0.25 + arcsine y
+  ;;             ____________________         ____
+  ;; where y = x√(1 - 0.25)(1 + 0.25) - 0.25·√1-x²
+  ;;                                   ____
+  ;; y = x·0.9682458365518543) - 0.25·√1-x²
+  (local.set $y (f64.sub
+      (f64.mul (local.get $x) (f64.const 0.9682458365518543))
+      (f64.mul
+        (f64.const 0.25)
+        (f64.sqrt (f64.sub
+            (f64.const 1)
+            (f64.mul (local.get $x) (local.get $x)))))))
+  (return (f64.add
+      (call $asin-inner-impl (local.get $y))
+      ;; arcsine 0.25
+      (f64.const 0.25268025514207865)))
+)
 
 )%

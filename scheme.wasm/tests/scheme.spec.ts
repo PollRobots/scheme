@@ -174,6 +174,10 @@ describe("scheme", () => {
     await testFile("test/number.spec.scm");
   });
 
+  it("test/include-ci.spec.scm", async () => {
+    await testFile("test/trig.spec.scm");
+  });
+
   it("test/trig.spec.scm", async () => {
     await testFile("test/trig.spec.scm");
   });

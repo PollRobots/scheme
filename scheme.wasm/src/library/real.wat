@@ -677,25 +677,34 @@
       ;; Work with the number as it is
       (local.set $e (i32.const 0))))
 
+  (local.set $v (f64.abs (local.get $v)))
   (local.set $index (i32.const 1))
   (local.set $pow (local.get $v))
   (local.set $fact (f64.const 1))
   (local.set $accum (f64.const 1))
   (local.set $last (f64.const 1))
 
+  ;; compute taylor series for exp x + x²/2 + x³/3 ...
+  ;; either until it converges, or until x¹⁷
   (block $b_end (loop $b_start
 
+      ;; accum + pow / fact
       (local.set $accum (f64.add
           (local.get $accum)
           (f64.div (local.get $pow) (local.get $fact))))
 
+      ;; check for convergance
+      ;; break if last == accum
       (br_if $b_end (f64.eq (local.get $last) (local.get $accum)))
+      ;; last = accum
       (local.set $last (local.get $accum))
 
       (%inc $index)
       (br_if $b_end (i32.gt_u (local.get $index) (i32.const 17)))
 
+      ;; pow *= v
       (local.set $pow (f64.mul (local.get $pow) (local.get $v)))
+      ;; fact *= index
       (local.set $fact (f64.mul
           (local.get $fact)
           (f64.convert_i32_u (local.get $index))))

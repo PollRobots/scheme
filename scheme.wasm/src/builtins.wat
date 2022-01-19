@@ -227,8 +227,9 @@
 (%define %builtin-panic ()                    (i32.const 220))
 (%define %builtin-tan ()                      (i32.const 221))
 (%define %builtin-atan ()                     (i32.const 222))
+(%define %builtin-asin ()                     (i32.const 223))
 
-(table $table-builtin 223 anyfunc)
+(table $table-builtin 224 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
   (local $quote i32)
@@ -421,6 +422,7 @@
   (%add-builtin (%str %sym-64 64 "panic") (%builtin-panic))
   (%add-builtin (%str %sym-64 64 "tan") (%builtin-tan))
   (%add-builtin (%str %sym-64 64 "atan") (%builtin-atan))
+  (%add-builtin (%str %sym-64 64 "asin") (%builtin-asin))
 
   (%add-special (%sym-32 0x6669 2) (%special-if))               ;; 'if'
   (%add-special (global.get $g-let) (%special-let))             ;; 'let'
@@ -667,3 +669,4 @@
 (elem $table-builtin (%builtin-panic) $panic)
 (elem $table-builtin (%builtin-tan) $tan)
 (elem $table-builtin (%builtin-atan) $atan)
+(elem $table-builtin (%builtin-asin) $asin)
