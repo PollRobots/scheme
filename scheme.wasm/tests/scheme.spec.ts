@@ -175,7 +175,7 @@ describe("scheme", () => {
   });
 
   it("test/include-ci.spec.scm", async () => {
-    await testFile("test/trig.spec.scm");
+    await testFile("test/include-ci.spec.scm");
   });
 
   it("test/trig.spec.scm", async () => {

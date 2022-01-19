@@ -239,7 +239,7 @@
               (< rms-error 1e-14)
               " expect rms error to be less than 1e-14, got " rms-error))))))
 
-  (test-case "sin x - test vectors over 0 ≤ x ≤ 1" (lambda ()
+  (test-case "sin x - test vectors over 0 ≤ x ≤ π/2" (lambda ()
     (let ((test-vector #( (0.00	0.0000000000000000)
                           (0.01	0.0099998333341667)
                           (0.02	0.0199986666933331)
