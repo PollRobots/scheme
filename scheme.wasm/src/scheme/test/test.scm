@@ -7,7 +7,6 @@
 
 (define-syntax assert
   (syntax-rules ()
-    ((assert x) (assert x ""))
     ((assert x m ...)
       (begin
         (verbose-display-all "\x1b;[94massert " 'x "\x1b;[0m" #\newline)
@@ -15,7 +14,6 @@
 
 (define-syntax assert-not
   (syntax-rules ()
-    ((assert-not x) (assert-not x ""))
     ((assert-not x m ...)
       (begin
         (verbose-display-all "\x1b;[94massert (not " 'x ")\x1b;[0m" #\newline)
@@ -23,7 +21,6 @@
 
 (define-syntax assert-equal
   (syntax-rules ()
-    ((assert-equal x y) (assert-equal x y ""))
     ((assert-equal x y m ...)
       (begin
         (verbose-display-all "\x1b;[94massert (equal? " 'x " " 'y ")\x1b;[0m" #\newline)
@@ -32,7 +29,6 @@
 
 (define-syntax assert-error
   (syntax-rules ()
-    ((assert-error x) (assert-error x ""))
     ((assert-error x m ...)
       (begin
         (verbose-display-all "\x1b;[94massert (throws " 'x ")\x1b;[0m" #\newline)

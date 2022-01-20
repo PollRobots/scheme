@@ -735,6 +735,13 @@ Constants are
       (if (i32.eq (local.get $pattern) (global.get $g-nil)) (then
           (return (local.get $match-env))))))
 
+  (call $initialize-match-env
+    (local.get $pattern)
+    (local.get $ellipsis)
+    (local.get $literals)
+    (local.get $match-env)
+    (i32.const 0))
+
   (local.set $res (call $match-syntax-pattern-impl
       (local.get $pattern)
       (local.get $exp)
@@ -749,6 +756,125 @@ Constants are
       (return (i32.const 0))))
 
   (return (local.get $match-env)))
+
+(func $initialize-match-env
+  (param $pattern i32)
+  (param $ellipsis i32)
+  (param $literals i32)
+  (param $match-env i32)
+  (param $in-ellipsis i32)
+
+  (local $pattern-type i32)
+  (local $element i32)
+  (local $ptr i32)
+  (local $count i32)
+  (local $next i32)
+
+  (if (i32.eq (local.get $pattern) (global.get $g-underscore)) (then
+    (return)))
+
+  ;; process identifiers
+  (if (i32.eq (local.tee $pattern-type (%get-type $pattern)) (%symbol-type))
+    (then
+      (if (call $symbol-in-list? (local.get $pattern) (local.get $literals))
+        ;; ignore literals
+        (then (return)))
+      (if (local.get $in-ellipsis) (then
+          ;; initialize ellipsis element lists
+          (call $environment-add
+            (local.get $match-env)
+            (local.get $pattern)
+            (global.get $g-nil))))
+      (return)))
+
+  (if (i32.eq (local.get $pattern-type) (%cons-type)) (then
+      ;; recursively process each element in the list
+
+      (block $end (loop $start
+          (%chk-type $end $pattern %cons-type)
+          (%pop-l $element $pattern)
+
+          ;; check if this element is an ellisis element
+          (if (i32.eq (%car-l $pattern) (local.get $ellipsis))
+            (then
+              (call $initialize-match-env
+                (local.get $element)
+                (local.get $ellipsis)
+                (local.get $literals)
+                (local.get $match-env)
+                (i32.const 1))
+              ;; move past the ellipsis
+              (local.set $pattern (%cdr-l $pattern)))
+            (else
+              (call $initialize-match-env
+                (local.get $element)
+                (local.get $ellipsis)
+                (local.get $literals)
+                (local.get $match-env)
+                (local.get $in-ellipsis))))
+
+          ;; check for improper pattern list
+          (local.set $pattern-type (%get-type $pattern))
+          (block $improper
+            (br_if $improper (i32.eq (local.get $pattern-type) (%cons-type)))
+            (br_if $improper (i32.eq (local.get $pattern-type) (%nil-type)))
+
+            (return (call $initialize-match-env
+                (local.get $pattern)
+                (local.get $ellipsis)
+                (local.get $literals)
+                (local.get $match-env)
+                (local.get $in-ellipsis))))
+
+          (br $start)))
+
+      (return)))
+
+  (if (i32.eq (local.get $pattern-type) (%vector-type)) (then
+      ;; recursively process each element in the vector
+      (local.set $ptr (%car-l $pattern))
+      (local.set $count (%cdr-l $pattern))
+
+      (if (local.get $count) (then
+          (local.set $next (i32.load (local.get $ptr)))))
+
+      (block $end (loop $start
+          (br_if $end (i32.eqz (local.get $count)))
+          (local.set $element (local.get $next))
+          (%dec $count)
+          (%plus-eq $ptr 4)
+
+          (if (local.get $count)
+            (then
+              (local.set $next (i32.load (local.get $ptr))))
+            (else
+              (local.set $next (global.get $g-nil))))
+
+          ;; check if this element is an ellipsis element
+          (if (i32.eq (local.get $next) (local.get $ellipsis))
+            (then
+              (call $initialize-match-env
+                (local.get $element)
+                (local.get $ellipsis)
+                (local.get $literals)
+                (local.get $match-env)
+                (i32.const 1))
+              ;; move past the ellipsis
+              (%dec $count)
+              (%plus-eq $ptr 4))
+            (else
+              (call $initialize-match-env
+                (local.get $element)
+                (local.get $ellipsis)
+                (local.get $literals)
+                (local.get $match-env)
+                (local.get $in-ellipsis))))
+
+          (br $start)))
+
+      (return)))
+
+  (return))
 
 (;
  ;  An input expression E matches a pattern P if and only if:
@@ -818,9 +944,12 @@ Constants are
           ;; this is in an ellipsis, so store a list
 
           (if (i32.eq (%get-type $curr-exp) (%error-type)) (then
-              ;; There is nothing in the environment, so add to the environment
-              ;; as a list of 1
-              (call $environment-add
+              ;; There is nothing in the environment, this is an error
+              (return (i32.const 0))))
+
+          ;; the list is empty, replace it with a single item list
+          (if (i32.eq (local.get $curr-exp) (global.get $g-nil)) (then
+              (call $environment-set!
                 (local.get $match-env)
                 (local.get $pattern)
                 (%alloc-list-1 (local.get $exp)))
@@ -830,6 +959,7 @@ Constants are
               ;; current item in the env isn't a list, this is an error
               (return (i32.const 0))))
 
+          ;; the list is non-empty
           (block $end (loop $start
               (br_if $end (i32.eq
                   (local.tee $next-exp (%cdr-l $curr-exp))
@@ -850,19 +980,25 @@ Constants are
       (return (i32.const 1))))
 
   (local.set $exp-type (%get-type $exp))
+
   ;; expression type must be the same as pattern type from here on
-  (if (i32.ne (local.get $exp-type) (local.get $pattern-type)) (then
-      (return (i32.const 0))))
+  (block $type-check
+    ;; if the pattern is a list, then the expression can be an empty list (for
+    ;; example to match ((a b) ...) with ()
+    (if (i32.eq (local.get $pattern-type) (%cons-type)) (then
+      (br_if $type-check (i32.eq (local.get $exp-type) (%nil-type)))))
+
+    ;; For all other cases the types must be the same
+    (if (i32.ne (local.get $exp-type) (local.get $pattern-type)) (then
+        (return (i32.const 0)))))
 
   ;; lists
   (if (i32.eq (local.get $pattern-type) (%cons-type)) (then
       ;; walk along the pattern matching each step
       (block $end (loop $start
           (%chk-type $end $pattern %cons-type)
-          (%chk-type $end $exp %cons-type)
 
           (%pop-l $curr-pattern $pattern)
-          (%pop-l $curr-exp $exp)
 
           (local.set $next-pattern (%car-l $pattern))
           (if (i32.eq (local.get $next-pattern) (local.get $ellipsis))
@@ -871,6 +1007,11 @@ Constants are
               ;; possible
               ;; advance pattern past the ellipsis
               (local.set $pattern (%cdr-l $pattern))
+
+              ;; if there is nothing left to match, then this is an empty
+              ;; ellipsis
+              (%chk-type $end $exp %cons-type)
+              (%pop-l $curr-exp $exp)
 
               (block $inner-end (loop $inner-start
                   (if (call $match-syntax-pattern-impl
@@ -890,9 +1031,12 @@ Constants are
                       (br $inner-start))
                     (else
                       ;; current expression didn't match the ellipsis pattern,
-                      ;; push it back
+                      ;; push it back, and continue
                       (%push-l $curr-exp $exp))))))
             (else
+              (%chk-type $end $exp %cons-type)
+              (%pop-l $curr-exp $exp)
+
               ;; regular one-one match
               (if (i32.eqz (call $match-syntax-pattern-impl
                     (local.get $curr-pattern)
