@@ -59,6 +59,13 @@ export class TerminalInput extends React.Component<
     if (this.ref.current) {
       this.ref.current.scrollIntoView(false);
       this.ref.current.focus();
+
+      const range = document.createRange();
+      range.selectNodeContents(this.ref.current);
+      range.collapse(false);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
     }
   }
 
@@ -72,7 +79,7 @@ export class TerminalInput extends React.Component<
     if (prevProps.value != this.props.value) {
       if (this.ref.current) {
         this.ref.current.innerHTML = Prism.highlight(
-          this.props.value,
+          this.cleanHtml(this.props.value),
           Prism.languages.scheme,
           "scheme"
         );
@@ -164,9 +171,7 @@ export class TerminalInput extends React.Component<
           innerRef={this.ref}
           html={this.state.text}
           spellCheck={false}
-          onChange={(e) =>
-            this.setState({ text: this.cleanHtml(e.target.value) })
-          }
+          onChange={(e) => this.setState({ text: e.target.value })}
           onKeyDown={(e) => this.onKeyDown(e)}
         />
         <div
@@ -190,7 +195,7 @@ export class TerminalInput extends React.Component<
           }}
           dangerouslySetInnerHTML={{
             __html: Prism.highlight(
-              this.state.text,
+              this.cleanHtml(this.state.text),
               Prism.languages.scheme,
               "scheme"
             ),

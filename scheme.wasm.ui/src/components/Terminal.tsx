@@ -75,6 +75,10 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
     });
   }
 
+  htmlify(raw: string) {
+    return raw.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+  }
+
   onUp() {
     if (this.state.hidx <= 0) {
       return;
@@ -85,7 +89,7 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
         this.state.hidx == this.state.history.length
           ? this.state.input
           : this.state.cached,
-      input: this.state.history[this.state.hidx - 1],
+      input: this.htmlify(this.state.history[this.state.hidx - 1]),
     });
   }
 
@@ -101,7 +105,7 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
     } else {
       this.setState({
         hidx: this.state.hidx + 1,
-        input: this.state.history[this.state.hidx + 1],
+        input: this.htmlify(this.state.history[this.state.hidx + 1]),
       });
     }
   }
@@ -147,7 +151,7 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
     this.setState({
       editing: false,
       line: "",
-      input: line,
+      input: this.htmlify(line),
     });
   }
 
