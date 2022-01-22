@@ -68,31 +68,31 @@
   (local $bits i64)
   (local.set $bits (%ieee-bits $f))
   ;; return (bits & kExponentMask) == kExponentMask && (bits & kSignificandMask) != 0;
-  (i32.and
-    (i64.eq
-      (i64.and (local.get $bits) (%kExponentMask))
-      (%kExponentMask))
-    (i64.ne
-      (i64.and (local.get $bits) (%kSignificandMask))
-      (i64.const 0))))
+  (return (i32.and
+      (i64.eq
+        (i64.and (local.get $bits) (%kExponentMask))
+        (%kExponentMask))
+      (i64.ne
+        (i64.and (local.get $bits) (%kSignificandMask))
+        (i64.const 0)))))
 
 ;; Returns true if this value is -Inf or +Inf.
 (func $ieee-inf? (param $f f64) (result i32)
   (local $bits i64)
   (local.set $bits (%ieee-bits $f))
   ;; return (bits & kExponentMask) == kExponentMask && (bits & kSignificandMask) == 0;
-  (i32.and
-    (i64.eq
-      (i64.and (local.get $bits) (%kExponentMask))
-      (%kExponentMask))
-    (i64.eq
-      (i64.and (local.get $bits) (%kSignificandMask))
-      (i64.const 0))))
+  (return (i32.and
+      (i64.eq
+        (i64.and (local.get $bits) (%kExponentMask))
+        (%kExponentMask))
+      (i64.eq
+        (i64.and (local.get $bits) (%kSignificandMask))
+        (i64.const 0)))))
 
 ;; Returns this value with the sign-bit cleared.
 (func $ieee-abs (param $f f64) (result f64)
   ;; return IEEEFloat(bits & ~kSignMask).value;
-  (f64.abs (local.get $f)))
+  (return (f64.abs (local.get $f))))
 
 (;
 struct Fp // f * 2^e

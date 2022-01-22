@@ -608,7 +608,7 @@
   (local.set $new-size (i32.shr_u
       (i32.mul (local.get $old-size) (i32.const 3))
       (i32.const 1)))
-  (local.tee $new-accum (call $malloc (%word-size-l $new-size)))
+  (local.set $new-accum (call $malloc (%word-size-l $new-size)))
 
   (call $memcpy
     (local.get $new-accum)

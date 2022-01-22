@@ -368,7 +368,7 @@ export class List extends ParsedWat {
           .flat();
       } else {
         throw new Error(
-          `Unknown macro ${name} at line ${this.firstSignificantAtom()?.line}`
+          `Unknown macro ${name} at ${this.firstSignificantAtom()?.line}`
         );
       }
     }

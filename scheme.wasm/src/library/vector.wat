@@ -3,7 +3,7 @@
   (local $obj i32)
 
   (if (i32.ne (call $list-len (local.get $args)) (i32.const 1))
-    (then 
+    (then
       (return (call $argument-error (local.get $args)))))
 
   (local.set $obj (%car-l $args))
@@ -41,14 +41,14 @@
         (local.set $fill (%car (%cdr-l $args)))
 
         (br_if $b_check (i32.eq (local.get $num-args) (i32.const 2))))
-      
+
       (return (call $argument-error (local.get $args))))
 
     (local.set $fill (global.get $g-nil)))
 
   (local.set $buffer (call $malloc (%word-size-l $k)))
 
-  (local.set $vec 
+  (local.set $vec
     (call $heap-alloc
       (global.get $g-heap)
       (%vector-type)
@@ -76,12 +76,12 @@
   (local $list i32)
 
   (block $b_check
-    (block $b_fail  
+    (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
       (local.set $list (%car-l $args))
       (br_if $b_fail (i32.eqz (call $is-list-impl (local.get $list))))
       (br $b_check))
-    
+
     (return (call $argument-error (local.get $args))))
 
   (return (call $make-vector-internal (local.get $list))))
@@ -97,7 +97,7 @@
       (%chk-type $b_fail $vector %vector-type)
       (br $b_check))
     (return (call $argument-error (local.get $args))))
-  
+
   (return (%alloc-i32 (%cdr-l $vector))))
 
 ;; (vector-ref vector k)
@@ -160,7 +160,7 @@
     (return (call $argument-error (local.get $args))))
 
   (local.set $ptr (i32.add (%car-l $vector) (%word-size-l $k)))
-  
+
   (i32.store (local.get $ptr) (local.get $obj))
   (return (local.get $vector)))
 
@@ -218,12 +218,12 @@
   (local.set $copy-len (i32.sub (local.get $end) (local.get $start)))
   (local.set $buffer-len (%word-size-l $copy-len))
   (local.set $buffer (call $malloc (local.get $buffer-len)))
-  (call $memcpy 
-    (local.get $buffer) 
+  (call $memcpy
+    (local.get $buffer)
     (i32.add (%car-l $vector) (%word-size-l $start))
     (local.get $buffer-len))
 
-  (return 
+  (return
     (call $heap-alloc
       (global.get $g-heap)
       (%vector-type)
@@ -295,18 +295,18 @@
 
           (br_if $b_fail (i32.lt_u (local.get $end) (local.get $start)))
           (br_if $b_fail (i32.gt_u (local.get $end) (local.get $from-len)))
-          (br_if $b_fail (i32.gt_u 
+          (br_if $b_fail (i32.gt_u
             (i32.sub (local.get $end) (local.get $start))
             (i32.sub (local.get $to-len) (local.get $at))))
 
           (br_if $b_check (i32.eq (local.get $num-args) (i32.const 5))))
         (return (call $argument-error (local.get $args))))
-      
+
       (local.set $start (i32.const 0)))
 
     (local.set $end (local.get $from-len))
-    (if 
-      (i32.gt_u 
+    (if
+      (i32.gt_u
         (i32.sub (local.get $end) (local.get $start))
         (i32.sub (local.get $to-len) (local.get $at)))
       (then
@@ -318,7 +318,7 @@
 
   (local.set $dest-ptr (i32.add (local.get $to-ptr) (%word-size-l $at)))
   (local.set $src-ptr (i32.add (local.get $from-ptr) (%word-size-l $start)))
-  
+
   (block $b_end
     (loop $b_start
       (br_if $b_end (i32.ge_u (local.get $start) (local.get $end)))
@@ -329,13 +329,13 @@
 
       (%plus-eq $dest-ptr 4)
       (%plus-eq $src-ptr 4)
-      (%inc $start) 
+      (%inc $start)
       (br $b_start)))
-  
+
   (return (local.get $to)))
 
 ;; (vector->string vector [start [end]])
-(func $vector->string (param $env i32) (param $args i32) (result i32) 
+(func $vector->string (param $env i32) (param $args i32) (result i32)
   (local $temp i32)
   (local $num-args i32)
   (local $vector i32)
@@ -383,7 +383,7 @@
           (br_if $b_fail (i32.lt_u (local.get $end) (local.get $start)))
 
           (br_if $b_check (i32.eq (local.get $num-args) (i32.const 3))))
-        
+
         (return (call $argument-error (local.get $args)))
 
       (local.set $start (i32.const 0))))
@@ -399,8 +399,8 @@
 
   (loop $forever
     (if (i32.eq (local.get $start) (local.get $end))
-      (then 
-        (local.set $str 
+      (then
+        (local.set $str
           (%alloc-str (call $str-from-code-points (local.get $buffer) (local.get $cp-len))))
         (call $malloc-free (local.get $buffer))
         (return (local.get $str))))
@@ -408,21 +408,21 @@
 
     (local.set $char (i32.load (local.get $src)))
     (if (i32.ne (%get-type $char) (%char-type))
-      (then 
+      (then
         (call $malloc-free (local.get $buffer))
         (return (call $argument-error (local.get $args)))))
 
     (i32.store (local.get $dest) (%car-l $char))
-  
+
     (%plus-eq $src 4)
     (%plus-eq $dest 4)
     (%inc $start)
     (br $forever))
 
- (unreachable)) 
+ (unreachable))
 
 ;; (string->vector string [start [end]])
-(func $string->vector (param $env i32) (param $args i32) (result i32) 
+(func $string->vector (param $env i32) (param $args i32) (result i32)
   (local $temp i32)
   (local $num-args i32)
   (local $str i32)
@@ -438,10 +438,7 @@
   (local $vec-ptr i32)
   (local $vec-len i32)
 
-  (block $b_check
-    (block $b_2_args
-      (block $b_1_arg
-        (block $b_fail
+  (block $b_check (block $b_2_args (block $b_1_arg (block $b_fail
           (local.set $temp (local.get $args))
           (local.set $num-args (call $list-len (local.get $temp)))
 
@@ -472,17 +469,17 @@
           (br_if $b_fail (i32.lt_u (local.get $end) (local.get $start)))
 
           (br_if $b_check (i32.eq (local.get $num-args) (i32.const 3))))
-        
+
         (return (call $argument-error (local.get $args)))
 
       (local.set $start (i32.const 0))))
 
     (local.set $end (local.get $str-len)))
 
-  (call $str-to-code-points
-    (local.get $str-ptr)
-    (local.tee $buffer (call $malloc (%word-size-l $end)))
-    (local.get $end))
+  (drop (call $str-to-code-points
+      (local.get $str-ptr)
+      (local.tee $buffer (call $malloc (%word-size-l $end)))
+      (local.get $end)))
 
   (local.set $src (i32.add (local.get $buffer) (%word-size-l $start)))
 
@@ -492,31 +489,29 @@
       (call $malloc (%word-size-l $vec-len))))
 
   (loop $forever
-    (if (i32.eq (local.get $start) (local.get $end))
-      (then 
-        (local.set $vector 
+    (if (i32.eq (local.get $start) (local.get $end)) (then
+        (local.set $vector
           (call $heap-alloc
             (global.get $g-heap)
             (%vector-type)
-            (local.get $vec-ptr) 
+            (local.get $vec-ptr)
             (local.get $vec-len)))
         (call $malloc-free (local.get $buffer))
         (return (local.get $vector))))
 
-
     (i32.store
       (local.get $dest)
       (%alloc-char (i32.load (local.get $src))))
- 
+
     (%plus-eq $src 4)
     (%plus-eq $dest 4)
     (%inc $start)
     (br $forever))
 
- (unreachable)) 
+ (unreachable))
 
 ;; (vector->list vector [start [end]])
-(func $vector->list (param $env i32) (param $args i32) (result i32) 
+(func $vector->list (param $env i32) (param $args i32) (result i32)
   (local $temp i32)
   (local $num-args i32)
   (local $vector i32)
@@ -561,7 +556,7 @@
           (br_if $b_fail (i32.lt_u (local.get $end) (local.get $start)))
 
           (br_if $b_check (i32.eq (local.get $num-args) (i32.const 3))))
-        
+
         (return (call $argument-error (local.get $args)))
 
       (local.set $start (i32.const 0))))
@@ -578,8 +573,8 @@
     (if (i32.eq (local.get $start) (local.get $end))
       (then (return (local.get $head))))
 
-    (local.set $temp 
-      (%alloc-cons 
+    (local.set $temp
+      (%alloc-cons
         (i32.load (local.get $src))
         (global.get $g-nil)))
 
@@ -600,14 +595,14 @@
   (local $temp i32)
   (local $temp-type i32)
 
-  (block $done 
+  (block $done
     (loop $forever
       (br_if $done (i32.eq (%get-type $args) (%nil-type)))
 
       (local.set $temp (%car-l $args))
       (local.set $temp-type (%get-type $temp))
 
-      (if (i32.ne (local.get $temp-type) (%vector-type)) 
+      (if (i32.ne (local.get $temp-type) (%vector-type))
         (then (return (i32.const 0)))
       )
 
@@ -628,7 +623,7 @@
   (local $vec-ptr i32)
   (local $ptr i32)
 
-  (block $b_check   
+  (block $b_check
     (block $b_fail
       (br_if $b_fail (i32.eqz (call $list-len (local.get $args))))
       (br_if $b_fail (i32.eqz (call $all-vector (local.get $args))))
@@ -647,14 +642,14 @@
         (i32.add
           (local.get $length)
           (%cdr (%car-l $curr))))
-    
+
       (local.set $curr (%cdr-l $curr))
       (br $b_start)))
 
   (local.set $ptr
-    (local.tee $vec-ptr 
+    (local.tee $vec-ptr
       (call $malloc (%word-size-l $length))))
-  
+
   ;; copy each vector contents over
   (local.set $curr (local.get $args))
   (block $b_end
@@ -671,7 +666,7 @@
       )
 
       (local.set $ptr (i32.add (local.get $ptr) (local.get $curr-byte-len)))
-    
+
       (local.set $curr (%cdr-l $curr))
       (br $b_start)))
 
@@ -739,11 +734,11 @@
   (block $b_end
     (loop $b_start
       (br_if $b_end (i32.ge_u (local.get $start) (local.get $end)))
-      
+
       (i32.store (local.get $ptr) (local.get $fill))
-      
+
       (%inc $start)
       (%plus-eq $ptr 4)
       (br $b_start)))
-  
+
  (return (local.get $vector)))

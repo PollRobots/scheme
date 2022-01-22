@@ -522,10 +522,10 @@ Constants are
               (if (i32.eq (%get-type $matched) (%cons-type))
                 (then
                   (%pop-l $result $matched)
-                  (call $environment-set!
-                    (local.get $match-env)
-                    (local.get $template)
-                    (local.get $matched))
+                  (drop (call $environment-set!
+                      (local.get $match-env)
+                      (local.get $template)
+                      (local.get $matched)))
                   (return (local.get $result)))
                 (else
                   (return (global.get $g-nil)))))
@@ -819,12 +819,13 @@ Constants are
             (br_if $improper (i32.eq (local.get $pattern-type) (%cons-type)))
             (br_if $improper (i32.eq (local.get $pattern-type) (%nil-type)))
 
-            (return (call $initialize-match-env
+            (call $initialize-match-env
                 (local.get $pattern)
                 (local.get $ellipsis)
                 (local.get $literals)
                 (local.get $match-env)
-                (local.get $in-ellipsis))))
+                (local.get $in-ellipsis))
+            (return))
 
           (br $start)))
 
@@ -949,10 +950,10 @@ Constants are
 
           ;; the list is empty, replace it with a single item list
           (if (i32.eq (local.get $curr-exp) (global.get $g-nil)) (then
-              (call $environment-set!
-                (local.get $match-env)
-                (local.get $pattern)
-                (%alloc-list-1 (local.get $exp)))
+              (drop (call $environment-set!
+                  (local.get $match-env)
+                  (local.get $pattern)
+                  (%alloc-list-1 (local.get $exp))))
               (return (i32.const 1))))
 
           (if (i32.ne (%get-type $curr-exp) (%cons-type)) (then

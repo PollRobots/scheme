@@ -40,9 +40,7 @@ export function parse(input: string): ParsedWat[] {
         curr.push(list);
       } else {
         throw new Error(
-          `Unmatched (, got ${JSON.stringify(token.content)} at line ${
-            token.line
-          }`
+          `Unmatched (, got ${JSON.stringify(token.content)} at ${token.line}`
         );
       }
     } else if (token.content === "(;") {
@@ -58,9 +56,9 @@ export function parse(input: string): ParsedWat[] {
         curr.push(list);
       } else {
         throw new Error(
-          `Unmatched '${currType}', got ${JSON.stringify(
-            token.content
-          )}, at line ${token.line}`
+          `Unmatched '${currType}', got ${JSON.stringify(token.content)}, at ${
+            token.line
+          }`
         );
       }
     } else if (token.content === "%(") {
@@ -76,16 +74,14 @@ export function parse(input: string): ParsedWat[] {
         curr.push(list);
       } else {
         throw new Error(
-          `Unmatched '${currType}', got ${JSON.stringify(
-            token.content
-          )}, at line ${token.line}`
+          `Unmatched '${currType}', got ${JSON.stringify(token.content)}, at ${
+            token.line
+          }`
         );
       }
     } else {
       throw new Error(
-        `Unexpected delimiter ${JSON.stringify(token.content)} at line ${
-          token.line
-        }`
+        `Unexpected delimiter ${JSON.stringify(token.content)} at ${token.line}`
       );
     }
   }
@@ -99,7 +95,7 @@ export function parse(input: string): ParsedWat[] {
     }
     // const top = listStack.pop() || [];
     // const first = top.find(isAtom);
-    //throw new Error(`Unbalanced paren at line ${first?.line}`);
+    //throw new Error(`Unbalanced paren at ${first?.line}`);
     parsed.push(
       new Atom({
         type: "comment",

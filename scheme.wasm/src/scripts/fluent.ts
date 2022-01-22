@@ -24,7 +24,10 @@ export function* skip<T>(iter: Iterator<T>, count: number): Generator<T> {
   }
 }
 
-export function every<T>(iter: Iterable<T>, predicate: (el: T) => boolean): boolean {
+export function every<T>(
+  iter: Iterable<T>,
+  predicate: (el: T) => boolean
+): boolean {
   for (const el of iter) {
     if (!predicate(el)) {
       return false;
@@ -33,7 +36,10 @@ export function every<T>(iter: Iterable<T>, predicate: (el: T) => boolean): bool
   return true;
 }
 
-export function some<T>(iter: Iterable<T>, predicate: (el: T) => boolean): boolean {
+export function some<T>(
+  iter: Iterable<T>,
+  predicate: (el: T) => boolean
+): boolean {
   for (const el of iter) {
     if (predicate(el)) {
       return true;
@@ -46,16 +52,38 @@ export function empty<T>(iter: Iterable<T>): boolean {
   return !!iter[Symbol.iterator]().next().done;
 }
 
-export function* map<T, V>(iter: Iterable<T>, mapFn: (el: T) => V): Generator<V> {
+export function* map<T, V>(
+  iter: Iterable<T>,
+  mapFn: (el: T) => V
+): Generator<V> {
   for (const el of iter) {
     yield mapFn(el);
   }
 }
 
-export function* filter<T>(iter: Iterable<T>, predicate: (el:T) => boolean): Generator<T> {
+export function* filter<T>(
+  iter: Iterable<T>,
+  predicate: (el: T) => boolean
+): Generator<T> {
   for (const el of iter) {
     if (predicate(el)) {
       yield el;
     }
+  }
+}
+
+export function* zip<T1, T2>(
+  left: Iterable<T1>,
+  right: Iterable<T2>
+): Generator<[T1, T2]> {
+  const leftIter = left[Symbol.iterator]();
+  const rightIter = right[Symbol.iterator]();
+  while (true) {
+    const currLeft = leftIter.next();
+    const currRight = rightIter.next();
+    if (currLeft.done || currRight.done) {
+      return;
+    }
+    yield [currLeft.value, currRight.value];
   }
 }
