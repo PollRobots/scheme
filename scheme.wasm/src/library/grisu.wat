@@ -1,10 +1,10 @@
-(; 
+(;
   Implements Grisu2
 
   http://florian.loitsch.com/publications (bench.tar.gz)
- 
+
   Copyright (c) 2009 Florian Loitsch
- 
+
     Permission is hereby granted, free of charge, to any person
     obtaining a copy of this software and associated documentation
     files (the "Software"), to deal in the Software without
@@ -13,10 +13,10 @@
     copies of the Software, and to permit persons to whom the
     Software is furnished to do so, subject to the following
     conditions:
- 
+
     The above copyright notice and this permission notice shall be
     included in all copies or substantial portions of the Software.
- 
+
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -40,7 +40,7 @@
 
 (func $ieee-exponent-bits (param $f f64) (result i64)
   ;; return (bits & kExponentMask) >> (kPrecision - 1);
-  (i64.shr_u 
+  (i64.shr_u
     (i64.and (%ieee-bits $f) (%kExponentMask))
     (%kPrecisionMinus1)))
 
@@ -122,7 +122,7 @@ struct Fp // f * 2^e
     static Fp NormalizeTo(Fp x, int e);
 };
 
-an FP is 
+an FP is
   f i64 -- unsigned fractional word
   e i32 -- signed exponent
 ;)
@@ -166,7 +166,7 @@ an FP is
   ;;   e = x.e + y.e + q
 
   ;;  Emulate the 64-bit * 64-bit multiplication:
-  ;; 
+  ;;
   ;;  p = u * v
   ;;    = (u_lo + 2^32 u_hi) (v_lo + 2^32 v_hi)
   ;;    = (u_lo v_lo         ) + 2^32 ((u_lo v_hi         ) + (u_hi v_lo         )) + 2^64 (u_hi v_hi         )
@@ -175,13 +175,13 @@ an FP is
   ;;    = (p0_lo             ) + 2^32 (p0_hi + p1_lo + p2_lo                      ) + 2^64 (p1_hi + p2_hi + p3)
   ;;    = (p0_lo             ) + 2^32 (Q                                          ) + 2^64 (H                 )
   ;;    = (p0_lo             ) + 2^32 (Q_lo + 2^32 Q_hi                           ) + 2^64 (H                 )
-  ;; 
+  ;;
   ;;  (Since Q might be larger than 2^32 - 1)
-  ;; 
+  ;;
   ;;    = (p0_lo + 2^32 Q_lo) + 2^64 (Q_hi + H)
-  ;; 
+  ;;
   ;;  (Q_hi + H does not overflow a 64-bit int)
-  ;; 
+  ;;
   ;;    = p_lo + 2^64 p_hi
   (local $u_lo i64)
   (local $u_hi i64)
@@ -229,7 +229,7 @@ an FP is
   (local.set $p2_hi (i64.shr_u (local.get $p2) (i64.const 32)))
 
   ;; uint64_t Q = p0_hi + p1_lo + p2_lo;
-  (local.set $Q (i64.add 
+  (local.set $Q (i64.add
       (i64.add
         (local.get $p0_hi)
         (local.get $p1_lo))
@@ -237,10 +237,10 @@ an FP is
 
   (;
     The full product might now be computed as
-    
+
     p_hi = p3 + p2_hi + p1_hi + (Q >> 32)
     p_lo = p0_lo + (Q << 32)
-    
+
     But in this particular case here, the full p_lo is not required.
     Effectively we only need to add the highest bit in p_lo to p_hi (and
     Q_hi + 1 does not overflow).
@@ -261,7 +261,7 @@ an FP is
       (i64.shr_u (local.get $Q) (i64.const 32))))
 
   ;; return Fp(h, x.e + y.e + 64);
-  (return (call $fp-new 
+  (return (call $fp-new
       (local.get $h)
       (i32.add
         (i32.add (%fp-e $x) (%fp-e $y))
@@ -291,7 +291,7 @@ an FP is
       (%fp-f $x)))
 
   ;; return Fp(x.f << delta, e);
-  (return (call $fp-new 
+  (return (call $fp-new
       (i64.shl (%fp-f $x) (local.get $delta))
       (local.get $e))))
 
@@ -361,7 +361,7 @@ struct BoundedFp {
 
   (;
     Convert the IEEE representation into a DiyFp.
-    
+
     If v is denormal:
          value = 0.F * 2^(1 - E_bias) = (          F) * 2^(1 - E_bias - (p-1))
     If v is normalized:
@@ -382,47 +382,47 @@ struct BoundedFp {
   ;;     : Fp(IEEEType::kHiddenBit + F, static_cast<int>(E) - kBias);
   (if (i64.eqz (local.get $E))
       (then (local.set $v (call $fp-new (local.get $F) (i32.const -0x432))))
-      (else (local.set $v (call $fp-new 
+      (else (local.set $v (call $fp-new
             (i64.add (%kHiddenBit) (local.get $F))
             (i32.sub (i32.wrap_i64 (local.get $E)) (%kBias))))))
 
 
   (;
     v+ = v + 2^e = (f + 1) * 2^e and therefore
-   
+
          m+ = (v + v+) / 2
             = (2*f + 1) * 2^(e-1)
   ;)
   ;; Fp const m_plus = Fp(2*v.f + 1, v.e - 1);
-  (local.set $m_plus (call $fp-new 
+  (local.set $m_plus (call $fp-new
       (i64.or (i64.shl (%fp-f $v) (i64.const 1)) (i64.const 1))
       (i32.sub (%fp-e $v) (i32.const 1))))
 
   (;
     If f != 2^(p-1), then v- = v - 2^e = (f - 1) * 2^e and
-   
+
          m- = (v- + v) / 2
             = (2*f - 1) * 2^(e-1)
-   
+
     If f = 2^(p-1), then the next smaller _normalized_ floating-point number
     is actually v- = v - 2^(e-1) = (2^p - 1) * 2^(e-1) and therefore
-   
+
          m- = (4*f - 1) * 2^(e-2)
-   
+
     The exception is the smallest normalized floating-point number
     v = 2^(p-1) * 2^e_min. In this case the predecessor is the largest
     denormalized floating-point number: v- = (2^(p-1) - 1) * 2^e_min and then
-   
+
          m- = (2*f - 1) * 2^(e-1)
-   
+
     If v is denormal, v = f * 2^e_min and v- = v - 2^e = (f - 1) * 2^e and
     again
-   
+
          m- = (2*f - 1) * 2^(e-1)
-   
+
     Note: 0 is not a valid input for Grisu and in case v is denormal:
     f != 2^(p-1).
-   
+
     For IEEE floating-point numbers not equal to 0, the condition f = 2^(p-1)
     is equivalent to F = 0, and for the smallest normalized number E = 1.
     For denormals E = 0 (and F != 0).
@@ -430,8 +430,8 @@ struct BoundedFp {
   ;; Fp const m_minus = (F == 0 && E > 1)
   ;;     ? Fp(4*v.f - 1, v.e - 2)
   ;;     : Fp(2*v.f - 1, v.e - 1);
-  (if (i32.and 
-        (i64.eqz (local.get $F)) 
+  (if (i32.and
+        (i64.eqz (local.get $F))
         (i64.gt_u (local.get $E) (i64.const 1)))
       (then (local.set $m_minus (call $fp-new
           (i64.sub (i64.shl (%fp-f $v) (i64.const 2)) (i64.const 1))
@@ -457,9 +457,9 @@ struct BoundedFp {
 
   ;; return {Fp::Normalize(v), minus, plus};
   (local.set $v-norm (call $fp-normalize (local.get $v)))
-  (local.set $res (call $bfp-new 
-      (local.get $v-norm) 
-      (local.get $minus) 
+  (local.set $res (call $bfp-new
+      (local.get $v-norm)
+      (local.get $minus)
       (local.get $plus)))
 
   (call $fp-delete (local.get $v))
@@ -473,80 +473,80 @@ struct BoundedFp {
 
 (;
   Given a (normalized) floating-point number v and its neighbors m- and m+
- 
+
        ---+---------------------------+---------------------------+---
           m-                          v                           m+
- 
+
   Grisu first scales the input number w, and its boundaries w- and w+, by an
   approximate power-of-ten c ~= 10^-k (which needs to be precomputed using
   high-precision arithmetic and stored in a table) such that the exponent of
   the products lies within a certain range [alpha, gamma]. It then remains to
   produce the decimal digits of a DiyFp number M = f * 2^e, where
   alpha <= e <= gamma.
- 
+
   The choice of alpha and gamma determines the digit generation procedure and
   the size of the look-up table (or vice versa...) and depends on the
   extended precision q.
- 
+
   In other words, given normalized w, Grisu needs to find a (normalized) cached
   power-of-ten c, such that the exponent of the product c * w = f * 2^e
   satisfies (Definition 3.2)
- 
+
        alpha <= e = e_c + e_w + q <= gamma
- 
+
   or
- 
+
        f_c * f_w * 2^alpha <= f_c 2^(e_c) * f_w 2^(e_w) * 2^q
                            <= f_c * f_w * 2^gamma
- 
+
   Since c and w are normalized, i.e. 2^(q-1) <= f < 2^q, this implies
- 
+
        2^(q-1) * 2^(q-1) * 2^alpha <= c * w * 2^q < 2^q * 2^q * 2^gamma
- 
+
   or
- 
+
        2^(q - 2 + alpha) <= c * w < 2^(q + gamma)
- 
+
   The distance (gamma - alpha) should be as large as possible in order to make
   the table as small as possible, but the digit generation procedure should
   still be efficient.
- 
+
   Assume q = 64 and e < 0. The idea is to cut the number c * w = f * 2^e into
   two parts, which can be processed independently: An integral part p1, and a
   fractional part p2:
- 
+
        f * 2^e = ( (f div 2^-e) * 2^-e + (f mod 2^-e) ) * 2^e
                = (f div 2^-e) + (f mod 2^-e) * 2^e
                = p1 + p2 * 2^e
- 
+
   The conversion of p1 into decimal form requires some divisions and modulos by
   a power-of-ten. These operations are faster for 32-bit than for 64-bit
   integers, so p1 should ideally fit into a 32-bit integer. This be achieved by
   choosing
- 
+
        -e >= 32   or   e <= -32 := gamma
- 
+
   In order to convert the fractional part
- 
+
        p2 * 2^e = d[-1] / 10^1 + d[-2] / 10^2 + ... + d[-k] / 10^k
- 
+
   into decimal form, the fraction is repeatedly multiplied by 10 and the digits
   d[-i] are extracted in order:
- 
+
        (10 * p2) div 2^-e = d[-1]
        (10 * p2) mod 2^-e = d[-2] / 10^1 + ... + d[-k] / 10^(k-1)
- 
+
   The multiplication by 10 must not overflow. For this it is sufficient to have
- 
+
        10 * p2 < 16 * p2 = 2^4 * p2 <= 2^64.
- 
+
   Since p2 = f mod 2^-e < 2^-e one may choose
- 
+
        -e <= 60   or   e >= -60 := alpha
- 
+
   Different considerations may lead to different digit generation procedures
   and different values of alpha and gamma...
-;) 
+;)
 ;; constexpr int const kAlpha = -60;
 (%define %kAlpha () (i32.const -60))
 ;; constexpr int const kGamma = -32;
@@ -555,47 +555,47 @@ struct BoundedFp {
 (;
   Grisu needs to find a(normalized) cached power-of-ten c, such that the
   exponent of the product c * w = f * 2^e satisfies (Definition 3.2)
- 
+
        alpha <= e = e_c + e_w + q <= gamma
- 
+
   For IEEE double precision floating-point numbers v converted into a DiyFp's
   w = f * 2^e,
- 
+
        e >= -1022      (min IEEE exponent)
             -52        (IEEE significand size)
             -52        (possibly normalize denormal IEEE numbers)
             -11        (normalize the DiyFp)
           = -1137
- 
+
   and
- 
+
        e <= +1023      (max IEEE exponent)
             -52        (IEEE significand size)
             -11        (normalize the DiyFp)
           = 960
- 
+
   (For IEEE single precision the exponent range is [-196, 80].)
- 
+
   Now
- 
+
        alpha <= e_c + e + q <= gamma
            ==> f_c * 2^alpha <= c * 2^e * 2^q
- 
+
   and since the c's are normalized, 2^(q-1) <= f_c,
- 
+
            ==> 2^(q - 1 + alpha) <= c * 2^(e + q)
            ==> 2^(alpha - e - 1) <= c
- 
+
   If c were an exakt power of ten, i.e. c = 10^k, one may determine k as
- 
+
        k = ceil( log_10( 2^(alpha - e - 1) ) )
          = ceil( (alpha - e - 1) * log_10(2) )
- 
+
   (From the paper)
   "In theory the result of the procedure could be wrong since c is rounded, and
   the computation itself is approximated [...]. In practice, however, this
   simple function is sufficient."
- 
+
   The difference of the decimal exponents of adjacent table entries must be
   <= floor( (gamma - alpha) * log_10(2) ) = 8.
 ;)
@@ -719,7 +719,7 @@ struct CachedPower { // c = f * 2^e ~= 10^k
   (local $k i32)
   (local $index i32)
   (local $cached i32)
-  
+
   ;; NB:
   ;; Actually this function returns c, such that -60 <= e_c + e + 64 <= -34.
 
@@ -729,9 +729,9 @@ struct CachedPower { // c = f * 2^e ~= 10^k
 
   (;
     This computation gives exactly the same results for k as
-    
+
           k = ceil((kAlpha - e - 1) * 0.30102999566398114)
-    
+
     for |e| <= 1500, but doesn't require floating-point operations.
     NB: log_10(2) ~= 78913 / 2^18
   ;)
@@ -759,16 +759,16 @@ struct CachedPower { // c = f * 2^e ~= 10^k
   ;; static_cast<void>(kCachedPowersSize); // Fix warning.
 
   ;; CachedPower const cached = kCachedPowers[index];
-  (local.set $cached (i32.add 
-      (global.get $g-grisu-cached-powers) 
+  (local.set $cached (i32.add
+      (global.get $g-grisu-cached-powers)
       (i32.shl (local.get $index) (i32.const 4))))
   ;; assert(kAlpha <= cached.e + e + 64);
-  (%assert (i32.le_s 
-      (%kAlpha) 
+  (%assert (i32.le_s
+      (%kAlpha)
       (i32.add (i32.add (%cp.e $cached) (local.get $e)) (i32.const 64))))
   ;; assert(kGamma >= cached.e + e + 64);
-  (%assert (i32.ge_s 
-      (%kGamma) 
+  (%assert (i32.ge_s
+      (%kGamma)
       (i32.add (i32.add (%cp.e $cached) (local.get $e)) (i32.const 64))))
 
   ;; // XXX:
@@ -807,10 +807,10 @@ struct CachedPower { // c = f * 2^e ~= 10^k
   (return (%pack-64 (i32.const 1) (i32.const 1))))
 
 
-(func $grisu-2-round 
-  (param $buf i32) 
-  (param $len i32) 
-  (param $dist i64) 
+(func $grisu-2-round
+  (param $buf i32)
+  (param $len i32)
+  (param $dist i64)
   (param $delta i64)
   (param $rest i64)
   (param $ten-k i64)
@@ -833,37 +833,37 @@ struct CachedPower { // c = f * 2^e ~= 10^k
                                      <---- dist --------->
     --------------[------------------+-------------------]--------------
                   w-                 w                   w+
-   
+
                                      10^k
                                    <------>
                                           <---- rest ---->
     --------------[------------------+----+--------------]--------------
                                      w    V
                                           = buf * 10^k
-   
+
     ten_k represents a unit-in-the-last-place in the decimal representation
     stored in buf.
     Decrement buf by ten_k while this takes buf closer to w.
   ;)
 
   ;; ptr = &buf[len - 1]
-  (local.set $ptr (i32.sub 
-      (i32.add (local.get $buf) (local.get $len)) 
+  (local.set $ptr (i32.sub
+      (i32.add (local.get $buf) (local.get $len))
       (i32.const 1)))
 
   (block $b_end (loop $b_start
   ;; while (rest < dist
       (br_if $b_end (i64.ge_u (local.get $rest) (local.get $dist)))
   ;;     && delta - rest >= ten_k
-      (br_if $b_end (i64.lt_u 
+      (br_if $b_end (i64.lt_u
           (i64.sub (local.get $delta) (local.get $rest))
           (local.get $ten-k)))
   ;;     && (rest + ten_k < dist || dist - rest > rest + ten_k - dist))
       (block $b_or
-        (br_if $b_or (i64.lt_u 
+        (br_if $b_or (i64.lt_u
               (i64.add (local.get $rest) (local.get $ten-k))
               (local.get $dist)))
-        (br_if $b_or (i64.gt_u 
+        (br_if $b_or (i64.gt_u
               (i64.sub (local.get $dist) (local.get $rest))
               (i64.sub
                 (i64.add (local.get $rest) (local.get $ten-k))
@@ -873,18 +873,18 @@ struct CachedPower { // c = f * 2^e ~= 10^k
       ;; assert(buf[len - 1] != '0');
       (%assert (i32.ne (i32.load8_s (local.get $ptr)) (i32.const 0x30)))
       ;; buf[len - 1]--;
-      (i32.store8 
-        (local.get $ptr) 
+      (i32.store8
+        (local.get $ptr)
         (i32.sub (i32.load8_s (local.get $ptr)) (i32.const 1)))
       ;; rest += ten_k;
       (local.set $rest (i64.add (local.get $rest) (local.get $ten-k)))
-      
+
       (br $b_start))))
 
 ;; inline void Grisu2DigitGen(char* buffer, int& length, int& decimal_exponent, Fp M_minus, Fp w, Fp M_plus)
-(func $grisu-2-digit-gen 
+(func $grisu-2-digit-gen
   (param $buffer i32)  ;; char*
-  (param $length i32)  ;; int& 
+  (param $length i32)  ;; int&
   (param $decimal-exponent i32)  ;; int&
   (param $m-minus i32) ;; Fp
   (param $w i32) ;; Fp
@@ -934,9 +934,9 @@ struct CachedPower { // c = f * 2^e ~= 10^k
    ;                                  <---- dist --------->
    ; --------------[------------------+-------------------]--------------
    ;               w-                 w                   w+
-    
+
    ; Split w+ = f * 2^e into two parts p1 and p2 (note: e < 0):
-    
+
    ;      w+ = f * 2^e
    ;         = ((f div 2^-e) * 2^-e + (f mod 2^-e)) * 2^e
    ;         = ((p1        ) * 2^-e + (p2        )) * 2^e
@@ -944,20 +944,20 @@ struct CachedPower { // c = f * 2^e ~= 10^k
    ;)
 
   ;; Fp const one = Fp(uint64_t{1} << -M_plus.e, M_plus.e);
-  (local.set $temp (call $fp-new 
-      (i64.shl 
-        (i64.const 1) 
+  (local.set $temp (call $fp-new
+      (i64.shl
+        (i64.const 1)
         (i64.extend_i32_u (i32.sub (i32.const 0) (%fp-e $m-plus))))
       (%fp-e $m-plus)))
   (local.set $one-f (%fp-f $temp))
   (local.set $one-e (%fp-e $temp))
-  (call $fp-delete (local.get $temp)
+  (call $fp-delete (local.get $temp))
 
   ;; uint32_t p1 = static_cast<uint32_t>(M_plus.f >> -one.e); // p1 = f div 2^-e (Since -e >= 32, p1 fits into a 32-bit int.)
-  (local.set $minus-one-e (i64.extend_i32_u (i32.sub 
-        (i32.const 0) 
+  (local.set $minus-one-e (i64.extend_i32_u (i32.sub
+        (i32.const 0)
         (local.get $one-e))))
-  (local.set $p1 (i32.wrap_i64 (i64.shr_u 
+  (local.set $p1 (i32.wrap_i64 (i64.shr_u
         (%fp-f $m-plus)
         (local.get $minus-one-e))))
   ;; uint64_t p2 = M_plus.f & (one.f - 1);                    // p2 = f mod 2^-e
@@ -1073,8 +1073,8 @@ struct CachedPower { // c = f * 2^e ~= 10^k
            ; And V is correctly rounded.
            ;)
           ;; decimal_exponent += n;
-          (local.set $decimal-exponent (i32.add 
-              (local.get $decimal-exponent) 
+          (local.set $decimal-exponent (i32.add
+              (local.get $decimal-exponent)
               (local.get $n)))
 
           (;
@@ -1095,7 +1095,7 @@ struct CachedPower { // c = f * 2^e ~= 10^k
           (local.set $ten_n (i64.shl
               (i64.extend_i32_u (local.get $pow10))
               (local.get $minus-one-e)))
-          (call $grisu-2-round 
+          (call $grisu-2-round
             (local.get $buffer)
             (local.get $length)
             (local.get $dist)
@@ -1153,7 +1153,7 @@ struct CachedPower { // c = f * 2^e ~= 10^k
     (;
      ; Invariant:
      ;  1.  w+ = buffer * 10^m + 10^m * p2 * 2^e  (Note: m <= 0)
- 
+
      ; p2 * 10 < 2^60 * 10 < 2^60 * 2^4 = 2^64,
      ; so the multiplication by 10 does not overflow.
      ;)
@@ -1166,7 +1166,7 @@ struct CachedPower { // c = f * 2^e ~= 10^k
     ;; uint64_t const d = p2 >> -one.e;     // = p2 div 2^-e
     (local.set $dd (i64.shr_u (local.get $p2) (local.get $minus-one-e)))
     ;; uint64_t const r = p2 & (one.f - 1); // = p2 mod 2^-e
-    (local.set $rr (i64.and 
+    (local.set $rr (i64.and
         (local.get $p2)
         (i64.sub (local.get $one-f) (i64.const 1))))
 
@@ -1219,8 +1219,8 @@ struct CachedPower { // c = f * 2^e ~= 10^k
     ;; if (rest <= delta)
     (if (i64.le_u (local.get $rest) (local.get $delta)) (then
         ;; decimal_exponent += m;
-        (local.set $decimal-exponent (i32.add 
-            (local.get $decimal-exponent) 
+        (local.set $decimal-exponent (i32.add
+            (local.get $decimal-exponent)
             (local.get $m)))
 
         (;
@@ -1266,13 +1266,13 @@ struct CachedPower { // c = f * 2^e ~= 10^k
    ;      N = 17 for p = 53 (IEEE double precision)
    ;      N = 9  for p = 24 (IEEE single precision)
    ;)
-  (unreachable)))
+  (unreachable))
 
 ;; v = buf * 10^decimal_exponent
 ;; len is the length of the buffer (number of decimal digits)
-(func $grisu-2 
+(func $grisu-2
   (param $buf i32)  ;; char*
-  (param $len i32)  ;; int& 
+  (param $len i32)  ;; int&
   (param $decimal-exponent i32)  ;; int&
   (param $m-minus i32) ;; Fp
   (param $v i32) ;; Fp
@@ -1288,7 +1288,7 @@ struct CachedPower { // c = f * 2^e ~= 10^k
   (local $M-minus i32)    ;; *Fp (free on return)
   (local $M-plus i32)     ;; *Fp (free on return)
   (local $result i64)
-  
+
   ;; assert(v.e == m_minus.e);
   (%assert (i32.eq (%fp-e $v) (%fp-e $m-minus)))
   ;; assert(v.e == m_plus.e);
@@ -1342,11 +1342,11 @@ struct CachedPower { // c = f * 2^e ~= 10^k
    ; number in the interval (m-, m+).
    ;)
   ;; Fp const M_minus = Fp(w_minus.f + 1, w_minus.e);
-  (local.set $M-minus (call $fp-new 
+  (local.set $M-minus (call $fp-new
       (i64.add (%fp-f $w-minus) (i64.const 1))
       (%fp-e $w-minus)))
   ;; Fp const M_plus  = Fp(w_plus.f  - 1, w_plus.e );
-  (local.set $M-plus (call $fp-new 
+  (local.set $M-plus (call $fp-new
       (i64.sub (%fp-f $w-plus) (i64.const 1))
       (%fp-e $w-plus)))
 
@@ -1407,8 +1407,8 @@ struct CachedPower { // c = f * 2^e ~= 10^k
     ;; else if (k < 100)
     (if (i32.lt_u (local.get $k) (i32.const 100)) (then
         ;; *buf++ = kDigits[k / 10]; k %= 10;
-        (i32.store8 
-          (local.get $buf) 
+        (i32.store8
+          (local.get $buf)
           (i32.add (i32.div_u (local.get $k) (i32.const 10)) (i32.const 0x30)))
         (local.set $k (i32.rem_u (local.get $k) (i32.const 10)))
         (%inc $buf)
@@ -1418,14 +1418,14 @@ struct CachedPower { // c = f * 2^e ~= 10^k
         (br $b_done)))
     ;; else
     ;; *buf++ = kDigits[k / 100]; k %= 100;
-    (i32.store8 
-      (local.get $buf) 
+    (i32.store8
+      (local.get $buf)
       (i32.add (i32.div_u (local.get $k) (i32.const 100)) (i32.const 0x30)))
     (local.set $k (i32.rem_u (local.get $k) (i32.const 100)))
     (%inc $buf)
     ;; *buf++ = kDigits[k / 10]; k %= 10;
-    (i32.store8 
-      (local.get $buf) 
+    (i32.store8
+      (local.get $buf)
       (i32.add (i32.div_u (local.get $k) (i32.const 10)) (i32.const 0x30)))
     (local.set $k (i32.rem_u (local.get $k) (i32.const 10)))
     (%inc $buf)
@@ -1482,8 +1482,8 @@ struct CachedPower { // c = f * 2^e ~= 10^k
           ;; buf[n] = '.';
           (i32.store8 (i32.add (local.get $buf) (local.get $n)) (i32.const 0x2E))
           ;; return buf + (k + 1);           // (len == k + 1 <= 18)
-          (return (i32.add 
-              (local.get $buf) 
+          (return (i32.add
+              (local.get $buf)
               (i32.add (local.get $k) (i32.const 1))))))))
 
   ;; if (-6 < n && n <= 0)
@@ -1537,8 +1537,8 @@ struct CachedPower { // c = f * 2^e ~= 10^k
   (i32.store8 (local.get $buf) (i32.const 0x65))
   (%inc $buf)
   ;; return AppendExponent(buf, n - 1);
-  (return (call $append-exponent 
-      (local.get $buf) 
+  (return (call $append-exponent
+      (local.get $buf)
       (i32.sub (local.get $n) (i32.const 1)))))
 
 (;
@@ -1584,12 +1584,12 @@ struct CachedPower { // c = f * 2^e ~= 10^k
 
   ;; if (v.IsNaN())
   (if (call $ieee-nan? (local.get $value)) (then
-    (if (call $ieee-negative? (local.get $value)) 
+    (if (call $ieee-negative? (local.get $value))
       (then (return (call $str-dup (%car (global.get $g-neg-nan)))))
       (else (return (call $str-dup (%car (global.get $g-nan))))))))
 
   (if (call $ieee-inf? (local.get $value)) (then
-    (if (call $ieee-negative? (local.get $value)) 
+    (if (call $ieee-negative? (local.get $value))
       (then (return (call $str-dup (%car (global.get $g-neg-inf)))))
       (else (return (call $str-dup (%car (global.get $g-inf))))))))
 
@@ -1605,7 +1605,7 @@ struct CachedPower { // c = f * 2^e ~= 10^k
       (%inc $next)))
 
   ;; if (v.IsZero())
-  (if (call $ieee-zero? (local.get $value)) 
+  (if (call $ieee-zero? (local.get $value))
     (then
       ;; *next++ = '0';
       (i32.store8 (local.get $next) (i32.const 0x30))
@@ -1636,14 +1636,14 @@ struct CachedPower { // c = f * 2^e ~= 10^k
       (local.set $n (i32.add (local.get $decimal-exponent) (local.get $len)))
 
       ;; next = FormatBuffer(next, len, n);
-      (local.set $next (call $format-buffer 
-          (local.get $next) 
-          (local.get $len) 
+      (local.set $next (call $format-buffer
+          (local.get $next)
+          (local.get $len)
           (local.get $n)))))
       ;; // (len <= 1 + 24 = 25)
 
   ;; return next;
-  (i32.store 
-    (local.get $str) 
+  (i32.store
+    (local.get $str)
     (i32.sub (local.get $next) (local.get $str-ptr)))
   (return (local.get $str)))

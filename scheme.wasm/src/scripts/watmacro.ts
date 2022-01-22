@@ -1,10 +1,16 @@
 import * as fluent from "./fluent";
 import child_process from "child_process";
 import { validateWat } from "./validatewat";
-import { ParsedWat, Atom, List, ExpansionScope, Builtin, convertStr, isAtom } from "./parsedwat";
+import {
+  ParsedWat,
+  Atom,
+  List,
+  ExpansionScope,
+  Builtin,
+  convertStr,
+  isAtom,
+} from "./parsedwat";
 import { tokenize, isDelimiterToken } from "./tokens";
-
-
 
 type ListDelimType = "(" | "(;" | "%(" | "NONE";
 
@@ -93,7 +99,7 @@ export function parse(input: string): ParsedWat[] {
     }
     // const top = listStack.pop() || [];
     // const first = top.find(isAtom);
-    //throw new Error(`Unbalanced paren at line ${first?.token.line}`);
+    //throw new Error(`Unbalanced paren at line ${first?.line}`);
     parsed.push(
       new Atom({
         type: "comment",
@@ -150,14 +156,14 @@ function getVersion() {
   }
 }
 
-function stringify(parsed: ParsedWat, validate: boolean):string {
+function stringify(parsed: ParsedWat, validate: boolean): string {
   if (validate) {
     validateWat(parsed);
   }
   return parsed.toString();
 }
 
-export function emit(parsed: ParsedWat[],validate: boolean) {
+export function emit(parsed: ParsedWat[], validate: boolean) {
   const scope = new ExpansionScope();
   scope.add({
     name: "%str",
@@ -179,7 +185,7 @@ export function emit(parsed: ParsedWat[],validate: boolean) {
                   new Atom({
                     content: el,
                     type: "element",
-                    line: str.token.line,
+                    line: str.line,
                   })
               ),
             ],
@@ -212,10 +218,10 @@ export function emit(parsed: ParsedWat[],validate: boolean) {
     const expanded = element.expand(scope);
     if (Array.isArray(expanded)) {
       expanded.forEach((el) => {
-        output.push(stringify(el, validate))
+        output.push(stringify(el, validate));
       });
     } else {
-      output.push(stringify(expanded, validate))
+      output.push(stringify(expanded, validate));
     }
   }
 

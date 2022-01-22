@@ -1,8 +1,16 @@
 import * as fluent from "./fluent";
-import { isCommentToken, isDefineToken, isMacroToken, isWhitespaceToken, MacroToken, Token } from "./tokens";
+import {
+  isCommentToken,
+  isDefineToken,
+  isMacroToken,
+  isWhitespaceToken,
+  MacroToken,
+  Token,
+} from "./tokens";
 
 export abstract class ParsedWat {
   abstract get type(): "list" | "atom" | "builtin";
+  abstract get line(): number;
   abstract toString(): string;
   abstract expand(scope: ExpansionScope): ParsedWat | ParsedWat[];
 }
@@ -19,12 +27,19 @@ export class Builtin extends ParsedWat {
     super();
     this.fn_ = fn;
   }
+
   get type(): "list" | "atom" | "builtin" {
     return "builtin";
   }
+
+  get line() {
+    return 0;
+  }
+
   toString(): string {
     throw new Error("Method not implemented.");
   }
+
   expand(scope: ExpansionScope): ParsedWat | ParsedWat[] {
     throw new Error("Method not implemented.");
   }
@@ -116,6 +131,11 @@ export class List extends ParsedWat {
 
   get type(): "list" | "atom" {
     return "list";
+  }
+
+  get line() {
+    const atom = this.firstSignificantAtom();
+    return atom ? atom.line : 0;
   }
 
   get elements(): ParsedWat[] {
@@ -348,9 +368,7 @@ export class List extends ParsedWat {
           .flat();
       } else {
         throw new Error(
-          `Unknown macro ${name} at line ${
-            this.firstSignificantAtom()?.token.line
-          }`
+          `Unknown macro ${name} at line ${this.firstSignificantAtom()?.line}`
         );
       }
     }
@@ -385,6 +403,10 @@ export class Atom extends ParsedWat {
 
   get type(): "list" | "atom" {
     return "atom";
+  }
+
+  get line() {
+    return this.token_.line;
   }
 
   get token(): Token {

@@ -1,6 +1,23 @@
+import { Func } from "mocha";
 import * as fluent from "./fluent";
 import { Atom, isAtom, isList, List, ParsedWat } from "./parsedwat";
 import { isCommentToken, isWhitespaceToken } from "./tokens";
+
+type WatType = "i32" | "i64" | "f32" | "f64";
+
+interface FunctionSignature {
+  name: string;
+  params: WatType[];
+  result: WatType[];
+}
+
+interface ValidatorContext {
+  functions: Map<string, FunctionSignature>;
+  locals: string[];
+  blocks: string[];
+}
+
+type Validator = (funcName: Atom, locals: ValidatorContext, list: List) => void;
 
 export function validateWat(parsedWat: ParsedWat) {
   if (isAtom(parsedWat)) {
@@ -8,7 +25,7 @@ export function validateWat(parsedWat: ParsedWat) {
       !isCommentToken(parsedWat.token) &&
       !isWhitespaceToken(parsedWat.token)
     ) {
-      throw new Error(`Unexpected top-level token at ${parsedWat.token.line}`);
+      throw new Error(`Unexpected top-level token at ${parsedWat.line}`);
     }
     return;
   } else if (isList(parsedWat)) {
@@ -19,16 +36,16 @@ export function validateWat(parsedWat: ParsedWat) {
     const first = parsedWat.firstSignificantAtom();
 
     if (parsedWat.isDefinition) {
-      throw new Error(`Unexpected macro definition at ${first?.token.line}`);
+      throw new Error(`Unexpected macro definition at ${parsedWat.line}`);
     } else if (parsedWat.isMacro) {
       throw new Error(
-        `Unexpanded macro ${parsedWat.macroName} at ${first?.token.line}`
+        `Unexpanded macro ${parsedWat.macroName} at ${parsedWat.line}`
       );
     }
 
     validateModule(parsedWat);
   } else {
-    throw new Error("Unexpected top-level parse object");
+    throw new Error(`Unexpected top-level parse object at ${parsedWat.line}`);
   }
 }
 
@@ -38,7 +55,9 @@ function isAtomStartedList(list: List): Atom {
     throw new Error("Unexpected empty list");
   } else if (!isAtom(first[0])) {
     throw new Error(
-      `Expecting list to start with atomm, got ${first[0].toString()}`
+      `Expecting list to start with atom, got ${first[0].toString()} at line ${
+        list.line
+      }`
     );
   }
   return first[0];
@@ -48,30 +67,124 @@ function validateModule(module: List) {
   const first = isAtomStartedList(module);
   if (first.token.content !== "module") {
     throw new Error(
-      `Expecting module, got ${first.toString()}, at line ${first.token.line}`
+      `Expecting module, got ${first.toString()}, at line ${first.line}`
     );
   }
-
-  validateModuleLevel(fluent.skip(module.getSignificantElements(), 1));
+  const functions = new Map<string, FunctionSignature>();
+  extractFunctionSignatures(
+    fluent.skip(module.getSignificantElements(), 1),
+    functions
+  );
+  validateModuleLevel(
+    fluent.skip(module.getSignificantElements(), 1),
+    functions
+  );
 }
 
-function validateModuleLevel(elements: Generator<ParsedWat>) {
+function extractFunctionSignatures(
+  elements: Generator<ParsedWat>,
+  functions: Map<string, FunctionSignature>
+) {
+  for (const elem of elements) {
+    if (isList(elem)) {
+      if (elem.isComment) {
+        continue;
+      } else if (elem.isMacroScope) {
+        extractFunctionSignatures(
+          fluent.skip(elem.getSignificantElements(), 1),
+          functions
+        );
+        continue;
+      }
+
+      const start = isAtomStartedList(elem);
+      if (start.token.content === "func") {
+        const signature = extractFunctionSignature(elem);
+        functions.set(signature.name, signature);
+      }
+    }
+  }
+}
+
+function extractFunctionSignature(func: List): FunctionSignature {
+  const elements = Array.from(func.getSignificantElements());
+  assertAtom(elements.shift(), "func");
+  const name = assertAtomMatch(elements.shift(), kIdentifierReg, "identifier");
+
+  let state: "import" | "param" | "result" | "local" | "instr" = "import";
+  const locals: string[] = [];
+  const paramTypes: WatType[] = [];
+  const resultTypes: WatType[] = [];
+
+  do {
+    const curr = elements.shift();
+    if (!isList(curr)) {
+      throw new Error(
+        `Function ${name} got ${curr}, expecting a list, at line ${name.line}`
+      );
+      continue;
+    }
+    if (curr.isComment) {
+      continue;
+    }
+    const start = isAtomStartedList(curr);
+
+    if (state === "import") {
+      state = "param";
+      if (start.token.content === "import") {
+        validateImport(name, curr);
+        continue;
+      }
+    }
+
+    if (state === "param") {
+      if (start.token.content === "param") {
+        validateParam(name, locals, curr);
+        paramTypes.push(getSignatureType(curr, "param"));
+        continue;
+      }
+      state = "result";
+    }
+
+    if (state === "result") {
+      if (start.token.content === "result") {
+        validateResult(name, curr);
+        resultTypes.push(getSignatureType(curr, "result"));
+      }
+      break;
+    }
+  } while (elements.length);
+
+  return {
+    name: name.token.content,
+    params: paramTypes,
+    result: resultTypes,
+  };
+}
+
+function validateModuleLevel(
+  elements: Generator<ParsedWat>,
+  functions: Map<string, FunctionSignature>
+) {
   for (const elem of elements) {
     if (isAtom(elem)) {
-      throw new Error(`Unexpected atom in module ${elem.token.line}`);
+      throw new Error(`Unexpected atom in module ${elem.line}`);
     } else if (isList(elem)) {
       if (elem.isComment) {
         continue;
       }
       if (elem.isMacroScope) {
-        validateModuleLevel(fluent.skip(elem.getSignificantElements(), 1));
+        validateModuleLevel(
+          fluent.skip(elem.getSignificantElements(), 1),
+          functions
+        );
         continue;
       }
 
       const start = isAtomStartedList(elem);
       switch (start.token.content) {
         case "func":
-          validateFunction(elem);
+          validateFunction(elem, functions);
           break;
         case "memory":
         case "type":
@@ -83,7 +196,7 @@ function validateModuleLevel(elements: Generator<ParsedWat>) {
           break;
         default:
           throw new Error(
-            `Unexpected '${start}' in module at line ${start.token.line}`
+            `Unexpected '${start}' in module at line ${start.line}`
           );
       }
     }
@@ -95,12 +208,10 @@ function assertAtom(elem: ParsedWat | undefined, content: string): Atom {
     throw new Error(`Expecting ${content}, got nothing`);
   }
   if (!isAtom(elem)) {
-    throw new Error(`Expecting ${content}, got ${elem}`);
+    throw new Error(`Expecting ${content}, got ${elem} at ${elem.line}`);
   }
   if (elem.token.content !== content) {
-    throw new Error(
-      `Expecting ${content}, got ${elem} at line ${elem.token.line}`
-    );
+    throw new Error(`Expecting ${content}, got ${elem} at line ${elem.line}`);
   }
   return elem;
 }
@@ -110,10 +221,10 @@ function assertAtomType(elem: ParsedWat | undefined, type: string) {
     throw new Error(`Expecting ${type}, got nothing`);
   }
   if (!isAtom(elem)) {
-    throw new Error(`Expecting ${type}, got ${elem}`);
+    throw new Error(`Expecting ${type}, got ${elem} at ${elem.line}`);
   }
   if (elem.token.type !== type) {
-    throw new Error(`Expecting ${type}, got ${elem}`);
+    throw new Error(`Expecting ${type}, got ${elem} at ${elem.line}`);
   }
 }
 
@@ -126,10 +237,14 @@ function assertAtomMatch(
     throw new Error(`Expecting ${desc || content}, got nothing`);
   }
   if (!isAtom(elem)) {
-    throw new Error(`Expecting ${desc || content}, got ${elem}`);
+    throw new Error(
+      `Expecting ${desc || content}, got ${elem} at ${elem.line}`
+    );
   }
   if (!elem.token.content.match(content)) {
-    throw new Error(`Expecting ${desc || content}, got ${elem}`);
+    throw new Error(
+      `Expecting ${desc || content}, got ${elem} at ${elem.line}`
+    );
   }
   return elem;
 }
@@ -150,7 +265,10 @@ function assertAtomMatchOptional(
 const kIdentifierReg = /^\$[0-9a-zA-Z!#$%&'*+.\/:<=>?@\\^_`|~-]+$/;
 const kNumTypeReg = /^(i32|i64|f32|f64)$/;
 
-function validateFunction(func: List) {
+function validateFunction(
+  func: List,
+  functions: Map<string, FunctionSignature>
+) {
   const elements = Array.from(func.getSignificantElements());
   assertAtom(elements.shift(), "func");
   const name = assertAtomMatch(elements.shift(), kIdentifierReg, "identifier");
@@ -162,7 +280,7 @@ function validateFunction(func: List) {
     const curr = elements.shift();
     if (!isList(curr)) {
       throw new Error(
-        `Function ${name} got ${curr}, expecting a list, at line ${name.token.line}`
+        `Function ${name} got ${curr}, expecting a list, at line ${name.line}`
       );
       continue;
     }
@@ -204,7 +322,11 @@ function validateFunction(func: List) {
     }
 
     if (state === "instr") {
-      validateInstructions(name, { locals: locals, blocks: [] }, elements);
+      validateInstructions(
+        name,
+        { functions: functions, locals: locals, blocks: [] },
+        elements
+      );
       return;
     }
   } while (elements.length);
@@ -233,11 +355,28 @@ function validateParamOrLocal(
   if (name) {
     if (locals.some((el) => el === name.token.content)) {
       throw new Error(
-        `Duplicate ${paramOrLocal} ${name} in ${funcName} at line ${name.token.line}`
+        `Duplicate ${paramOrLocal} ${name} in ${funcName} at line ${name.line}`
       );
     }
     locals.push(name.token.content);
   }
+}
+
+function getSignatureType(
+  param: List,
+  paramOrResult: "param" | "result"
+): WatType {
+  const elements = Array.from(param.getSignificantElements());
+  assertAtom(elements.shift(), paramOrResult);
+  const second = elements.shift();
+  const name =
+    paramOrResult === "param"
+      ? assertAtomMatchOptional(second, kIdentifierReg)
+      : undefined;
+  const type = (name ? elements.shift() : second) as Atom;
+  assertAtomMatch(type, kNumTypeReg, "numtype");
+  // we can make this type assertion because it is verified by kNumTypeReg
+  return type.token.content as WatType;
 }
 
 function validateResult(funcName: Atom, result: List) {
@@ -271,7 +410,7 @@ function validateInstruction(
   if (isAtom(instruction)) {
     // TODO validate non s-expression
     console.warn(
-      `Instruction '${instruction}' not in S-Experession form in ${funcName} at line ${instruction.token.line}`
+      `Instruction '${instruction}' not in S-Experession form in ${funcName} at line ${instruction.line}`
     );
   } else if (isList(instruction)) {
     if (instruction.isComment) {
@@ -285,18 +424,12 @@ function validateInstruction(
   }
 }
 
-interface ValidatorContext {
-  locals: string[];
-  blocks: string[];
-}
-type Validator = (funcName: Atom, locals: ValidatorContext, list: List) => void;
-
 const kInstructionValidators: Map<string, Validator> = new Map([
   ["block", blockValidator],
   ["br", brValidator],
   ["br_if", brifValidator],
   ["call", callValidator],
-  ["call_indirect", callValidator],
+  ["call_indirect", callIndirectValidator],
   ["f32.const", constValidator],
   ["f64.const", constValidator],
   ["global.get", globalGetValidator],
@@ -509,7 +642,7 @@ function lookupInstructionValidator(funcName: Atom, instr: Atom) {
   const validator = kInstructionValidators.get(instr.token.content);
   if (!validator) {
     throw new Error(
-      `Unknown instruction ${instr} in ${funcName} at line ${instr.token.line}`
+      `Unknown instruction ${instr} in ${funcName} at line ${instr.line}`
     );
   }
   return validator;
@@ -542,14 +675,14 @@ function getValidator(
   const name = assertAtomMatch(elements.shift(), kIdentifierReg, "identifier");
   if (checkLocals && !context.locals.some((el) => el === name.token.content)) {
     throw new Error(
-      `${first} has unknown identifier ${name} in ${funcName} at line ${name.token.line}`
+      `${first} has unknown identifier ${name} in ${funcName} at line ${name.line}`
     );
   }
   if (elements.length !== 0) {
     throw new Error(
       `${first} should have 1 argument, found ${
         1 + elements.length
-      } in ${funcName} at line ${name.token.line}`
+      } in ${funcName} at line ${name.line}`
     );
   }
 }
@@ -581,14 +714,14 @@ function setValidator(
   const name = assertAtomMatch(elements.shift(), kIdentifierReg, "identifier");
   if (checkLocals && !context.locals.some((el) => el === name.token.content)) {
     throw new Error(
-      `${first} has unknown identifier ${name} in ${funcName} at line ${name.token.line}`
+      `${first} has unknown identifier ${name} in ${funcName} at line ${name.line}`
     );
   }
   if (elements.length !== 1) {
     throw new Error(
       `${first} should have 2 arguments, found ${
         1 + elements.length
-      } in ${funcName} at line ${name.token.line}`
+      } in ${funcName} at line ${name.line}`
     );
   }
   validateInstruction(funcName, context, elements[0]);
@@ -596,20 +729,18 @@ function setValidator(
 
 function constValidator(funcName: Atom, context: ValidatorContext, list: List) {
   const elements = Array.from(list.getSignificantElements());
-  const first = elements.shift();
+  const first = elements.shift() as ParsedWat;
   if (elements.length !== 1) {
     throw new Error(
       `${first} should have 1 argument, found ${
         1 + elements.length
-      } in ${funcName} at line ${(first as Atom).token.line}`
+      } in ${funcName} at line ${first.line}`
     );
   }
   const constant = elements.shift();
   if (!isAtom(constant)) {
     throw new Error(
-      `${first} should have constant argument, found ${constant} in ${funcName} at line ${
-        (first as Atom).token.line
-      }`
+      `${first} should have constant argument, found ${constant} in ${funcName} at line ${first.line}`
     );
   }
 }
@@ -623,7 +754,7 @@ function loadValidator(funcName: Atom, context: ValidatorContext, list: List) {
   }
   if (elements.length != 1) {
     throw new Error(
-      `${first} should have 1 argument, found ${elements.length} in ${funcName} at line ${first.token.line}`
+      `${first} should have 1 argument, found ${elements.length} in ${funcName} at line ${first.line}`
     );
   }
   validateInstruction(funcName, context, elements[0]);
@@ -638,7 +769,7 @@ function storeValidator(funcName: Atom, context: ValidatorContext, list: List) {
   }
   if (elements.length != 2) {
     throw new Error(
-      `${first} should have 2 arguments, found ${elements.length} in ${funcName} at line ${first.token.line}`
+      `${first} should have 2 arguments, found ${elements.length} in ${funcName} at line ${first.line}`
     );
   }
   validateInstruction(funcName, context, elements[0]);
@@ -646,6 +777,33 @@ function storeValidator(funcName: Atom, context: ValidatorContext, list: List) {
 }
 
 function callValidator(funcName: Atom, context: ValidatorContext, list: List) {
+  const elements = Array.from(list.getSignificantElements());
+  const first = elements.shift() as Atom;
+  const name = elements.shift() as Atom;
+  assertAtomMatch(name, kIdentifierReg, "identifier");
+  if (!context.functions.has(name.token.content)) {
+    console.warn(
+      `Calling unknown function ${name} in ${funcName} at line ${name.line}`
+    );
+  } else {
+    const signature = context.functions.get(
+      name.token.content
+    ) as FunctionSignature;
+    if (signature.params.length !== elements.length) {
+      throw new Error(
+        `Call to function ${name} in ${funcName} has ${elements.length} arguments, expecting ${signature.params.length}. at line ${name.line}`
+      );
+    }
+  }
+
+  validateInstructions(funcName, context, elements);
+}
+
+function callIndirectValidator(
+  funcName: Atom,
+  context: ValidatorContext,
+  list: List
+) {
   const elements = Array.from(list.getSignificantElements());
   const first = elements.shift() as Atom;
   assertAtomMatch(elements.shift(), kIdentifierReg, "identifier");
@@ -667,7 +825,7 @@ function returnValidator(
     throw new Error(
       `return should have at most 1 argument, found ${
         1 + elements.length
-      } in ${funcName} at line ${ret.token.line}`
+      } in ${funcName} at line ${ret.line}`
     );
   }
 
@@ -680,7 +838,7 @@ function ifValidator(funcName: Atom, context: ValidatorContext, list: List) {
   const test = elements.shift();
   if (!test || !isList(test)) {
     throw new Error(
-      `Expecting (<test> ...) in if in ${funcName} at line ${key.token.line}`
+      `Expecting (<test> ...) in if in ${funcName} at line ${key.line}`
     );
   }
   validateInstruction(funcName, context, test);
@@ -688,7 +846,7 @@ function ifValidator(funcName: Atom, context: ValidatorContext, list: List) {
   const then = elements.shift();
   if (!then || !isList(then)) {
     throw new Error(
-      `Expecting (then ...) in if in ${funcName} at line ${key.token.line}`
+      `Expecting (then ...) in if in ${funcName} at line ${key.line}`
     );
   }
   const thenElements = Array.from(then.getSignificantElements());
@@ -702,7 +860,7 @@ function ifValidator(funcName: Atom, context: ValidatorContext, list: List) {
   const elseElement = elements.shift();
   if (!elseElement || !isList(elseElement)) {
     throw new Error(
-      `Expecting (else ...) in if in ${funcName} at line ${key.token.line}`
+      `Expecting (else ...) in if in ${funcName} at line ${key.line}`
     );
   }
   const elseElements = Array.from(elseElement.getSignificantElements());
@@ -716,7 +874,7 @@ function ifValidator(funcName: Atom, context: ValidatorContext, list: List) {
   throw new Error(
     `if should have at most 3 arguments, found ${
       2 + elements.length
-    } in ${funcName} at line ${key.token.line}`
+    } in ${funcName} at line ${key.line}`
   );
 }
 
@@ -726,7 +884,7 @@ function thunkValidator(funcName: Atom, context: ValidatorContext, list: List) {
 
   if (elements.length != 0) {
     throw new Error(
-      `${first} should have no, found ${elements.length} in ${funcName} at line ${first.token.line}`
+      `${first} should have no, found ${elements.length} in ${funcName} at line ${first.line}`
     );
   }
 }
@@ -737,7 +895,7 @@ function unaryValidator(funcName: Atom, context: ValidatorContext, list: List) {
 
   if (elements.length != 1) {
     throw new Error(
-      `${first} should have 1 argument, found ${elements.length} in ${funcName} at line ${first.token.line}`
+      `${first} should have 1 argument, found ${elements.length} in ${funcName} at line ${first.line}`
     );
   }
 
@@ -754,7 +912,7 @@ function binaryValidator(
 
   if (elements.length != 2) {
     throw new Error(
-      `${first} should have 2 arguments, found ${elements.length} in ${funcName} at line ${first.token.line}`
+      `${first} should have 2 arguments, found ${elements.length} in ${funcName} at line ${first.line}`
     );
   }
 
@@ -772,7 +930,7 @@ function selectValidator(
 
   if (elements.length != 3) {
     throw new Error(
-      `${first} should have 3 arguments, found ${elements.length} in ${funcName} at line ${first.token.line}`
+      `${first} should have 3 arguments, found ${elements.length} in ${funcName} at line ${first.line}`
     );
   }
 
@@ -788,11 +946,12 @@ function blockValidator(funcName: Atom, context: ValidatorContext, list: List) {
 
   if (context.blocks.some((el) => el === name.token.content)) {
     throw new Error(
-      `${first} has duplicate label ${name} in ${funcName} at line ${name.token.line}`
+      `${first} has duplicate label ${name} in ${funcName} at line ${name.line}`
     );
   }
 
-  const blockContext = {
+  const blockContext: ValidatorContext = {
+    functions: context.functions,
     locals: context.locals,
     blocks: [...context.blocks, name.token.content],
   };
@@ -807,13 +966,13 @@ function brifValidator(funcName: Atom, context: ValidatorContext, list: List) {
 
   if (!context.blocks.some((el) => el === name.token.content)) {
     throw new Error(
-      `${first} has unknown label ${name} in ${funcName} at line ${name.token.line}`
+      `${first} has unknown label ${name} in ${funcName} at line ${name.line}`
     );
   }
 
   if (elements.length != 1) {
     throw new Error(
-      `${first} should have 1 argument, found ${elements.length} in ${funcName} at line ${first.token.line}`
+      `${first} should have 1 argument, found ${elements.length} in ${funcName} at line ${first.line}`
     );
   }
 
@@ -827,13 +986,13 @@ function brValidator(funcName: Atom, context: ValidatorContext, list: List) {
 
   if (!context.blocks.some((el) => el === name.token.content)) {
     throw new Error(
-      `${first} has unknown label ${name} in ${funcName} at line ${name.token.line}`
+      `${first} has unknown label ${name} in ${funcName} at line ${name.line}`
     );
   }
 
   if (elements.length) {
     throw new Error(
-      `${first} should have no arguments, found ${elements.length} in ${funcName} at line ${first.token.line}`
+      `${first} should have no arguments, found ${elements.length} in ${funcName} at line ${first.line}`
     );
   }
 }
@@ -845,7 +1004,7 @@ function typeValidator(funcName: Atom, context: ValidatorContext, list: List) {
 
   if (elements.length) {
     throw new Error(
-      `${first} should have no arguments, found ${elements.length} in ${funcName} at line ${first.token.line}`
+      `${first} should have no arguments, found ${elements.length} in ${funcName} at line ${first.line}`
     );
   }
 }
