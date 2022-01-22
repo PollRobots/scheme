@@ -1,8 +1,11 @@
 ;; (let <bindings> <expression_1> ...)
+;; (let <name> <bindings> <expression_1> ...)
 ;;    bindings ::=
 ;;      ((<variable_1> <init_1>) ...)
 (func $let (param $env i32) (param $args i32) (result i32)
+  (local $num-args i32)
   (local $bindings i32)
+  (local $name i32)
   (local $temp i32)
   (local $body i32)
   (local $child-env i32)
@@ -12,16 +15,26 @@
   (local $vars i32)
   (local $inits i32)
 
-  (block $b_check
-    (block $b_fail
+  (block $check (block $fail
       (local.set $temp (local.get $args))
-      (br_if $b_fail (i32.lt_u (call $list-len (local.get $temp)) (i32.const 2)))
+      (local.set $num-args (call $list-len (local.get $temp)))
+
+      (br_if $fail (i32.lt_u (local.get $num-args) (i32.const 2)))
 
       (%pop-l $bindings $temp)
-      (br_if $b_fail (i32.eqz (call $is-list-impl (local.get $bindings))))
+      (if (i32.eq (%get-type $bindings) (%symbol-type))
+        (then
+          ;; this is a 'named' let
+          (br_if $fail (i32.lt_u (local.get $num-args) (i32.const 3)))
+          (local.set $name (local.get $bindings))
+          (%pop-l $bindings $temp))
+        (else
+          (local.set $name (i32.const 0))))
+
+      (br_if $fail (i32.eqz (call $is-list-impl (local.get $bindings))))
 
       (local.set $body (local.get $temp))
-      (br $b_check))
+      (br $check))
 
     (return (call $argument-error (local.get $args))))
 
@@ -48,54 +61,38 @@
         (br $w_start)))
     (return (call $argument-error (local.get $args))))
 
-  ;; child-env = environment-init(g-heap, env)
-  (local.set $child-env (call $environment-init (global.get $g-heap) (local.get $env)))
-
-  (if (i32.eq (local.get $vars) (global.get $g-nil))
-    ;; there are no bindings, so simply eval body in child environment
-    (then (return (call $eval-body (i32.const 1) (local.get $child-env) (local.get $body)))))
+  (if (local.get $name)
+    (then
+      ;; order of formals and inits matters
+      (local.set $vars (call $reverse-impl (local.get $vars)))
+      (local.set $inits (call $reverse-impl (local.get $inits)))
+      ;; (letrec ((name (lambda (formals ...) body ...)))
+      ;;    (name inits ...))
+      (local.set $temp (%alloc-list-3
+        (global.get $g-letrec)
+        (%alloc-list-1 (%alloc-list-2
+            (local.get $name)
+            (%alloc-cons
+              (global.get $g-lambda)
+              (%alloc-cons
+                (local.get $vars)
+                (local.get $body)))))
+        (%alloc-cons (local.get $name) (local.get $inits)))))
+    (else
+      ;; create ((lambda (formals ...) body ...) inits ...)
+      (local.set $temp (%alloc-cons
+          (%alloc-cons
+            (global.get $g-lambda)
+            (%alloc-cons
+              (local.get $vars)
+              (local.get $body)))
+          (local.get $inits)))))
 
   (return (call $cont-alloc
-        (%eval-fn) ;; eval
-        (local.get $env)
-        (%car-l $inits)
-        (call $cont-alloc
-          (%cont-expr-list) ;; eval a list of expressions
-          (local.get $env)
-          (%alloc-cons (global.get $g-nil) (%cdr-l $inits))
-          (call $cont-alloc
-            (%cont-let) ;; finish the let
-            (local.get $child-env)
-            (%alloc-cons (local.get $vars) (local.get $body))
-            (i32.const 0))))))
-
-;; (cont-let inits vars body ...)
-(func $cont-let (param $env i32) (param $args i32) (result i32)
-  (local $inits i32)
-  (local $vars i32)
-  (local $init i32)
-  (local $var i32)
-
-  (%pop-l $inits $args)
-  (%pop-l $vars $args)
-
-  (local.set $vars (call $reverse-impl (local.get $vars)))
-  
-  (block $b_end
-    (loop $b_start  
-      (br_if $b_end (i32.eq (%get-type $vars) (%nil-type)))
-
-      (%pop-l $var $vars)
-      (%pop-l $init $inits)
-
-      (call $environment-add
-        (local.get $env) 
-          (local.get $var)
-          (local.get $init))
-
-      (br $b_start)))
-
-  (return (call $eval-body (i32.const 1) (local.get $env) (local.get $args))))
+      (%eval-fn)
+      (local.get $env)
+      (local.get $temp)
+      (i32.const 0))))
 
 ;; (let* <bindings> <expression_1> ...)
 ;;    bindings ::=
@@ -104,12 +101,9 @@
   (local $bindings i32)
   (local $temp i32)
   (local $body i32)
-  (local $child-env i32)
   (local $binding i32)
   (local $var i32)
   (local $init i32)
-  (local $var-init i32)
-  (local $var-init-pairs i32)
 
   (block $b_check
     (block $b_fail
@@ -125,81 +119,60 @@
     (return (call $argument-error (local.get $args))))
 
 
-  (local.set $var-init-pairs (global.get $g-nil))
+  (if (i32.eq (local.get $bindings) (global.get $g-nil))
+    (then
+      ;; no bindings
+      ;; <--- ((lambda () body ...))
+      (local.set $temp (%alloc-list-1 (%alloc-cons
+            (global.get $g-lambda)
+            (%alloc-cons
+              (local.get $bindings)
+              (local.get $body))))))
+    (else
+      (block $end (block $error
+          (br_if $end (i32.eq (%get-type $bindings) (%nil-type)))
 
-  ;; while (typeof bindings is cons) {
-  (block $w_end
-    (block $w_error
-      (loop $w_start
-        (br_if $w_end (i32.eq (%get-type $bindings) (%nil-type)))
+          (%pop-l $binding $bindings)
+          (br_if $error (i32.eqz (call $is-list-impl (local.get $bindings))))
 
-        (%pop-l $binding $bindings)
-        (br_if $w_error (i32.eqz (call $is-list-impl (local.get $bindings))))
+          (%pop-l $var $binding)
+          (br_if $error (i32.ne (%get-type $var) (%symbol-type)))
 
-        (%pop-l $var $binding)
-        (br_if $w_error (i32.ne (%get-type $var) (%symbol-type)))
+          (%pop-l $init $binding)
+          (br_if $error (i32.ne (%get-type $binding) (%nil-type)))
+          (br $end))
 
-        (%pop-l $init $binding)
-        (br_if $w_error (i32.ne (%get-type $binding) (%nil-type)))
+        (return (call $argument-error (local.get $args))))
 
-        (local.set $var-init (%alloc-cons (local.get $var) (local.get $init)))
-        (%push-l $var-init $var-init-pairs)
-        (br $w_start))))
-
-  ;; if there are no bindings, simply eval the body
-  (if (i32.eq (local.get $var-init-pairs) (global.get $g-nil))
-    (then (return (call $eval-body 
-          (i32.const 1)
-          (call $environment-init (global.get $g-heap) (local.get $env))
-          (local.get $body)))))
-
-  ;; reverse to get the correct evaluation order
-  (local.set $var-init-pairs (call $reverse-impl (local.get $var-init-pairs)))
-
-  (return (call $let*-init (local.get $env) (local.get $var-init-pairs) (local.get $body))))
-
-;; (let*-init var-init-pairs body...)
-(func $let*-init (param $env i32) (param $var-init-pairs i32) (param $body i32) (result i32)
-  (local $temp i32)
-  (local $var i32)
-  (local $init i32)
-
-  ;; check if no more args 
-  (if (i32.eq (%get-type $var-init-pairs) (%nil-type))
-    ;; no more args, evaluate the body
-    (then (return (call $eval-body (i32.const 1) (local.get $env) (local.get $body)))))
-
-  (%pop-l $temp $var-init-pairs)
-  (local.set $var (%car-l $temp))
-  (local.set $init (%cdr-l $temp))
-
-  (%push-l $var-init-pairs $body)
-  (%push-l $var $body)
+      (if (i32.eq (local.get $bindings) (global.get $g-nil))
+        (then
+          ;; this is the final binding pair
+          ;; (let (binding) body ...))
+          (local.set $temp (%alloc-cons
+              (global.get $g-let)
+              (%alloc-cons
+                (%alloc-list-1 (%alloc-list-2
+                    (local.get $var)
+                    (local.get $init)))
+                (local.get $body)))))
+        (else
+          ;; (let (binding)
+          ;;    (let* (bindings ...)
+          ;;        body ...))
+          (local.set $temp (%alloc-list-3
+              (global.get $g-let)
+              (%alloc-list-1 (%alloc-list-2 (local.get $var) (local.get $init)))
+              (%alloc-cons
+                (global.get $g-let-star)
+                (%alloc-cons
+                  (local.get $bindings)
+                  (local.get $body)))))))))
 
   (return (call $cont-alloc
-        (%eval-fn) ;; eval
-        (local.get $env)
-        (local.get $init)
-        (call $cont-alloc
-          (%cont-let*)
-          (local.get $env)
-          (local.get $body)
-          (i32.const 0)))))
-
-;; (cont-let* value name var-init-pairs body ...)
-(func $cont-let* (param $env i32) (param $args i32) (result i32)
-  (local $value i32)
-  (local $name i32)
-  (local $var-init-pairs i32)
-
-  (%pop-l $value $args)
-  (%pop-l $name $args)
-  (%pop-l $var-init-pairs $args)
-
-  (local.set $env (call $environment-init (global.get $g-heap) (local.get $env)))
-  (call $environment-add (local.get $env) (local.get $name) (local.get $value))
-
-  (return (call $let*-init (local.get $env) (local.get $var-init-pairs) (local.get $args))))
+      (%eval-fn)
+      (local.get $env)
+      (local.get $temp)
+      (i32.const 0))))
 
 ;; (letrec <bindings> <expression_1> ...)
 ;; (letrec* <bindings> <expression_1> ...)
@@ -276,7 +249,7 @@
             (i32.const 0))))))
 
 ;; (cont-letrec inits vars body ...)
-;; set! the initialized variables into the environment 
+;; set! the initialized variables into the environment
 ;; and evaluate the body
 (func $cont-letrec (param $env i32) (param $args i32) (result i32)
   (local $inits i32)
@@ -288,16 +261,16 @@
   (%pop-l $vars $args)
 
   (local.set $vars (call $reverse-impl (local.get $vars)))
-  
+
   (block $b_end
-    (loop $b_start  
+    (loop $b_start
       (br_if $b_end (i32.eq (%get-type $vars) (%nil-type)))
 
       (%pop-l $var $vars)
       (%pop-l $init $inits)
 
       (drop (call $environment-set!
-          (local.get $env) 
+          (local.get $env)
             (local.get $var)
             (local.get $init)))
 
@@ -393,7 +366,7 @@
   (local.set $body (local.get $temp))
 
   (local.set $formals-list (call $reverse-impl (local.get $formals-list)))
-  
+
   (block $b_end
     (block $b_error
       (loop $b_start
@@ -412,7 +385,7 @@
             (call $environment-add (local.get $env) (local.get $sym) (local.get $val))
 
             (br $i_start)))
-        
+
         (br_if $b_error (i32.ne (%get-type $values) (%nil-type)))
         (br_if $b_error (i32.ne (%get-type $formals) (%nil-type)))
 
@@ -480,7 +453,7 @@
         (br_if $b_error (i32.eqz (call $let-check-formals (local.get $formals))))
 
         (%pop-l $init $binding)
-        
+
         (%push-l $formals $formals-list)
         (%push-l $init $init-list)
         (br $b_start)))
@@ -489,18 +462,18 @@
 
   ;; if there are no bindings, simply call the body
   (if (i32.eq (local.get $init-list) (global.get $g-nil))
-    (then (return (call $eval-body 
+    (then (return (call $eval-body
           (i32.const 1)
-          (call $environment-init (global.get $g-heap) (local.get $env)) 
+          (call $environment-init (global.get $g-heap) (local.get $env))
           (local.get $body)))))
 
   (local.set $formals-list (call $reverse-impl (local.get $formals-list)))
   (local.set $init-list (call $reverse-impl (local.get $init-list)))
 
-  (return (call $let*-values-init 
-      (local.get $env) 
-      (local.get $formals-list) 
-      (local.get $init-list) 
+  (return (call $let*-values-init
+      (local.get $env)
+      (local.get $formals-list)
+      (local.get $init-list)
       (local.get $body))))
 
 (func $let*-values-init (param $env i32) (param $formals-list i32) (param $init-list i32) (param $body i32) (result i32)
@@ -556,7 +529,7 @@
     (br_if $b_error (i32.ne (%get-type $values) (%nil-type)))
     (br_if $b_error (i32.ne (%get-type $formals) (%nil-type)))
 
-    (return (call $let*-values-init 
+    (return (call $let*-values-init
         (local.get $env)
         (local.get $formals-list)
         (local.get $init-list)
