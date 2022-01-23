@@ -660,7 +660,7 @@ kUnaryInstructions.forEach((el) => {
   if (parts.length === 1 || !parts[0].match(kNumTypeReg)) {
     throw new Error(`Unexpected unary instruction ${el}`);
   }
-  const inputMatch = parts[1].match(/^(?:[\w]*_)*(i32|i64|f32|f64)(?:_[\w]*)*/);
+  const inputMatch = parts[1].match(/^(?:[a-z]*_)*(i32|i64|f32|f64)(?:_[a-z]*)*$/);
   if (inputMatch) {
     kInstructionValidators.set(el, (funcName, context, list) =>
       unaryValidator(
