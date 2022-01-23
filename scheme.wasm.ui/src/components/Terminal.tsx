@@ -76,7 +76,10 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
   }
 
   htmlify(raw: string) {
-    return raw.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    return raw
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
   }
 
   onUp() {
