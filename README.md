@@ -1,4 +1,5 @@
 ![Node.js CI](https://github.com/pollrobots/scheme/actions/workflows/node.js.yml/badge.svg)
+![CodeQL](https://github.com/pollrobots/scheme/actions/workflows/codeql-analysis.yml/badge.svg)
 
 # scheme
 
