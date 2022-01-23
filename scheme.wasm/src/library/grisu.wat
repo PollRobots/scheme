@@ -1628,6 +1628,7 @@ struct CachedPower { // c = f * 2^e ~= 10^k
           (%bfp-minus $w)
           (%bfp-w $w)
           (%bfp-plus $w)))
+      (call $bfp-delete (local.get $w))
       (local.set $len (%unpack-64-lo-l $pack64))
       (local.set $decimal-exponent (%unpack-64-hi-l $pack64))
 
