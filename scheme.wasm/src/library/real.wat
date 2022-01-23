@@ -1,9 +1,5 @@
 ;; (finite? <num>)
 (func $finite? (param $env i32) (param $args i32) (result i32)
-  (local $num i32)
-  (local $num-type i32)
-  (local $v f64)
-
   (block $b_check (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
@@ -11,29 +7,41 @@
 
     (return (call $argument-error (local.get $args))))
 
-  (%pop-l $num $args)
+  (return (select
+      (global.get $g-true)
+      (global.get $g-false)
+      (call $finite?-impl (%car-l $args)))))
+
+(func $finite?-impl (param $num i32) (result i32)
+  (local $num-type i32)
+  (local $v f64)
+
   (local.set $num-type (%get-type $num))
+
   (if (i32.eq (local.get $num-type) (%i64-type)) (then
-      (return (global.get $g-true))))
+      (return (i32.const 1))))
   (if (i32.eq (local.get $num-type) (%big-int-type)) (then
-      (return (global.get $g-true))))
+      (return (i32.const 1))))
+  (if (i32.eq (local.get $num-type) (%rational-type)) (then
+      (return (i32.const 1))))
 
   (if (i32.eq (local.get $num-type) (%f64-type)) (then
       (local.set $v (f64.load offset=4 (local.get $num)))
       (if (call $ieee-inf? (local.get $v)) (then
-          (return (global.get $g-false))))
+          (return (i32.const 0))))
       (if (call $ieee-nan? (local.get $v)) (then
-          (return (global.get $g-false))))
-      (return (global.get $g-true))))
+          (return (i32.const 0))))
+      (return (i32.const 1))))
+
+  (if (i32.eq (local.get $num-type) (%complex-type)) (then
+      (if (call $finite?-impl (%car-l $num)) (then
+          (return (call $finite?-impl (%cdr-l $num)))))
+      (return (i32.const 0))))
 
   (unreachable))
 
 ;; (infinite? <num>)
 (func $infinite? (param $env i32) (param $args i32) (result i32)
-  (local $num i32)
-  (local $num-type i32)
-  (local $v f64)
-
   (block $b_check (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
@@ -41,18 +49,36 @@
 
     (return (call $argument-error (local.get $args))))
 
-  (%pop-l $num $args)
+  (return (select
+      (global.get $g-true)
+      (global.get $g-false)
+      (call $infinite?-impl (%car-l $args)))))
+
+(func $infinite?-impl (param $num i32) (result i32)
+  (local $num-type i32)
+  (local $v f64)
+
   (local.set $num-type (%get-type $num))
+
   (if (i32.eq (local.get $num-type) (%i64-type)) (then
-      (return (global.get $g-false))))
+      (return (i32.const 0))))
   (if (i32.eq (local.get $num-type) (%big-int-type)) (then
-      (return (global.get $g-false))))
+      (return (i32.const 0))))
+  (if (i32.eq (local.get $num-type) (%rational-type)) (then
+      (return (i32.const 0))))
 
   (if (i32.eq (local.get $num-type) (%f64-type)) (then
       (local.set $v (f64.load offset=4 (local.get $num)))
       (if (call $ieee-inf? (local.get $v)) (then
-          (return (global.get $g-true))))
-      (return (global.get $g-false))))
+          (return (i32.const 1))))
+      (return (i32.const 0))))
+
+  (if (i32.eq (local.get $num-type) (%complex-type)) (then
+      (if (call $infinite?-impl (%car-l $num)) (then
+          (return (i32.const 1))))
+      (if (call $infinite?-impl (%cdr-l $num)) (then
+          (return (i32.const 1))))
+      (return (i32.const 0))))
 
   (unreachable))
 

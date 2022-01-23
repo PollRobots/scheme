@@ -999,8 +999,11 @@
 (func $num-number->string-impl (param $num i32) (param $radix i32) (param $args i32) (result i32)
   (local $num-type i32)
   (local $str i32)
-  (local $car-str i32)
-  (local $cdr-str i32)
+  (local $top i32)
+  (local $bottom i32)
+  (local $real i32)
+  (local $imag i32)
+  (local $list i32)
 
   (block $convert (block $fail
       (local.set $num-type (%get-type $num))
@@ -1017,44 +1020,71 @@
           (br $convert)))
 
       (if (i32.eq (local.get $num-type) (%rational-type)) (then
-          (local.set $car-str (call $num-number->string-impl
+          (local.set $top (call $num-number->string-impl
               (%car-l $num)
               (local.get $radix)
               (local.get $args)))
-          (%chk-type $fail $car-str %str-type)
-          (local.set $cdr-str (call $num-number->string-impl
+          (%chk-type $fail $top %str-type)
+          (local.set $bottom (call $num-number->string-impl
               (%cdr-l $num)
               (local.get $radix)
               (local.get $args)))
-          (%chk-type $fail $cdr-str %str-type)
+          (%chk-type $fail $bottom %str-type)
           (return (call $string-append-impl (%alloc-list-3
-                (local.get $car-str)
+                (local.get $top)
                 (global.get $g-slash)
-                (local.get $cdr-str))))))
+                (local.get $bottom))))))
 
       (if (i32.eq (local.get $num-type) (%complex-type)) (then
-          (local.set $car-str (call $num-number->string-impl
-              (%car-l $num)
-              (local.get $radix)
-              (local.get $args)))
-          (%chk-type $fail $car-str %str-type)
-          (local.set $cdr-str (call $num-number->string-impl
-              (%cdr-l $num)
-              (local.get $radix)
-              (local.get $args)))
-          (%chk-type $fail $cdr-str %str-type)
-          (if (call $num-core-neg? (%cdr-l $num))
+          (local.set $list (%alloc-list-1 (global.get $g-imag)))
+          (local.set $imag (%cdr-l $num))
+          (if (call $finite?-impl (local.get $imag))
             (then
-              (return (call $string-append-impl (%alloc-list-3
-                (local.get $car-str)
-                (local.get $cdr-str)
-                (global.get $g-imag)))))
+              ;; finite imag, push string to list (only if |imag| != 1)
+              (if (call $num-core-cmp
+                    (call $num-core-abs (local.get $imag))
+                    (global.get $g-one))
+                (then
+                  ;; |imag| != 1
+                  (local.set $list (%alloc-cons
+                      (call $num-number->string-impl
+                        (local.get $imag)
+                        (local.get $radix)
+                        (local.get $args))
+                      (local.get $list)))
+                  ;; push + if the number isn't negative
+                  (if (i32.eqz (call $num-core-neg? (local.get $imag))) (then
+                      (local.set $list (%alloc-cons
+                          (global.get $g-plus)
+                          (local.get $list))))))
+                (else
+                  ;; just push the sign
+                  (local.set $list (%alloc-cons
+                      (select
+                        (global.get $g-neg)
+                        (global.get $g-plus)
+                        (call $num-core-neg? (local.get $imag)))
+                      (local.get $list))))))
             (else
-              (return (call $string-append-impl (%alloc-list-4
-                (local.get $car-str)
-                (global.get $g-plus)
-                (local.get $cdr-str)
-                (global.get $g-imag))))))))
+              ;; infinite or nan, push string as is, this will include the sign
+              (local.set $list (%alloc-cons
+                  (call $num-number->string-impl
+                    (local.get $imag)
+                    (local.get $radix)
+                    (local.get $args))
+                  (local.get $list)))))
+
+          (local.set $real (%car-l $num))
+          (if (i32.eqz (call $num-core-zero? (local.get $real))) (then
+              ;; real is non-zero so add it
+              (local.set $list (%alloc-cons
+                  (call $num-number->string-impl
+                    (local.get $real)
+                    (local.get $radix)
+                    (local.get $args))
+                  (local.get $list)))))
+
+          (return (call $string-append-impl (local.get $list)))))
 
       (br_if $fail (i32.ne (local.get $radix) (i32.const 10)))
 

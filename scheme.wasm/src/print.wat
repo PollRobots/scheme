@@ -155,28 +155,10 @@
 )
 
 (func $print-complex (param $num i32)
-  (local $real i32)
-  (local $imag i32)
+  (local $str i32)
 
-  (local.set $real (%car-l $num))
-  (local.set $imag (%cdr-l $num))
-
-  ;; only print real part if non-zero
-  (if (i32.eqz (call $num-core-zero? (local.get $real))) (then
-    (call $print (local.get $real))))
-
-  ;; print appropriate sign
-  (if (call $num-core-neg? (local.get $imag))
-    (then
-      (call $print-symbol (global.get $g-neg))
-      (local.set $imag (call $num-core-neg (local.get $imag))))
-    (else (call $print-symbol (global.get $g-plus))))
-
-  ;; only print imaginary part if it isn't 1
-  (if (call $num-core-cmp (local.get $imag) (global.get $g-one)) (then
-    (call $print (local.get $imag))))
-
-  (call $print-symbol (global.get $g-imag)))
+  (local.set $str (call $num-number->string-impl (local.get $num) (i32.const 10) (global.get $g-nil)))
+  (call $io-write (%car-l $str)))
 
 (func $print-nil
   (call $io-write (i32.load offset=4 (global.get $g-nil-str)))
