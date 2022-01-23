@@ -725,32 +725,48 @@
   (result i32)
 
   (local $word i32)
-  (local $mask i32)
-
-  (if (i32.gt_u (local.get $short-str-len) (i32.const 4))
-    (then (unreachable)))
 
   ;; if (offset + short-str-len > *ptr) {
   (if (i32.gt_u (i32.add (local.get $offset) (local.get $short-str-len))
                 (i32.load (local.get $str)))
-    (then
-      ;; return 0;
-      (return (i32.const 0))))
+    (then (return (i32.const 0))))
 
-  ;; word = str[4 + offset]
-  (local.set $word (i32.load offset=4 (i32.add (local.get $str) (local.get $offset))))
-  ;; mask = -1 >> (4-len) << 3
-  (local.set $mask
-    (i32.shr_u
-      (i32.const -1)
-      (i32.shl
-        (i32.sub (i32.const 4) (local.get $short-str-len))
-        (i32.const 3))))
+  (local.set $str (i32.add (local.get $str) (local.get $offset)))
 
-  (return
-    (i32.eq
-      (i32.and (local.get $mask) (local.get $word))
-      (local.get $short-str))))
+  (block $b-word-len
+    (if (i32.eq (local.get $short-str-len) (i32.const 1)) (then
+        (local.set $word (i32.load8_u offset=4 (local.get $str)))
+        (br $b-word-len)))
+    (if (i32.eq (local.get $short-str-len) (i32.const 2)) (then
+        (local.set $word (i32.load16_u offset=4 (local.get $str)))
+        (br $b-word-len)))
+    (if (i32.eq (local.get $short-str-len) (i32.const 3)) (then
+        (local.set $word (i32.and
+            (i32.load offset=4 (local.get $str))
+            (i32.const 0x00FF_FFFF)))
+        (br $b-word-len)))
+    (if (i32.eq (local.get $short-str-len) (i32.const 4)) (then
+        (local.set $word (i32.load offset=4 (local.get $str)))
+        (br $b-word-len)))
+    (unreachable))
+
+  (return (i32.eq (local.get $word) (local.get $short-str))))
+
+(func $short-str-ends-with
+  (param $str i32)
+  (param $short-str i32)
+  (param $short-str-len i32)
+  (result i32)
+
+  (local $str-len i32)
+  (local $offset i32)
+
+  (local.set $str-len (i32.load (local.get $str)))
+  (return (call $short-str-start-with
+      (local.get $str)
+      (i32.sub (local.get $str-len) (local.get $short-str-len))
+      (local.get $short-str)
+      (local.get $short-str-len))))
 
 (func $is-truthy (param $token i32) (result i32)
   (if (i32.eq (%get-type $token) (%boolean-type))
@@ -838,7 +854,7 @@
   (local.set $inexact (i32.const 0))
   (local.set $radix-count (i32.const 0))
   (local.set $negative (i32.const 0))
- (local.set $rational (i32.const 0))
+  (local.set $rational (i32.const 0))
 
   (%define %sssw (%cmp %len) (call $short-str-start-with (local.get $str-ptr) (local.get $offset) (i32.const %cmp) (i32.const %len)))
 
@@ -939,6 +955,15 @@
       (br $prefix_fail))
 
     (return (%alloc-error (%sym-64 0x786966657270 6) (local.get $str))))
+
+  ;; check to see if this is a rectangular complex number (ends in i)
+  (if (call $short-str-ends-with (local.get $str-ptr) (i32.const 0x69) (i32.const 1)) (then
+      (return (call $string->complex-rect
+          (local.get $str-ptr)
+          (local.get $offset)
+          (local.get $radix)
+          (local.get $inexact)
+          (local.get $exact)))))
 
   ;; check for +inf.0 -inf.0 +nan.0 -nan.0
   (block $b_no_real_special
@@ -1193,6 +1218,112 @@
       (return (call $inexact-impl (local.get $num)))))
 
   (return (local.get $num)))
+
+;; the format of the string at this point (after offset) is
+;; (±?<real>)?±(<imag>)?i
+;; strategy is to split before the sign that separates the real and imaginary
+;; parts.
+;; IF there is no real part (split is the same as offset), THEN
+;;  this is just an imaginary number
+;; ELSE, parse real part
+;; IF imag part is ±i THEN imaginary value is ±1 ELSE parse imag part
+(func $string->complex-rect
+  (param $str-ptr i32)
+  (param $offset i32)
+  (param $radix i32)
+  (param $inexact i32)
+  (param $exact i32)
+  (result i32)
+
+  (local $str-len i32)
+  (local $split i32)
+  (local $real i32)
+  (local $real-str i32)
+  (local $real-str-len i32)
+  (local $imag i32)
+  (local $imag-str i32)
+  (local $imag-str-len i32)
+  (local $complex i32)
+
+  (local.set $str-len (i32.load (local.get $str-ptr)))
+  ;; start searching at the offset before the i
+  (local.set $split (i32.sub (local.get $str-len) (i32.const 2)))
+  (block $end (loop $start
+      (br_if $end (call $short-str-start-with
+          (local.get $str-ptr)
+          (local.get $split)
+          (i32.const 0x2D) ;; '-'
+          (i32.const 1)))
+      (br_if $end (call $short-str-start-with
+          (local.get $str-ptr)
+          (local.get $split)
+          (i32.const 0x2B)  ;; '+'
+          (i32.const 1)))
+      (if (i32.le_s (local.get $split) (local.get $offset)) (then
+          ;; no sign character found, this is invalid
+          (return (global.get $g-false))))
+      (%dec $split)
+      (br $start)))
+
+  (if (i32.eq (local.get $split) (local.get $offset))
+    (then
+      ;; there is no real component
+      (local.set $real (global.get $g-zero)))
+    (else
+      ;; parse the real part
+      (local.set $real-str-len (i32.sub (local.get $split) (local.get $offset)))
+      (local.set $real-str (call $malloc (i32.add
+            (local.get $real-str-len)
+            (i32.const 4))))
+      (i32.store (local.get $real-str) (local.get $real-str-len))
+      (call $memcpy
+        (i32.add (local.get $real-str) (i32.const 4))
+        (i32.add (i32.add (local.get $str-ptr) (local.get $offset)) (i32.const 4))
+        (local.get $real-str-len))
+
+      (local.set $real (call $string->number-impl
+          (%alloc-str (local.get $real-str))
+          (local.get $radix)))
+      (if (i32.eqz (call $numeric? (local.get $real)))
+          (then (return (local.get $real))))))
+
+  (if (i32.eq (local.get $split) (i32.sub (local.get $str-len) (i32.const 2)))
+    (then
+      ;; the imaginary part is ±i
+      (if (call $short-str-ends-with
+          (local.get $str-ptr)
+          (i32.const 0x692d)
+          (i32.const 2))
+        (then (local.set $imag (%alloc-i64 (i64.const -1))))
+        (else (local.set $imag (%alloc-i64 (i64.const 1))))))
+    (else
+      ;; parse the imag part
+      (local.set $imag-str-len (i32.sub
+          (i32.sub (local.get $str-len) (local.get $split))
+          (i32.const 1)))
+      (local.set $imag-str (call $malloc (i32.add
+            (local.get $imag-str-len)
+            (i32.const 4))))
+      (i32.store (local.get $imag-str) (local.get $imag-str-len))
+      (call $memcpy
+        (i32.add (local.get $imag-str) (i32.const 4))
+        (i32.add (i32.add (local.get $str-ptr) (local.get $split)) (i32.const 4))
+        (local.get $imag-str-len))
+
+      (local.set $imag (call $string->number-impl
+          (%alloc-str (local.get $imag-str))
+          (local.get $radix)))
+      (if (i32.eqz (call $numeric? (local.get $imag)))
+          (then (return (local.get $imag))))))
+
+  (local.set $complex (%alloc-complex (local.get $real) (local.get $imag)))
+
+  (if (local.get $inexact) (then
+      (local.set $complex (call $inexact-impl (local.get $complex)))))
+  (if (local.get $exact) (then
+      (local.set $complex (call $exact-impl (local.get $complex)))))
+
+  (return (local.get $complex)))
 
 (func $should-collect (result i32)
   ;; If there is currently a collection, then incremental collection should be
