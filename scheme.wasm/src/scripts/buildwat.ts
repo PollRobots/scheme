@@ -2,6 +2,7 @@
 import fs from "fs/promises";
 import { Command, OptionValues } from "commander";
 import wabt from "wabt";
+import path from "path";
 import { emit, parse } from "./watmacro";
 
 type WasmNumericType = "i32" | "i64";
@@ -224,7 +225,11 @@ async function main() {
   const contents: string[] = [];
   contents.push(...makePrefix(config));
 
+  let line = contents.reduce((sum, el) => sum + el.split("\n").length, 0);
+  const fileOffsets: [number, string][] = [];
+
   for (const el of config.files) {
+    fileOffsets.push([line + 5, el]);
     const content = await fs.readFile(el, "utf-8");
     contents.push(
       "",
@@ -234,6 +239,7 @@ async function main() {
       "",
       stripNonAscii(content)
     );
+    line += 5 + content.split("\n").length;
   }
 
   contents.push(...makeSuffix(config));
@@ -249,6 +255,18 @@ async function main() {
     } catch (e) {
       console.error("Error expanding macros");
       console.error(e instanceof Error ? e.message : e);
+      if (e instanceof Error) {
+        const m = e.message.match(/\bat\s+(\d+)/);
+        if (m) {
+          const line = Number(m[1]);
+          if (line > 0) {
+            const match = fileOffsets.findIndex((el) => el[0] > line);
+            const [offset, filename] =
+              fileOffsets[match == -1 ? fileOffsets.length - 1 : match - 1];
+            console.error(`       at ${filename}:${line - offset}`);
+          }
+        }
+      }
       broken = true;
     }
   }

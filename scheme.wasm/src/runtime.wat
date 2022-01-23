@@ -2,63 +2,67 @@
 (global $g-heap             (mut i32) (i32.const 0))
 (global $g-interned         (mut i32) (i32.const 0))
 (global $g-true             (mut i32) (i32.const 0))
-(global $g-true-str         (mut i32) (i32.const 0))
 (global $g-false            (mut i32) (i32.const 0))
-(global $g-false-str        (mut i32) (i32.const 0))
 (global $g-nil              (mut i32) (i32.const 0))
 (global $g-one              (mut i32) (i32.const 0))
 (global $g-zero             (mut i32) (i32.const 0))
-(global $g-nil-str          (mut i32) (i32.const 0))
 (global $g-newline          (mut i32) (i32.const 0))
 (global $g-collect          (mut i32) (i32.const 0))
 (global $g-builtin          (mut i32) (i32.const 0))
 (global $g-special          (mut i32) (i32.const 0))
 (global $g-env              (mut i32) (i32.const 0))
-(global $g-lt               (mut i32) (i32.const 0))
-(global $g-gt               (mut i32) (i32.const 0))
-(global $g-unknown          (mut i32) (i32.const 0))
-(global $g-space            (mut i32) (i32.const 0))
-(global $g-error            (mut i32) (i32.const 0))
-(global $g-open             (mut i32) (i32.const 0))
-(global $g-close            (mut i32) (i32.const 0))
-(global $g-dot              (mut i32) (i32.const 0))
-(global $g-eof              (mut i32) (i32.const 0))
-(global $g-double-quote     (mut i32) (i32.const 0))
-(global $g-args             (mut i32) (i32.const 0))
-(global $g-not-impl         (mut i32) (i32.const 0))
-(global $g-vec-open         (mut i32) (i32.const 0))
-(global $g-u8vec            (mut i32) (i32.const 0))
-(global $g-u8-open          (mut i32) (i32.const 0))
-(global $g-else             (mut i32) (i32.const 0))
-(global $g-arrow            (mut i32) (i32.const 0))
+
+;; symbols
 (global $g-apply            (mut i32) (i32.const 0))
-(global $g-interned-str     (mut i32) (i32.const 0))
-(global $g-eval             (mut i32) (i32.const 0))
-(global $g-gc-run           (mut i32) (i32.const 0))
-(global $g-div0             (mut i32) (i32.const 0))
-(global $g-inf              (mut i32) (i32.const 0))
-(global $g-neg-inf          (mut i32) (i32.const 0))
-(global $g-nan              (mut i32) (i32.const 0))
-(global $g-neg-nan          (mut i32) (i32.const 0))
-(global $g-fzero            (mut i32) (i32.const 0))
-(global $g-exp              (mut i32) (i32.const 0))
-(global $g-neg              (mut i32) (i32.const 0))
+(global $g-args             (mut i32) (i32.const 0))
+(global $g-arrow            (mut i32) (i32.const 0))
+(global $g-close            (mut i32) (i32.const 0))
 (global $g-cont-type        (mut i32) (i32.const 0))
 (global $g-curr-cont        (mut i32) (i32.const 0))
-(global $g-syntax-rules     (mut i32) (i32.const 0))
+(global $g-div0             (mut i32) (i32.const 0))
+(global $g-dot              (mut i32) (i32.const 0))
+(global $g-double-quote     (mut i32) (i32.const 0))
 (global $g-ellipsis         (mut i32) (i32.const 0))
-(global $g-underscore       (mut i32) (i32.const 0))
+(global $g-else             (mut i32) (i32.const 0))
+(global $g-eof              (mut i32) (i32.const 0))
+(global $g-error            (mut i32) (i32.const 0))
+(global $g-eval             (mut i32) (i32.const 0))
+(global $g-exp              (mut i32) (i32.const 0))
+(global $g-false-str        (mut i32) (i32.const 0))
+(global $g-fold-case        (mut i32) (i32.const 0))
+(global $g-fzero            (mut i32) (i32.const 0))
+(global $g-gc-run           (mut i32) (i32.const 0))
+(global $g-gt               (mut i32) (i32.const 0))
+(global $g-imag             (mut i32) (i32.const 0))
+(global $g-inf              (mut i32) (i32.const 0))
+(global $g-interned-str     (mut i32) (i32.const 0))
+(global $g-lambda           (mut i32) (i32.const 0))
 (global $g-let              (mut i32) (i32.const 0))
 (global $g-let-star         (mut i32) (i32.const 0))
 (global $g-letrec           (mut i32) (i32.const 0))
 (global $g-letrec-star      (mut i32) (i32.const 0))
-(global $g-syntax-error     (mut i32) (i32.const 0))
-(global $g-lambda           (mut i32) (i32.const 0))
+(global $g-lt               (mut i32) (i32.const 0))
+(global $g-nan              (mut i32) (i32.const 0))
+(global $g-neg              (mut i32) (i32.const 0))
+(global $g-neg-inf          (mut i32) (i32.const 0))
+(global $g-neg-nan          (mut i32) (i32.const 0))
+(global $g-nil-str          (mut i32) (i32.const 0))
+(global $g-no-fold-case     (mut i32) (i32.const 0))
+(global $g-not-impl         (mut i32) (i32.const 0))
+(global $g-open             (mut i32) (i32.const 0))
+(global $g-parse            (mut i32) (i32.const 0))
+(global $g-plus             (mut i32) (i32.const 0))
 (global $g-quote            (mut i32) (i32.const 0))
 (global $g-slash            (mut i32) (i32.const 0))
-(global $g-parse            (mut i32) (i32.const 0))
-(global $g-fold-case        (mut i32) (i32.const 0))
-(global $g-no-fold-case     (mut i32) (i32.const 0))
+(global $g-space            (mut i32) (i32.const 0))
+(global $g-syntax-error     (mut i32) (i32.const 0))
+(global $g-syntax-rules     (mut i32) (i32.const 0))
+(global $g-true-str         (mut i32) (i32.const 0))
+(global $g-u8-open          (mut i32) (i32.const 0))
+(global $g-u8vec            (mut i32) (i32.const 0))
+(global $g-underscore       (mut i32) (i32.const 0))
+(global $g-unknown          (mut i32) (i32.const 0))
+(global $g-vec-open         (mut i32) (i32.const 0))
 
 (global $g-curr-version     (mut i32) (i32.const 0))
 (global $g-debug            (mut i32) (i32.const 0))
@@ -71,62 +75,66 @@
   (global.set $g-heap (call $heap-create (i32.const 1024)))
   (global.set $g-interned (call $hashtable-init (i32.const 1024)))
   (global.set $g-true (call $heap-alloc (global.get $g-heap) (%boolean-type) (i32.const 1) (i32.const 0x7423)))
-  (global.set $g-true-str (%sym-32 0x7423 2))
   (global.set $g-false (call $heap-alloc (global.get $g-heap) (%boolean-type) (i32.const 0) (i32.const 0x6623)))
-  (global.set $g-false-str (%sym-32 0x6623 2))
   (global.set $g-nil (call $heap-alloc (global.get $g-heap) (%nil-type) (i32.const 0) (i32.const 0x2928)))
   (global.set $g-one (%alloc-i32 (i32.const 1)))
   (global.set $g-zero (%alloc-i32 (i32.const 0)))
-  (global.set $g-nil-str (%sym-32 0x2928 2))
-  (global.set $g-newline  (%sym-32 0x0A 1))
-  (global.set $g-collect (%sym-64 0x207463656c6c6f43 8))
-  (global.set $g-builtin  (%sym-64  0x6e69746c697562 7))
-  (global.set $g-special (%sym-64 0x6c616963657073 7))
-  (global.set $g-env (%sym-32 0x766e65 3))
-  (global.set $g-lt (%sym-32 0x3c 1))
-  (global.set $g-gt (%sym-32 0x3e 1))
+
+  (global.set $g-true-str (%sym-32 0x7423 2))     ;; '#t'
+  (global.set $g-false-str (%sym-32 0x6623 2))    ;; '#f'
+  (global.set $g-nil-str (%sym-32 0x2928 2))      ;; '()'
+  (global.set $g-newline  (%sym-32 0x0A 1))       ;; '\n'
+  (global.set $g-collect (%sym-64 0x207463656c6c6f43 8))  ;; 'collect'
+  (global.set $g-builtin  (%sym-64  0x6e69746c697562 7))  ;; 'builtin'
+  (global.set $g-special (%sym-64 0x6c616963657073 7))    ;; 'special'
+  (global.set $g-env (%sym-32 0x766e65 3))        ;; 'env'
+  (global.set $g-lt (%sym-32 0x3c 1))             ;; '<'
+  (global.set $g-gt (%sym-32 0x3e 1))             ;; '>'
   (global.set $g-unknown (%sym-64 0x6e776f6e6b6e75 7)) ;; 'unknown'
   (global.set $g-space (%sym-32 0x20 1))          ;; ' '
-  (global.set $g-error (%sym-64 0x726f727265 5))  ;; error
-  (global.set $g-open (%sym-32 0x28 1))           ;; (
-  (global.set $g-close (%sym-32 0x29 1))          ;; )
+  (global.set $g-error (%sym-64 0x726f727265 5))  ;; 'error'
+  (global.set $g-open (%sym-32 0x28 1))           ;; '('
+  (global.set $g-close (%sym-32 0x29 1))          ;; ')'
   (global.set $g-dot (%sym-32 0x202e20 3))        ;; ' . '
-  (global.set $g-eof (%sym-32 0x666f65 3))        ;; eof
-  (global.set $g-double-quote (%sym-32 0x22 1))   ;; "
-  (global.set $g-args (%sym-32 0x73677261 4))     ;; args
-  (global.set $g-not-impl (%sym-64 0x6c706d692D746f6e 8))     ;; not-impl
-  (global.set $g-vec-open (%sym-32 0x2823 2))     ;; #(
-  (global.set $g-u8vec (%sym-64 0x6365763875 5))  ;; u8vec
-  (global.set $g-u8-open (%sym-32 0x28387523 4))  ;; #u8(
-  (global.set $g-else (%sym-32 0x65736c65 4))     ;; else
-  (global.set $g-arrow (%sym-32 0x3E3D 2))        ;; =>
-  (global.set $g-apply (%sym-64 0x796c707061 5))  ;; apply
+  (global.set $g-eof (%sym-32 0x666f65 3))        ;; 'eof'
+  (global.set $g-double-quote (%sym-32 0x22 1))   ;; '"'
+  (global.set $g-args (%sym-32 0x73677261 4))     ;; 'args'
+  (global.set $g-not-impl (%sym-64 0x6c706d692D746f6e 8))     ;; 'not-impl'
+  (global.set $g-vec-open (%sym-32 0x2823 2))     ;; '#('
+  (global.set $g-u8vec (%sym-64 0x6365763875 5))  ;; 'u8vec'
+  (global.set $g-u8-open (%sym-32 0x28387523 4))  ;; '#u8('
+  (global.set $g-else (%sym-32 0x65736c65 4))     ;; 'else'
+  (global.set $g-arrow (%sym-32 0x3E3D 2))        ;; '=>'
+  (global.set $g-apply (%sym-64 0x796c707061 5))  ;; 'apply'
   (global.set $g-interned-str (%sym-128 0x64656e7265746e69 0x203A 10)) ;; 'interned: '
-  (global.set $g-eval (%sym-64 0x203A6c617665 6))  ;; 'eval: '
-  (global.set $g-gc-run (%sym-32 0x6367 2)) ;; 'gc'
-  (global.set $g-div0 (%sym-32 0x30766964 4)) ;; 'div0'
-  (global.set $g-inf (%sym-64 0x302e666e692b 6)) ;; '+inf.0'
+  (global.set $g-eval (%sym-64 0x203A6c617665 6)) ;; 'eval: '
+  (global.set $g-gc-run (%sym-32 0x6367 2))       ;; 'gc'
+  (global.set $g-div0 (%sym-32 0x30766964 4))     ;; 'div0'
+  (global.set $g-inf (%sym-64 0x302e666e692b 6))  ;; '+inf.0'
   (global.set $g-neg-inf (%sym-64 0x302e666e692d 6)) ;; '-inf.0'
-  (global.set $g-nan (%sym-64 0x302e6e616e2b 6)) ;; '+nan.0'
+  (global.set $g-nan (%sym-64 0x302e6e616e2b 6))  ;; '+nan.0'
   (global.set $g-neg-nan (%sym-64 0x302e6e616e2d 6)) ;; '-nan.0'
-  (global.set $g-fzero (%sym-32 0x302e30 3)) ;; '0.0'
-  (global.set $g-exp (%sym-32 0x65 1)) ;; 'e'
-  (global.set $g-neg (%sym-32 0x2d 1)) ;; '-'
-  (global.set $g-cont-type (%sym-32 0x746e6f63 4)) ;; 'cont'
+  (global.set $g-fzero (%sym-32 0x302e30 3))      ;; '0.0'
+  (global.set $g-exp (%sym-32 0x65 1))            ;; 'e'
+  (global.set $g-neg (%sym-32 0x2d 1))            ;; '-'
+  (global.set $g-cont-type (%sym-32 0x746e6f63 4))  ;; 'cont'
   (global.set $g-syntax-rules (%sym-128 0x722D7861746e7973 0x73656c75 12)) ;; 'syntax-rules'
-  (global.set $g-ellipsis (%sym-32 0x2E2E2E 3)) ;; '...'
-  (global.set $g-underscore (%sym-32 0x5F 1)) ;; '_'
-  (global.set $g-let (%sym-32 0x74656c 3)) ;; 'let'
+  (global.set $g-ellipsis (%sym-32 0x2E2E2E 3))   ;; '...'
+  (global.set $g-underscore (%sym-32 0x5F 1))     ;; '_'
+  (global.set $g-let (%sym-32 0x74656c 3))        ;; 'let'
   (global.set $g-let-star (%sym-32 0x2A74656c 4)) ;; 'let*'
   (global.set $g-letrec (%sym-64 0x63657274656c 6))   ;; 'letrec'
   (global.set $g-letrec-star (%sym-64 0x2A63657274656c 7)) ;; 'letrec*'
   (global.set $g-syntax-error (%sym-128 0x652D7861746e7973 0x726f7272 12)) ;; 'syntax-error'
   (global.set $g-lambda (%sym-64 0x6164626d616c 6)) ;; 'lambda'
-  (global.set $g-quote (%sym-64 0x65746f7571 5)) ;; 'quote'
+  (global.set $g-quote (%sym-64 0x65746f7571 5))  ;; 'quote'
   (global.set $g-slash (%str %sym-32 32 "/"))
+  (global.set $g-imag (%str %sym-32 32 "i"))
+  (global.set $g-plus (%str %sym-32 32 "+"))
   (global.set $g-parse (%str %sym-64 64 "parse"))
   (global.set $g-fold-case (%str %sym-128 128 "#!fold-case"))
   (global.set $g-no-fold-case (%str %sym-128 128 "#!no-fold-case"))
+
   (global.set $g-curr-version (%str %sym-192 192 (%version)))
 
   ;; global reader is attached to stdin

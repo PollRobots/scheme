@@ -198,6 +198,12 @@ while the working set is non-empty:
           (call $gc-maybe-touched-push (%cdr-l $curr))
           (br $b_switch)))
 
+      ;; case complex-type
+      (if (i32.eq (local.get $type) (%complex-type)) (then
+          (call $gc-maybe-touched-push (%car-l $curr))
+          (call $gc-maybe-touched-push (%cdr-l $curr))
+          (br $b_switch)))
+
       ;; }
     )
 
@@ -465,6 +471,7 @@ while the working set is non-empty:
         (br_if $b_then (i32.eq (local.get $type) (%cont-proc-type)))
         (br_if $b_then (i32.eq (local.get $type) (%syntax-rules-type)))
         (br_if $b_then (i32.eq (local.get $type) (%rational-type)))
+        (br_if $b_then (i32.eq (local.get $type) (%complex-type)))
         (br $b_else)
       )
       ;; mark-touched(item)

@@ -166,6 +166,10 @@ describe("scheme", () => {
     await testFile("test/char.spec.scm");
   });
 
+  it("test/complex.spec.scm", async () => {
+    await testFile("test/complex.spec.scm");
+  });
+
   it("test/equivalence.spec.scm", async () => {
     await testFile("test/equivalence.spec.scm");
   });

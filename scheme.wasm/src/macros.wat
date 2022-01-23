@@ -65,7 +65,8 @@
 (%define %cont-proc-type () (i32.const 20))
 (%define %syntax-rules-type () (i32.const 21))
 (%define %rational-type () (i32.const 22))
-(%define %max-heap-type () (i32.const 22))
+(%define %complex-type () (i32.const 23))
+(%define %max-heap-type () (i32.const 23))
 
 (%define %get-type (%arg) (i32.and (i32.load8_u (local.get %arg)) (i32.const 0x1F)))
 (%define %get-gc-flags (%arg) (i32.load8_u offset=1 (local.get %arg)))
@@ -83,6 +84,7 @@
 (%define %push-l (%var %cons) (local.set %cons (%alloc-cons (local.get %var) (local.get %cons))))
 (%define %push (%var %cons) (local.set %cons (%alloc-cons %var (local.get %cons))))
 (%define %chk-type (%lbl %var %type) (br_if %lbl (i32.ne (%get-type %var) (%type))))
+(%define %chk-type-ne (%lbl %var %type) (br_if %lbl (i32.eq (%get-type %var) (%type))))
 
 (%define %set-car!-l (%cons %val) (i32.store offset=4 (local.get %cons) (local.get %val)))
 (%define %set-cdr!-l (%cons %val) (i32.store offset=8 (local.get %cons) (local.get %val)))
@@ -112,6 +114,7 @@
 (%define %alloc-char (%val) (call $heap-alloc (global.get $g-heap) (%char-type) %val (i32.const 0)))
 (%define %alloc-i32 (%val) (call $heap-alloc (global.get $g-heap) (%i64-type) %val (i32.const 0)))
 (%define %alloc-rational (%num %denom) (call $heap-alloc (global.get $g-heap) (%rational-type) %num %denom))
+(%define %alloc-complex (%real %imag) (call $heap-alloc (global.get $g-heap) (%complex-type) %real %imag))
 (%define %alloc-big-int (%val) (call $heap-alloc (global.get $g-heap) (%big-int-type) %val (i32.const 0)))
 (%define %alloc-i64 (%val) (call $heap-alloc (global.get $g-heap) (%i64-type) (i32.wrap_i64 %val) (i32.wrap_i64 (i64.shr_u %val (i64.const 32)))))
 (%define %alloc-f64 (%val) (call $heap-alloc (global.get $g-heap) (%f64-type) (i32.wrap_i64 (i64.reinterpret_f64 %val)) (i32.wrap_i64 (i64.shr_u (i64.reinterpret_f64 %val) (i64.const 32)))))

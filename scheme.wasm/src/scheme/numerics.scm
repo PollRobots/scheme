@@ -1,5 +1,4 @@
-(define number? real?)
-(define complex? number?)
+(define number? complex?)
 
 (define (exact-integer? x) (and (exact? x) (integer? x)))
 
@@ -8,6 +7,13 @@
 (define (negative? x) (< x 0))
 (define (even? x) (zero? (floor-remainder (exact x) 2)))
 (define (odd? x) (not (even? x)))
+
+(define (make-polar r a) (make-rectangular (* r (cos a)) (* r (sin a))))
+(define (magnitude z)
+  (let ((r (real-part z))
+        (i (imag-part z)))
+    (sqrt (+ (* r r) (* i i)))))
+(define (angle z) (atan (imag-part z) (real-part z)))
 
 (define-syntax max
     (syntax-rules ()

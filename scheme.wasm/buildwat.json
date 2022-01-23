@@ -30,6 +30,7 @@
     "src/library/boolean.wat",
     "src/library/bytevector.wat",
     "src/library/char.wat",
+    "src/library/complex.wat",
     "src/library/equiv.wat",
     "src/library/grisu.wat",
     "src/library/mp.wat",

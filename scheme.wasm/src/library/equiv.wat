@@ -80,6 +80,13 @@
               (local.get $b))))
         (br $b_cmp)))
 
+    (if (i32.eq (local.get $a-type) (%complex-type))
+      (then
+        (local.set $result (i32.eqz (call $num-core-cmp
+              (local.get $a)
+              (local.get $b))))
+        (br $b_cmp)))
+
     (br_if $b_cmp (i32.eqz (local.get $deep)))
 
     (if (i32.eq (local.get $a-type) (%str-type))

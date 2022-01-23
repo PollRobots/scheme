@@ -5,6 +5,12 @@
   (if (i32.eq (local.get $ptr-type) (local.get $other-type))
     (then (return (local.get $ptr))))
 
+  (if (i32.eq (local.get $ptr-type) (%complex-type)) (then
+      (return (local.get $ptr))))
+
+  (if (i32.eq (local.get $other-type) (%complex-type)) (then
+      (return (%alloc-complex (local.get $ptr) (global.get $g-zero)))))
+
   (if (i32.eq (local.get $ptr-type) (%f64-type)) (then
       (return (local.get $ptr))))
 
@@ -77,6 +83,11 @@
           (local.get $left-reg)
           (local.get $right-reg)))))
 
+  (if (i32.eq (local.get $reg-type) (%complex-type))
+    (then (return (call $num-core-cmp-complex
+          (local.get $left-reg)
+          (local.get $right-reg)))))
+
   (unreachable))
 
 (func $num-core-cmp-64 (param $left i32) (param $right i32) (result i32)
@@ -125,6 +136,14 @@
   (local.set $right-num (call $num-core-mul (%car-l $right) (local.get $left-denom)))
 
   (return (call $num-core-cmp (local.get $left-num) (local.get $right-num))))
+
+(func $num-core-cmp-complex (param $left i32) (param $right i32) (result i32)
+  (local $res i32)
+
+  (if (local.tee $res (call $num-core-cmp (%car-l $left) (%car-l $right))) (then
+      (return (local.get $res))))
+
+  (return (call $num-core-cmp (%cdr-l $left) (%cdr-l $right))))
 
 (func $num-core-add (param $left i32) (param $right i32) (result i32)
   (local $left-type i32)
@@ -190,6 +209,11 @@
           (local.get $left-reg)
           (local.get $right-reg)))))
 
+  (if (i32.eq (local.get $reg-type) (%complex-type)) (then
+      (return (call $num-core-maybe-demote-complex (call $complex-add
+            (local.get $left-reg)
+            (local.get $right-reg))))))
+
   (unreachable))
 
 (func $rational-add (param $left i32) (param $right i32) (result i32)
@@ -212,6 +236,11 @@
   (return (call $make-simplest-rational
       (call $num-core-add (local.get $left-num) (local.get $right-num))
       (call $num-core-mul (local.get $left-denom) (local.get $right-denom)))))
+
+(func $complex-add (param $left i32) (param $right i32) (result i32)
+  (return (%alloc-complex
+      (call $num-core-add (%car-l $left) (%car-l $right))
+      (call $num-core-add (%cdr-l $left) (%cdr-l $right)))))
 
 (func $num-core-64-abs-log2 (param $val i64) (result i32)
   (if (i64.ge_s (local.get $val) (i64.const 0))
@@ -278,7 +307,32 @@
           (call $num-core-mul (%car-l $left-reg) (%car-l $right-reg))
           (call $num-core-mul (%cdr-l $left-reg) (%cdr-l $right-reg))))))
 
+  (if (i32.eq (local.get $reg-type) (%complex-type)) (then
+      (return (call $num-core-maybe-demote-complex (call $complex-mul
+            (local.get $left-reg)
+            (local.get $right-reg))))))
+
   (unreachable))
+
+(func $complex-mul (param $left i32) (param $right i32) (result i32)
+  (local $left-real i32)
+  (local $left-imag i32)
+  (local $right-real i32)
+  (local $right-imag i32)
+  ;; (a + bi) . (c + di) = (ac - bd) + (ad + bc)i
+
+  (local.set $left-real (%car-l $left))
+  (local.set $left-imag (%cdr-l $left))
+  (local.set $right-real (%car-l $right))
+  (local.set $right-imag (%cdr-l $right))
+
+  (return (%alloc-complex
+      (call $num-core-sub
+        (call $num-core-mul (local.get $left-real) (local.get $right-real))
+        (call $num-core-mul (local.get $left-imag) (local.get $right-imag)))
+      (call $num-core-add
+        (call $num-core-mul (local.get $left-real) (local.get $right-imag))
+        (call $num-core-mul (local.get $left-imag) (local.get $right-real))))))
 
 (func $num-core-div (param $left i32) (param $right i32) (result i32)
   (local $left-type i32)
@@ -321,7 +375,46 @@
           (call $num-core-mul (%car-l $left-reg) (%cdr-l $right-reg))
           (call $num-core-mul (%cdr-l $left-reg) (%car-l $right-reg))))))
 
+  (if (i32.eq (local.get $reg-type) (%complex-type)) (then
+      (return (call $num-core-maybe-demote-complex (call $complex-div
+            (local.get $left-reg)
+            (local.get $right-reg))))))
+
   (unreachable))
+
+(func $complex-div (param $left i32) (param $right i32) (result i32)
+  (local $left-real i32)
+  (local $left-imag i32)
+  (local $right-real i32)
+  (local $right-imag i32)
+  (local $factor i32)
+  ;; (a + bi) / (c + di) = ((a + bi)·(c - di)) / ((c + di)·(c - di))
+  ;;                     = ((ac + bd) + (bc - ad)i) / (c² + d²)
+  ;;                     = (ac + bd)/(c² + d²) + i(bc - ad)/(c² + d²)
+
+  (local.set $left-real (%car-l $left))
+  (local.set $left-imag (%cdr-l $left))
+  (local.set $right-real (%car-l $right))
+  (local.set $right-imag (%cdr-l $right))
+
+  ;; 1 / (c² + d²)
+  (local.set $factor (call $num-core-div
+      (global.get $g-one)
+      (call $num-core-add
+        (call $num-core-mul (local.get $right-real) (local.get $right-real))
+        (call $num-core-mul (local.get $left-real) (local.get $left-real)))))
+
+  (return (%alloc-complex
+      (call $num-core-mul
+        (call $num-core-add
+          (call $num-core-mul (local.get $left-real) (local.get $right-real))
+          (call $num-core-mul (local.get $left-imag) (local.get $right-imag)))
+        (local.get $factor))
+      (call $num-core-mul
+        (call $num-core-sub
+          (call $num-core-mul (local.get $left-imag) (local.get $right-real))
+          (call $num-core-mul (local.get $left-real) (local.get $right-imag)))
+        (local.get $factor)))))
 
 (func $num-core-neg (param $num i32) (result i32)
   (local $num-type i32)
@@ -355,6 +448,11 @@
       (return (call $make-simplest-rational
           (call $num-core-neg (%car-l $num))
           (%cdr-l $num)))))
+
+  (if (i32.eq (local.get $num-type) (%complex-type)) (then
+      (return (%alloc-complex
+          (call $num-core-neg (%car-l $num))
+          (call $num-core-neg (%cdr-l $num))))))
 
   (unreachable))
 
@@ -419,7 +517,17 @@
           (local.get $left-reg)
           (call $num-core-neg (local.get $right-reg))))))
 
+  (if (i32.eq (local.get $reg-type) (%complex-type)) (then
+      (return (call $num-core-maybe-demote-complex (call $complex-sub
+            (local.get $left-reg)
+            (local.get $right-reg))))))
+
   (unreachable))
+
+(func $complex-sub (param $left i32) (param $right i32) (result i32)
+  (return (%alloc-complex
+      (call $num-core-sub (%car-l $left) (%car-l $right))
+      (call $num-core-sub (%cdr-l $left) (%cdr-l $right)))))
 
 (func $num-core-maybe-demote-mp (param $ptr i32) (result i32)
   (local $mp i32)
@@ -437,6 +545,11 @@
           (local.get $temp-64)))))
 
   (return (%alloc-i64 (local.get $temp-64))))
+
+(func $num-core-maybe-demote-complex (param $num i32) (result i32)
+  (if (call $num-core-zero? (%cdr-l $num)) (then
+      (return (%car-l $num))))
+  (return (local.get $num)))
 
 (func $num-core-abs (param $num i32) (result i32)
   (local $type i32)
@@ -474,6 +587,32 @@
 
   (if (i32.eq (local.get $type) (%rational-type)) (then
       (return (call $rational-abs (local.get $num)))))
+
+  (unreachable))
+
+(func $num-core-neg? (param $num i32) (result i32)
+  (local $type i32)
+  (local $num-64 i64)
+  (local $mp i32)
+  (local $sign i32)
+  (local $real f64)
+
+  (local.set $type (%get-type $num))
+
+  (if (i32.eq (local.get $type) (%i64-type)) (then
+      (local.set $num-64 (i64.load offset=4 (local.get $num)))
+      (return (i64.lt_s (local.get $num-64) (i64.const 0)))))
+
+  (if (i32.eq (local.get $type) (%big-int-type)) (then
+      (local.set $mp (%car-l $num))
+      (return (select (i32.const 1) (i32.const 0) (%mp-sign-l $mp)))))
+
+  (if (i32.eq (local.get $type) (%f64-type)) (then
+      (local.set $real (f64.load offset=4 (local.get $num)))
+      (return (f64.lt (local.get $real) (f64.const 0)))))
+
+  (if (i32.eq (local.get $type) (%rational-type)) (then
+      (return (call $num-core-neg? (%car-l $num)))))
 
   (unreachable))
 
@@ -722,6 +861,11 @@
 
   (if (i32.eq (local.get $type) (%rational-type)) (then
       (return (call $num-core-zero? (%car-l $num)))))
+
+  (if (i32.eq (local.get $type) (%complex-type)) (then
+      (if (call $num-core-zero? (%car-l $num))
+        (then (return (call $num-core-zero? (%cdr-l $num))))
+        (else (return (i32.const 0))))))
 
   (unreachable))
 

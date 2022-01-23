@@ -1,82 +1,104 @@
 ;; (integer? obj)
 (func $integer? (param $env i32) (param $args i32) (result i32)
   (local $obj i32)
+  (local $obj-type i32)
   (local $temp64 f64)
 
   (if (i32.ne (call $list-len (local.get $args)) (i32.const 1))
     (then (return (call $argument-error (local.get $args)))))
 
   (local.set $obj (%car-l $args))
+  (local.set $obj-type (%get-type $obj))
 
-  (if (i32.eq (%get-type $obj) (%i64-type))
-    (then (return (global.get $g-true))))
+  (block $check
+    (br_if $check (i32.eq (local.get $obj-type) (%i64-type)))
+    (br_if $check (i32.eq (local.get $obj-type) (%big-int-type)))
 
-  (if (i32.eq (%get-type $obj) (%big-int-type))
-    (then (return (global.get $g-true))))
+    (if (i32.eq (%get-type $obj) (%f64-type)) (then
+        (local.set $temp64 (f64.load offset=4 (local.get $obj)))
+        (if (f64.eq (local.get $temp64) (f64.nearest (local.get $temp64))) (then
+            (if (call $ieee-inf? (local.get $temp64)) (then
+                (return (global.get $g-false))))
+            (if (call $ieee-nan? (local.get $temp64)) (then
+                (return (global.get $g-false))))
+            (br $check)))))
 
-  (if (i32.eq (%get-type $obj) (%f64-type)) (then
-      (local.set $temp64 (f64.load offset=4 (local.get $obj)))
-      (if (f64.eq (local.get $temp64) (f64.nearest (local.get $temp64))) (then
-          (if (call $ieee-inf? (local.get $temp64)) (then
-              (return (global.get $g-false))))
-          (if (call $ieee-nan? (local.get $temp64)) (then
-              (return (global.get $g-false))))
-          (return (global.get $g-true))))))
+    (return (global.get $g-false)))
 
-  (return (global.get $g-false)))
+  (return (global.get $g-true)))
 
 ;; (rational? obj)
 (func $rational? (param $env i32) (param $args i32) (result i32)
   (local $obj i32)
+  (local $obj-type i32)
   (local $temp64 f64)
 
   (if (i32.ne (call $list-len (local.get $args)) (i32.const 1))
     (then (return (call $argument-error (local.get $args)))))
 
   (local.set $obj (%car-l $args))
+  (local.set $obj-type (%get-type $obj))
 
-  (if (i32.eq (%get-type $obj) (%i64-type))
-    (then (return (global.get $g-true))))
+  (block $check
+    (br_if $check (i32.eq (local.get $obj-type) (%i64-type)))
+    (br_if $check (i32.eq (local.get $obj-type) (%big-int-type)))
+    (br_if $check (i32.eq (local.get $obj-type) (%rational-type)))
 
-  (if (i32.eq (%get-type $obj) (%big-int-type))
-    (then (return (global.get $g-true))))
+    (if (i32.eq (local.get $obj-type) (%f64-type)) (then
+        (local.set $temp64 (f64.load offset=4 (local.get $obj)))
+        (if (f64.eq (local.get $temp64) (f64.nearest (local.get $temp64))) (then
+            (if (call $ieee-inf? (local.get $temp64)) (then
+                (return (global.get $g-false))))
+            (if (call $ieee-nan? (local.get $temp64)) (then
+                (return (global.get $g-false))))
+            (br $check)))))
 
-  (if (i32.eq (%get-type $obj) (%rational-type))
-    (then (return (global.get $g-true))))
+    (return (global.get $g-false)))
 
-  (if (i32.eq (%get-type $obj) (%f64-type)) (then
-      (local.set $temp64 (f64.load offset=4 (local.get $obj)))
-      (if (f64.eq (local.get $temp64) (f64.nearest (local.get $temp64))) (then
-          (if (call $ieee-inf? (local.get $temp64)) (then
-              (return (global.get $g-false))))
-          (if (call $ieee-nan? (local.get $temp64)) (then
-              (return (global.get $g-false))))
-          (return (global.get $g-true))))))
-
-  (return (global.get $g-false)))
+  (return (global.get $g-true)))
 
 ;; (real? obj)
 (func $real? (param $env i32) (param $args i32) (result i32)
   (local $obj i32)
+  (local $obj-type i32)
 
   (if (i32.ne (call $list-len (local.get $args)) (i32.const 1)) (then
       (return (call $argument-error (local.get $args)))))
 
   (local.set $obj (%car-l $args))
+  (local.set $obj-type (%get-type $obj))
 
-  (if (i32.eq (%get-type $obj) (%f64-type)) (then
-      (return (global.get $g-true))))
+  (block $check
+    (br_if $check (i32.eq (local.get $obj-type) (%f64-type)))
+    (br_if $check (i32.eq (local.get $obj-type) (%i64-type)))
+    (br_if $check (i32.eq (local.get $obj-type) (%big-int-type)))
+    (br_if $check (i32.eq (local.get $obj-type) (%rational-type)))
 
-  (if (i32.eq (%get-type $obj) (%i64-type))
-    (then (return (global.get $g-true))))
+    (return (global.get $g-false)))
 
-  (if (i32.eq (%get-type $obj) (%big-int-type))
-    (then (return (global.get $g-true))))
+  (return (global.get $g-true)))
 
-  (if (i32.eq (%get-type $obj) (%rational-type))
-    (then (return (global.get $g-true))))
+;; (complex? obj)
+(func $complex? (param $env i32) (param $args i32) (result i32)
+  (local $obj i32)
+  (local $obj-type i32)
 
-  (return (global.get $g-false)))
+  (if (i32.ne (call $list-len (local.get $args)) (i32.const 1)) (then
+      (return (call $argument-error (local.get $args)))))
+
+  (local.set $obj (%car-l $args))
+  (local.set $obj-type (%get-type $obj))
+
+  (block $check
+    (br_if $check (i32.eq (local.get $obj-type) (%f64-type)))
+    (br_if $check (i32.eq (local.get $obj-type) (%i64-type)))
+    (br_if $check (i32.eq (local.get $obj-type) (%big-int-type)))
+    (br_if $check (i32.eq (local.get $obj-type) (%rational-type)))
+    (br_if $check (i32.eq (local.get $obj-type) (%complex-type)))
+
+    (return (global.get $g-false)))
+
+  (return (global.get $g-true)))
 
 (func $numeric? (param $arg i32) (result i32)
   (local $type i32)
@@ -87,11 +109,36 @@
     (br_if $check (i32.eq (local.get $type) (%f64-type)))
     (br_if $check (i32.eq (local.get $type) (%big-int-type)))
     (br_if $check (i32.eq (local.get $type) (%rational-type)))
+    (br_if $check (i32.eq (local.get $type) (%complex-type)))
 
     (return (i32.const 0)))
   (return (i32.const 1)))
 
 (func $all-numeric (param $args i32) (result i32)
+  (local $temp i32)
+  (local $temp-type i32)
+
+  (block $b_end (loop $b_start
+      (br_if $b_end (i32.eq (%get-type $args) (%nil-type)))
+
+      (local.set $temp (%car-l $args))
+      (local.set $temp-type (%get-type $temp))
+
+      (block $b_check
+        (br_if $b_check (i32.eq (local.get $temp-type) (%i64-type)))
+        (br_if $b_check (i32.eq (local.get $temp-type) (%f64-type)))
+        (br_if $b_check (i32.eq (local.get $temp-type) (%big-int-type)))
+        (br_if $b_check (i32.eq (local.get $temp-type) (%rational-type)))
+        (br_if $b_check (i32.eq (local.get $temp-type) (%complex-type)))
+
+        (return (i32.const 0)))
+
+      (local.set $args (%cdr-l $args))
+      (br $b_start)))
+
+  (return (i32.const 1)))
+
+(func $all-real (param $args i32) (result i32)
   (local $temp i32)
   (local $temp-type i32)
 
@@ -114,7 +161,7 @@
 
   (return (i32.const 1)))
 
-(func $all-integer (param $args i32) (result i32)
+(func $all-rational (param $args i32) (result i32)
   (local $temp i32)
   (local $real f64)
   (local $temp-type i32)
@@ -129,6 +176,35 @@
         (br_if $b_check (i32.eq (local.get $temp-type) (%i64-type)))
         (br_if $b_check (i32.eq (local.get $temp-type) (%big-int-type)))
         (br_if $b_check (i32.eq (local.get $temp-type) (%rational-type)))
+
+        ;; f64 is ok if is an integer
+        (if (i32.eq (local.get $temp-type) (%f64-type)) (then
+            (local.set $real (f64.load offset=4 (local.get $temp)))
+            (br_if $b_check (f64.eq
+                (local.get $real)
+                (f64.nearest (local.get $real))))))
+
+        (return (i32.const 0)))
+
+      (local.set $args (%cdr-l $args))
+      (br $b_start)))
+
+  (return (i32.const 1)))
+
+(func $all-integer (param $args i32) (result i32)
+  (local $temp i32)
+  (local $real f64)
+  (local $temp-type i32)
+
+  (block $b_end (loop $b_start
+      (br_if $b_end (i32.eq (%get-type $args) (%nil-type)))
+
+      (local.set $temp (%car-l $args))
+      (local.set $temp-type (%get-type $temp))
+
+      (block $b_check
+        (br_if $b_check (i32.eq (local.get $temp-type) (%i64-type)))
+        (br_if $b_check (i32.eq (local.get $temp-type) (%big-int-type)))
 
         ;; f64 is ok if is an integer
         (if (i32.eq (local.get $temp-type) (%f64-type)) (then
@@ -161,6 +237,9 @@
 ;; (exact? <num>)
 (func $exact? (param $env i32) (param $args i32) (result i32)
   (local $num i32)
+  (local $real i32)
+  (local $imag i32)
+  (local $num-type i32)
 
   (block $b_check
     (block $b_fail
@@ -171,14 +250,28 @@
     (return (call $argument-error (local.get $args))))
 
   (local.set $num (%car-l $args))
+  (local.set $num-type (%get-type $num))
+
+  (if (i32.eq (local.get $num-type) (%complex-type)) (then
+      (local.set $real (%car-l $num))
+      (if (i32.eq (%get-type $real) (%f64-type)) (then
+          (return (global.get $g-false))))
+      (local.set $imag (%car-l $num))
+      (if (i32.eq (%get-type $imag) (%f64-type)) (then
+          (return (global.get $g-false))))
+      (return (global.get $g-true))))
+
   (return (select
       (global.get $g-true)
       (global.get $g-false)
-      (i32.ne (%get-type $num) (%f64-type)))))
+      (i32.ne (local.get $num-type) (%f64-type)))))
 
 ;; (inexact? <num>)
 (func $inexact? (param $env i32) (param $args i32) (result i32)
   (local $num i32)
+  (local $num-type i32)
+  (local $real i32)
+  (local $imag i32)
 
   (block $b_check
     (block $b_fail
@@ -189,10 +282,21 @@
     (return (call $argument-error (local.get $args))))
 
   (local.set $num (%car-l $args))
+  (local.set $num-type (%get-type $num))
+
+  (if (i32.eq (local.get $num-type) (%complex-type)) (then
+      (local.set $real (%car-l $num))
+      (if (i32.eq (%get-type $real) (%f64-type)) (then
+          (return (global.get $g-true))))
+      (local.set $imag (%car-l $num))
+      (if (i32.eq (%get-type $imag) (%f64-type)) (then
+          (return (global.get $g-true))))
+      (return (global.get $g-false))))
+
   (return (select
       (global.get $g-true)
       (global.get $g-false)
-      (i32.eq (%get-type $num) (%f64-type)))))
+      (i32.eq (local.get $num-type) (%f64-type)))))
 
 (func $inexact (param $env i32) (param $args i32) (result i32)
   (local $num i32)
@@ -260,6 +364,11 @@
             (f64.load offset=4 (local.get $numerator))
             (f64.load offset=4 (local.get $denom)))))))
 
+  (if (i32.eq (local.get $num-type) (%complex-type)) (then
+      (return (%alloc-complex
+          (call $inexact-impl (%car-l $num))
+          (call $inexact-impl (%cdr-l $num))))))
+
   (return (local.get $num)))
 
 (func $exact-impl (param $num i32) (result i32)
@@ -273,6 +382,12 @@
   (local $temp64 i64)
 
   (local.set $num-type (%get-type $num))
+
+  (if (i32.eq (local.get $num-type) (%complex-type)) (then
+      (return (%alloc-complex
+          (call $exact-impl (%car-l $num))
+          (call $exact-impl (%cdr-l $num))))))
+
   (if (i32.ne (local.get $num-type) (%f64-type)) (then
       (return (local.get $num))))
 
@@ -356,7 +471,7 @@
   (block $b_check
     (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
-      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br_if $b_fail (i32.eqz (call $all-real (local.get $args))))
       (br $b_check))
 
     (return (call $argument-error (local.get $args))))
@@ -371,7 +486,7 @@
   (block $b_check
     (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
-      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br_if $b_fail (i32.eqz (call $all-real (local.get $args))))
       (br $b_check))
 
     (return (call $argument-error (local.get $args))))
@@ -386,7 +501,7 @@
   (block $b_check
     (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
-      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br_if $b_fail (i32.eqz (call $all-real (local.get $args))))
       (br $b_check))
 
     (return (call $argument-error (local.get $args))))
@@ -401,7 +516,7 @@
   (block $b_check
     (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
-      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br_if $b_fail (i32.eqz (call $all-real (local.get $args))))
       (br $b_check))
 
     (return (call $argument-error (local.get $args))))
@@ -602,7 +717,7 @@
   (block $b_check
     (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
-      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br_if $b_fail (i32.eqz (call $all-real (local.get $args))))
       (br $b_check))
 
     (return (call $argument-error (local.get $args))))
@@ -798,7 +913,7 @@
   (block $b_check
     (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
-      (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br_if $b_fail (i32.eqz (call $all-integer (local.get $args))))
       (local.set $num (%car-l $args))
       (br $b_check))
 
@@ -884,45 +999,69 @@
 (func $num-number->string-impl (param $num i32) (param $radix i32) (param $args i32) (result i32)
   (local $num-type i32)
   (local $str i32)
-  (local $top i32)
-  (local $bottom i32)
+  (local $car-str i32)
+  (local $cdr-str i32)
 
-  (block $b_convert
-    (local.set $num-type (%get-type $num))
-    (if (i32.eq (local.get $num-type) (%i64-type)) (then
-        (local.set $str (call $integer->string-impl
-            (i64.load offset=4 (local.get $num))
-            (local.get $radix)))
-        (br $b_convert)))
+  (block $convert (block $fail
+      (local.set $num-type (%get-type $num))
+      (if (i32.eq (local.get $num-type) (%i64-type)) (then
+          (local.set $str (call $integer->string-impl
+              (i64.load offset=4 (local.get $num))
+              (local.get $radix)))
+          (br $convert)))
 
-    (if (i32.eq (local.get $num-type) (%big-int-type)) (then
-        (local.set $str (call $mp-mp->string
-            (%car-l $num)
-            (local.get $radix)))
-        (br $b_convert)))
+      (if (i32.eq (local.get $num-type) (%big-int-type)) (then
+          (local.set $str (call $mp-mp->string
+              (%car-l $num)
+              (local.get $radix)))
+          (br $convert)))
 
-    (if (i32.eq (local.get $num-type) (%rational-type)) (then
-        (local.set $top (call $num-number->string-impl
-            (%car-l $num)
-            (local.get $radix)
-            (local.get $args)))
-        (local.set $bottom (call $num-number->string-impl
-            (%cdr-l $num)
-            (local.get $radix)
-            (local.get $args)))
-        (return (call $string-append-impl (%alloc-list-3
-              (local.get $top)
-              (global.get $g-slash)
-              (local.get $bottom))))))
+      (if (i32.eq (local.get $num-type) (%rational-type)) (then
+          (local.set $car-str (call $num-number->string-impl
+              (%car-l $num)
+              (local.get $radix)
+              (local.get $args)))
+          (%chk-type $fail $car-str %str-type)
+          (local.set $cdr-str (call $num-number->string-impl
+              (%cdr-l $num)
+              (local.get $radix)
+              (local.get $args)))
+          (%chk-type $fail $cdr-str %str-type)
+          (return (call $string-append-impl (%alloc-list-3
+                (local.get $car-str)
+                (global.get $g-slash)
+                (local.get $cdr-str))))))
 
+      (if (i32.eq (local.get $num-type) (%complex-type)) (then
+          (local.set $car-str (call $num-number->string-impl
+              (%car-l $num)
+              (local.get $radix)
+              (local.get $args)))
+          (%chk-type $fail $car-str %str-type)
+          (local.set $cdr-str (call $num-number->string-impl
+              (%cdr-l $num)
+              (local.get $radix)
+              (local.get $args)))
+          (%chk-type $fail $cdr-str %str-type)
+          (if (call $num-core-neg? (%cdr-l $num))
+            (then
+              (return (call $string-append-impl (%alloc-list-3
+                (local.get $car-str)
+                (local.get $cdr-str)
+                (global.get $g-imag)))))
+            (else
+              (return (call $string-append-impl (%alloc-list-4
+                (local.get $car-str)
+                (global.get $g-plus)
+                (local.get $cdr-str)
+                (global.get $g-imag))))))))
 
-    (if (i32.ne (local.get $radix) (i32.const 10)) (then
-        (return (call $argument-error (local.get $args)))))
+      (br_if $fail (i32.ne (local.get $radix) (i32.const 10)))
 
-    (if (i32.eq (local.get $num-type) (%f64-type)) (then
-        (local.set $str (call $real->string
-            (f64.load offset=4 (local.get $num))))
-        (br $b_convert)))
+      (if (i32.eq (local.get $num-type) (%f64-type)) (then
+          (local.set $str (call $real->string
+              (f64.load offset=4 (local.get $num))))
+          (br $convert))))
 
     (return (call $argument-error (local.get $args))))
 
@@ -935,7 +1074,7 @@
 
   (block $check (block $fail
       (br_if $fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
-      (br_if $fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br_if $fail (i32.eqz (call $all-real (local.get $args))))
       (br $check))
 
     (return (call $argument-error (local.get $args))))
@@ -967,7 +1106,7 @@
 
   (block $check (block $fail
       (br_if $fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
-      (br_if $fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br_if $fail (i32.eqz (call $all-real (local.get $args))))
       (br $check))
 
     (return (call $argument-error (local.get $args))))
@@ -1003,7 +1142,7 @@
 
   (block $check (block $fail
       (br_if $fail (i32.ne (call $list-len (local.get $args)) (i32.const 2)))
-      (br_if $fail (i32.eqz (call $all-numeric (local.get $args))))
+      (br_if $fail (i32.eqz (call $all-real (local.get $args))))
       (br $check))
 
     (return (call $argument-error (local.get $args))))

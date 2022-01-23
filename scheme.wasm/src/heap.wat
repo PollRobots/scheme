@@ -39,7 +39,8 @@
 ;;   cont-proc = 20
 ;;   syntax-rules = 21
 ;;   rational = 22
-;; kMaxType = 22
+;;   complex = 23
+;; kMaxType = 23
 
 ;;  Empty cell
 ;;    next-empty: i32 ptr
@@ -101,6 +102,10 @@
 ;;  Rational
 ;;    car: i32 ptr - numerator
 ;;    cdr: i32 ptr - denominator
+
+;;  Complex
+;;    car: i32 ptr - real
+;;    cdr: i32 ptr - imaginary
 
 ;; Heap
 ;;   Size:      i32

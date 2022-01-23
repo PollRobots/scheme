@@ -226,8 +226,12 @@
 (%define %builtin-tan ()                      (i32.const 221))
 (%define %builtin-atan ()                     (i32.const 222))
 (%define %builtin-asin ()                     (i32.const 223))
+(%define %builtin-make-rectangular ()         (i32.const 224))
+(%define %builtin-real-part ()                (i32.const 225))
+(%define %builtin-imag-part ()                (i32.const 226))
+(%define %builtin-complex? ()                 (i32.const 227))
 
-(table $table-builtin 224 anyfunc)
+(table $table-builtin 228 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
   (local $quote i32)
@@ -421,6 +425,10 @@
   (%add-builtin (%str %sym-64 64 "tan") (%builtin-tan))
   (%add-builtin (%str %sym-64 64 "atan") (%builtin-atan))
   (%add-builtin (%str %sym-64 64 "asin") (%builtin-asin))
+  (%add-builtin (%str %sym-128 128 "make-rectangular") (%builtin-make-rectangular))
+  (%add-builtin (%str %sym-128 128 "real-part") (%builtin-real-part))
+  (%add-builtin (%str %sym-128 128 "imag-part") (%builtin-imag-part))
+  (%add-builtin (%str %sym-128 128 "complex?") (%builtin-complex?))
 
   (%add-special (%sym-32 0x6669 2) (%special-if))               ;; 'if'
   (%add-special (global.get $g-let) (%special-let))             ;; 'let'
@@ -666,3 +674,7 @@
 (elem $table-builtin (%builtin-tan) $tan)
 (elem $table-builtin (%builtin-atan) $atan)
 (elem $table-builtin (%builtin-asin) $asin)
+(elem $table-builtin (%builtin-make-rectangular) $make-rectangular)
+(elem $table-builtin (%builtin-real-part) $real-part)
+(elem $table-builtin (%builtin-imag-part) $imag-part)
+(elem $table-builtin (%builtin-complex?) $complex?)
