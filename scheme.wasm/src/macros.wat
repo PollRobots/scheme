@@ -141,3 +141,11 @@
 (%define %unpack-64-l (%packed %hi %lo)
   (local.set %hi (%unpack-64-hi-l %packed))
   (local.set %lo (%unpack-64-lo-l %packed)))
+
+
+;; Trig constants
+
+(%define %kPI ()        (f64.const 3.14159265358979323846))
+(%define %kPIbyTwo ()   (f64.const 1.57079632679489661923))
+(%define %kPIbyFour ()  (f64.const 0.78539816339744830962))
+(%define %kTwoPI ()     (f64.const 6.28318530717958647693))

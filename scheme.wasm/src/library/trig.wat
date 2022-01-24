@@ -1,10 +1,3 @@
-%( trigonometry
-
-(%define %kPI ()        (f64.const 3.14159265358979323846))
-(%define %kPIbyTwo ()   (f64.const 1.57079632679489661923))
-(%define %kPIbyFour ()  (f64.const 0.78539816339744830962))
-(%define %kTwoPI ()     (f64.const 6.28318530717958647693))
-
 (func $sin (param $env i32) (param $args i32) (result i32)
   (local $num-args i32)
   (local $num i32)
@@ -17,6 +10,9 @@
       (br $b_check))
 
     (return (call $argument-error (local.get $args))))
+
+  (if (i32.eq (%get-type $num) (%complex-type)) (then
+      (return (call $complex-sin (local.get $num)))))
 
   (local.set $num (call $inexact-impl (local.get $num)))
 
@@ -35,6 +31,9 @@
 
     (return (call $argument-error (local.get $args))))
 
+  (if (i32.eq (%get-type $num) (%complex-type)) (then
+      (return (call $complex-cos (local.get $num)))))
+
   (local.set $num (call $inexact-impl (local.get $num)))
 
   (return (%alloc-f64 (call $cos-impl (f64.load offset=4 (local.get $num))))))
@@ -51,6 +50,9 @@
       (br $b_check))
 
     (return (call $argument-error (local.get $args))))
+
+  (if (i32.eq (%get-type $num) (%complex-type)) (then
+      (return (call $complex-tan (local.get $num)))))
 
   (local.set $num (call $inexact-impl (local.get $num)))
 
@@ -71,6 +73,7 @@
         (br_if $fail (i32.eqz (call $all-numeric (local.get $args))))
 
         (br_if $one_arg (i32.eq (local.get $num-args) (i32.const 1)))
+        (br_if $fail (i32.eqz (call $all-real (local.get $args))))
         (br_if $two_arg (i32.eq (local.get $num-args) (i32.const 2))))
 
       (return (call $argument-error (local.get $args))))
@@ -82,24 +85,118 @@
     (local.set $y64 (f64.load offset=4 (local.get $y)))
     (local.set $x64 (f64.load offset=4 (local.get $x)))
 
-    (if (f64.le (local.get $y64) (local.get $x64)) (then
-        (return (%alloc-f64 (call $atan-impl (f64.div
-                (local.get $y64)
-                (local.get $x64)))))))
+    (return (%alloc-f64 (call $atan2-impl (local.get $y64) (local.get $x64))))
 
-    (return (%alloc-f64 (f64.sub
-          (%kPIbyTwo)
-          (call $atan-impl (f64.div (local.get $x64) (local.get $y64)))))))
+    (if (f64.le (f64.abs (local.get $y64)) (f64.abs (local.get $x64))) (then
+        (return (%alloc-f64 (f64.copysign
+              (call $atan-impl (f64.div
+                  (local.get $y64)
+                  (local.get $x64)))
+              (local.get $y64))))))
+
+    (return (%alloc-f64 (f64.copysign
+          (f64.sub
+            (%kPIbyTwo)
+            (call $atan-impl (f64.div (local.get $x64) (local.get $y64))))
+          (local.get $y64)))))
+
 
   ;; one argument
-  (local.set $num (call $inexact-impl (%car-l $args)))
+  (local.set $num (%car-l $args))
+
+  (if (i32.eq (%get-type $num) (%complex-type)) (then
+      (return (call $complex-atan (local.get $num)))))
+
+  (local.set $num (call $inexact-impl (local.get $num)))
 
   (return (%alloc-f64 (call $atan-impl (f64.load offset=4 (local.get $num))))))
+
+(;
+ ; Branch cuts for atan2
+ ;    y = +0  x > 0   Just above positive x-axis  +0
+ ;    y > 0   x > 0   Quadrant I                  +0 < result < π/2
+ ;    y > 0   x = ±0  Positive y-axis             π/2
+ ;    y > 0   x < 0   Quadrant II                 π/2 < result < π
+ ;    y = +0  x < 0   Just above negative x-axis  π
+ ;    y = −0  x < 0   Just below negative x-axis  -π
+ ;    y < 0   x < 0   Quadrant III                −π < result < −π/2
+ ;    y < 0   x = ±0  Negative y-axis             −π/2
+ ;    y < 0   x > 0   Quadrant IV                 −π/2 < result < −0
+ ;    y = −0  x > 0   Just below positive x-axis  −0
+ ;    y = +0  x = +0  Near origin                 +0
+ ;    y = −0  x = +0  Near origin                 −0
+ ;    y = +0  x = −0  Near origin                 π
+ ;    y = −0  x = −0  Near origin                 −π
+ ;)
+(func $atan2-impl (param $y f64) (param $x f64) (result f64)
+  (local $y-sign f64)
+  (local $x-sign f64)
+  (local $y-zero i32)
+  (local $x-zero i32)
+
+  (local.set $y-sign (f64.copysign (f64.const 1.0) (local.get $y)))
+  (local.set $x-sign (f64.copysign (f64.const 1.0) (local.get $x)))
+  (local.set $y-zero (f64.eq (local.get $y) (f64.const 0.0)))
+  (local.set $x-zero (f64.eq (local.get $x) (f64.const 0.0)))
+
+  (if (local.get $y-zero) (then
+      ;; y = ±0
+      (if (f64.gt (local.get $y-sign) (f64.const 0))
+        (then
+          ;; y = +0
+          (if (f64.gt (local.get $x-sign) (f64.const 0))
+            (then
+              ;; y = +0, x > 0 Just above positive x-axis  +0
+              ;; y = +0, x = +0 Near origin                +0
+              (return (f64.const 0.0)))
+            (else
+              ;; y = +0, x < 0 Just above negative x-axis  π
+              ;; y = +0, x = -0 Near origin                π
+              (return (%kPI)))))
+        (else
+          ;; y = -1
+          (if (f64.gt (local.get $x-sign) (f64.const 0))
+            (then
+              ;; y = -0, x > 0 Just below positive x-axis  -0
+              ;; y = -0, x = +0 Near origin                -0
+              (return (f64.const -0.0)))
+            (else
+              ;; y = -0, x < 0 Just below negative x-axis  -π
+              ;; y = -0, x = -0 Near origin                -π
+              (return (f64.neg (%kPI)))))))))
+
+    (if (local.get $x-zero) (then
+          ;; x = ±0
+          (if (f64.gt (local.get $y-sign) (f64.const 0))
+            (then
+              ;; y > 0, x = ±0 Positive y-axis             π/2
+              (return (%kPIbyTwo)))
+            (else
+              ;; y < 0, x = ±0 Negative y-axis             -π/2
+              (return (f64.neg (%kPIbyTwo)))))))
+
+    (if (f64.le (f64.abs (local.get $y)) (local.get $x))
+      (then
+        ;; |y| <= |x|
+        ;; <-- atan(y/x)
+        (return (call $atan-impl (f64.div (local.get $y) (local.get $x)))))
+      (else
+        ;; |y| > |x|
+        ;; <-- (signof y)·(π/2 - atan(x/|y|))
+        (return (f64.mul
+            (local.get $y-sign)
+            (f64.sub
+              (%kPIbyTwo)
+              (call $atan-impl
+                (f64.div (local.get $x)
+                (f64.abs (local.get $y)))))))))
+  (unreachable))
 
 ;; (asin <z>)
 (func $asin (param $env i32) (param $args i32) (result i32)
   (local $num-args i32)
   (local $num i32)
+  (local $num64 f64)
 
   (block $check (block $fail
       (local.set $num-args (call $list-len (local.get $args)))
@@ -109,10 +206,21 @@
 
     (return (call $argument-error (local.get $args))))
 
-  ;; one argument
-  (local.set $num (call $inexact-impl (%car-l $args)))
+  (local.set $num (%car-l $args))
+  (if (i32.eq (%get-type $num) (%complex-type)) (then
+      (return (call $complex-asin (local.get $num)))))
 
-  (return (%alloc-f64 (call $asin-impl (f64.load offset=4 (local.get $num))))))
+  ;; one argument
+  (local.set $num (call $inexact-impl (local.get $num)))
+  (local.set $num64 (f64.load offset=4 (local.get $num)))
+
+  ;; if |x| > 1 then asin has a complex value
+  (if (f64.gt (f64.abs (local.get $num64)) (f64.const 1)) (then
+      (return (call $complex-asin (%alloc-complex
+            (local.get $num)
+            (global.get $g-zero))))))
+
+  (return (%alloc-f64 (call $asin-impl (local.get $num64)))))
 
 (func $sin-impl (param $v f64) (result f64)
   (local $t f64)
@@ -404,9 +512,9 @@
   (%define %T15 ()  (f64.const 0.0014558343870513183))
 
   ;; tan x = x + a₃x³ + a₅x⁵ + a₇x⁷ + a₉x⁹ + a₁₁x¹¹ + a₁₃x¹³ + a₁₅x¹⁵
-  ;;       = x(1 + x²(a₃ + x²a₅) + x⁶(a₇ + x²(a₉ + a₁₁x²)) + x⁴(a₁₃ + a₁₅x²)))))
+  ;;       = x(1 + x²(a₃ + x²a₅) + x⁶(a₇ + x²(a₉ + a₁₁x²) + x⁴(a₁₃ + a₁₅x²)))
   ;;
-  ;;     p = a₇ + x²(a₉ + a₁₁x²) + x⁶(a₁₃ + a₁₅x²))
+  ;;     p = a₇ + x²(a₉ + a₁₁x²) + x⁶(a₁₃ + a₁₅x²)
   ;;
   ;; tan x = x(1 + x²(a₃ + a₅x²) + x⁶p )
 
@@ -414,7 +522,7 @@
   (local.set $x4 (f64.mul (local.get $x2) (local.get $x2)))
   (local.set $x6 (f64.mul (local.get $x2) (local.get $x4)))
 
-  ;; p = a₇ + x²(a₉ + a₁₁x²) + x⁴(a₁₃ + a₁₅x²))
+  ;; p = a₇ + x²(a₉ + a₁₁x²) + x⁴(a₁₃ + a₁₅x²)
   (local.set $p
     (f64.add
       (f64.add
@@ -646,7 +754,7 @@
   ;;             ____________________         ____
   ;; where y = x√(1 - 0.25)(1 + 0.25) - 0.25·√1-x²
   ;;                                   ____
-  ;; y = x·0.9682458365518543) - 0.25·√1-x²
+  ;; y = x·0.9682458365518543 - 0.25·√1-x²
   (local.set $y (f64.sub
       (f64.mul (local.get $x) (f64.const 0.9682458365518543))
       (f64.mul
@@ -659,5 +767,3 @@
       ;; arcsine 0.25
       (f64.const 0.25268025514207865)))
 )
-
-)%

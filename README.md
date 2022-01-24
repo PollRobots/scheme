@@ -24,7 +24,7 @@ some of the optional features.
   - [x] Integers (arbitrary precision)
   - [x] Real numbers (double precision)
   - [x] Rationals
-  - [ ] Complex Numbers
+  - [x] Complex Numbers
 - [x] Booleans
 - [x] Strings
 - [x] Characters
@@ -32,13 +32,14 @@ some of the optional features.
 - [x] Vectors
 - [x] Bytevectors
 - [x] Values
+- [ ] Records
 - [x] Tail call optimization &mdash; internally `eval` uses a continuation passing
       style, so TCO comes for free.
 - [x] `call/cc` and exceptions
 - [x] Macros
   - [x] `define-syntax`, `syntax-rules`, `syntax-error`
   - [x] Hygienic over `let`, `let*`, `letrec`, `letrec*`, and `lambda`
-  - [ ] `define-let`, `define-letrec`
+  - [ ] `let-syntax`, `letrec-syntax`
 - [ ] Modules
 - [ ] Ports
 - [ ] `dynamic-wind`

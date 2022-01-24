@@ -236,8 +236,8 @@
   (local $num-args i32)
   (local $num i32)
   (local $base i32)
-  (local $ln-num f64)
-  (local $ln-base f64)
+  (local $ln-num i32)
+  (local $ln-base i32)
 
   (block $b_check (block $b_fail
       (local.set $num-args (call $list-len (local.get $args)))
@@ -253,14 +253,22 @@
 
     (return (call $argument-error (local.get $args))))
 
-  (local.set $ln-num (call $logn-impl (local.get $num)))
 
   (if (i32.eq (local.get $num-args) (i32.const 1)) (then
-      (return (%alloc-f64 (local.get $ln-num)))))
+      (if (i32.eq (%get-type $num) (%complex-type)) (then
+          (return (call $complex-logn (local.get $num)))))
 
-  (local.set $ln-base (call $logn-impl (local.get $base)))
+      (return (call $logn-impl (local.get $num)))))
 
-  (return (%alloc-f64 (f64.div (local.get $ln-num) (local.get $ln-base)))))
+  (if (call $all-real (local.get $args)) (then
+    (local.set $ln-num (call $logn-impl (local.get $num)))
+    (local.set $ln-base (call $logn-impl (local.get $base)))
+
+    (return (call $num-core-div (local.get $ln-num) (local.get $ln-base)))))
+
+  ;; at least one value is complex
+  (return (call $complex-log-base (local.get $num) (local.get $base))))
+
 
 ;; compute logn using taylor series
 (func $logn-taylor-impl (param $num i32) (result f64)
@@ -352,7 +360,7 @@
       (f64.mul (f64.convert_i32_s (local.get $e)) (%kLn2)))))
 
 ;; compute logn using Carlson72
-(func $logn-impl (param $num i32) (result f64)
+(func $logn-impl (param $num i32) (result i32)
   (local $v f64)
   (local $e i32)
   (local $f i64)
@@ -390,9 +398,13 @@
   ;; make sure this is a finite +ve real
   (local.set $num (call $inexact-impl (local.get $num)))
   (local.set $v (f64.load offset=4 (local.get $num)))
-  (if (f64.lt (local.get $v) (f64.const 0)) (then (return (f64.const nan))))
-  (if (f64.eq (local.get $v) (f64.const 0)) (then (return (f64.const -inf))))
-  (if (call $ieee-inf? (local.get $v)) (then (return (local.get $v))))
+  (if (f64.lt (f64.copysign (f64.const 1) (local.get $v)) (f64.const 0)) (then
+      (return (%alloc-complex
+          (call $logn-impl (%alloc-f64 (f64.neg (local.get $v))))
+          (%alloc-f64 (%kPI))))))
+  (if (f64.eq (local.get $v) (f64.const 0)) (then
+      (return (%alloc-f64 (f64.const -inf)))))
+  (if (call $ieee-inf? (local.get $v)) (then (return (local.get $num))))
 
   (local.set $e (i32.wrap_i64 (call $ieee-exponent-bits (local.get $v))))
 
@@ -416,7 +428,9 @@
    ;)
 
   (if (i64.eqz (local.get $f)) (then
-      (return (f64.mul (f64.convert_i32_s (local.get $e)) (%kLn2)))))
+      (return (%alloc-f64 (f64.mul
+            (f64.convert_i32_s (local.get $e))
+            (%kLn2))))))
 
   (local.set $x (f64.reinterpret_i64 (i64.or
         (local.get $f)
@@ -637,9 +651,9 @@
       (local.get $d_5_5)))
 
   ;; log(f·2^e)  = log(f) + e * log(2)
-  (return (f64.add
-      (local.get $log-x)
-      (f64.mul (f64.convert_i32_s (local.get $e)) (%kLn2)))))
+  (return (%alloc-f64 (f64.add
+        (local.get $log-x)
+        (f64.mul (f64.convert_i32_s (local.get $e)) (%kLn2))))))
 
 (func $exp (param $env i32) (param $args i32) (result i32)
   (local $num i32)
@@ -652,6 +666,9 @@
     (return (call $argument-error (local.get $args))))
 
   (local.set $num (%car-l $args))
+
+  (if (i32.eq (%get-type $num) (%complex-type)) (then
+      (return (call $complex-exp (local.get $num)))))
 
   (return (%alloc-f64 (call $exp-impl (local.get $num)))))
 

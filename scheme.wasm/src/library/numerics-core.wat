@@ -402,7 +402,7 @@
       (global.get $g-one)
       (call $num-core-add
         (call $num-core-mul (local.get $right-real) (local.get $right-real))
-        (call $num-core-mul (local.get $left-real) (local.get $left-real)))))
+        (call $num-core-mul (local.get $right-imag) (local.get $right-imag)))))
 
   (return (%alloc-complex
       (call $num-core-mul
@@ -606,7 +606,9 @@
 
   (if (i32.eq (local.get $type) (%f64-type)) (then
       (local.set $real (f64.load offset=4 (local.get $num)))
-      (return (f64.lt (local.get $real) (f64.const 0)))))
+      (return (f64.lt
+          (f64.copysign (f64.const 1) (local.get $real))
+          (f64.const 0)))))
 
   (if (i32.eq (local.get $type) (%rational-type)) (then
       (return (call $num-core-neg? (%car-l $num)))))

@@ -523,4 +523,52 @@
             (assert
               (< rms-error 1e-14)
               " expect rms error to be less than 1e-14, got " rms-error))))))
+
+  (test-case "branch cuts for atan2" (lambda ()
+    ; y = +0  x > 0   Just above positive x-axis  +0
+    (assert-equal (atan 0.0 0.5) 0)
+    ; y > 0   x > 0   Quadrant I                  +0 < result < π/2
+    (assert (> (atan 0.25 0.5) 0))
+    (assert (< (atan 0.25 0.5) (/ pi 2)))
+    (assert (> (atan 0.5 0.25) 0))
+    (assert (< (atan 0.5 0.25) (/ pi 2)))
+    ; y > 0   x = ±0  Positive y-axis             π/2
+    (assert-equal (atan 0.5 0.0) (/ pi 2))
+    (assert-equal (atan 0.5 -0.0) (/ pi 2))
+    ; y > 0   x < 0   Quadrant II                 π/2 < result < π
+    (assert (> (atan 0.25 -0.5) (/ pi 2)))
+    (assert (< (atan 0.25 -0.5) pi))
+    (assert (> (atan 0.5 -0.25) (/ pi 2)))
+    (assert (< (atan 0.5 -0.25) pi))
+    ; y = +0  x < 0   Just above negative x-axis  π
+    (assert-equal (atan 0.0 -0.5) pi)
+    ; y = −0  x < 0   Just below negative x-axis  -π
+    (assert-equal (atan -0.0 -0.5) (- pi))
+    ; y < 0   x < 0   Quadrant III                −π < result < −π/2
+    (assert (> (atan -0.25 -0.5) (- pi)))
+    (assert (< (atan -0.25 -0.5) (- (/ pi 2))))
+    (assert (> (atan -0.5 -0.25) (- pi)))
+    (assert (< (atan -0.5 -0.25) (- (/ pi 2))))
+    ; y < 0   x = ±0  Negative y-axis             −π/2
+    (assert-equal (atan -0.5 0.0) (- (/ pi 2)))
+    (assert-equal (atan -0.5 -0.0) (- (/ pi 2)))
+    ; y < 0   x > 0   Quadrant IV                 −π/2 < result < −0
+    (assert (> (atan -0.25 0.5) (- (/ pi 2))))
+    (assert (< (atan -0.25 0.5) 0))
+    (assert (> (atan -0.5 0.25) (- (/ pi 2))))
+    (assert (< (atan -0.5 0.25) 0))
+    ; y = −0  x > 0   Just below positive x-axis  −0
+    (assert-equal (atan -0.0 0.5) -0.0)
+    (assert-equal (number->string (atan -0.0 0.5)) "-0")
+    ; y = +0  x = +0  Near origin                 +0
+    (assert-equal (atan 0.0 0.0) 0)
+    (assert-equal (number->string (atan 0.0 0.0)) "0")
+    ; y = −0  x = +0  Near origin                 −0
+    (assert-equal (atan -0.0 0.0) -0.0)
+    (assert-equal (number->string (atan -0.0 0.0)) "-0")
+    ; y = +0  x = −0  Near origin                 π
+    (assert-equal (atan 0.0 -0.0) pi)
+    ; y = −0  x = −0  Near origin                 −π
+    (assert-equal (atan -0.0 -0.0) (- pi))
+  ))
 )

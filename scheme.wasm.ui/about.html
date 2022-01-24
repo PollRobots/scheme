@@ -5,7 +5,7 @@
     <title>About scheme.wasm</title>
     <style>
 body {
-  font-family: Roboto, Arial, Helvetica, sans-serif; 
+  font-family: Roboto, Arial, Helvetica, sans-serif;
   background: #eee;
   color: #333;
 }
@@ -35,12 +35,12 @@ h2 {
   <body>
     <h1>About Scheme.wasm</h1>
     <p>
-      Scheme.wasm is a partial implementation of 
+      Scheme.wasm is a partial implementation of
       <a href="https://small.r7rs.org/" target="_blank">r7rs scheme</a>,
-      written entirely in WebAssembly using the WebAssembly Text 
-      format. The only external imports are for IO (<code>read</code>, 
+      written entirely in WebAssembly using the WebAssembly Text
+      format. The only external imports are for IO (<code>read</code>,
       <code>write</code>, and <code>readFile</code>), unicode (I have an import that reads
-      information about 256 code-point blocks, to enable case operations etc.), 
+      information about 256 code-point blocks, to enable case operations etc.),
       and process control (<code>exit</code>)
     </p>
     <h2>Where can I find the code</h2>
@@ -55,6 +55,7 @@ h2 {
           <li>Integer (arbitrary precision)</li>
           <li>Real numbers (double precision)</li>
           <li>Rationals</li>
+          <li>Complex</li>
         </ul>
       </li>
       <li>Booleans</li>
@@ -65,19 +66,27 @@ h2 {
       <li>Bytevectors</li>
       <li>Values</li>
       <li>
-        Tail call optimization &mdash; internally <code>eval</code> uses a 
+        Tail call optimization &mdash; internally <code>eval</code> uses a
         continuation passing style, so TCO comes for free.
       </li>
       <li><code>call/cc</code> and exceptions</li>
+      <li>Macros
+        <ul>
+          <li><code>define-syntax</code>, <code>syntax-rules</code>, and
+            <code>syntax-error</code></li>
+          <li>Hygienic over <code>let</code>, <code>let*</code>,
+            <code>letrec</code>, <code>letrec*</code>, and <code>lambda</code></li>
+        </ul>
+      </li>
     </ul>
     <h3>What is missing at the moment</h3>
     <ul>
-      <li>Numerics
+      <li>Macros
         <ul>
-          <li>Complex Numbers</li>
+          <li><code>let-syntax</code> and <code>letrec-syntax</code></li>
         </ul>
       </li>
-      <li>Macros</li>
+      <li>Records</li>
       <li>Modules</li>
       <li><code>dynamic-wind</code></li>
       <li>Everything else</li>
@@ -91,40 +100,40 @@ h2 {
     <dl>
       <dt>xxHash</dt>
       <dd>It's probably overkill, but the hashing algorithm used for hashtables,
-        which are in turn used for environments and interning symbols, is xxHash 
+        which are in turn used for environments and interning symbols, is xxHash
         translated from the C++ implementation at
         <a href="https://github.com/Cyan4973/xxHash" target='_blank'>github.com/Cyan4973/xxHash</a>
 
       <dt>string-&gt;real</dt>
-      <dd>Strings are converted to real numbers using <em>Algorithm M</em> from 
-      "How to Read Floating Point Numbers Accurately", 
+      <dd>Strings are converted to real numbers using <em>Algorithm M</em> from
+      "How to Read Floating Point Numbers Accurately",
       <a href="https://www.khoury.northeastern.edu/people/william-d-clinger/" target='_blank'>William D Clinger</a>,
-      1990. Which is conveniently expressed in scheme in the original 
+      1990. Which is conveniently expressed in scheme in the original
       <a href="https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.45.4152&rep=rep1&type=pdf" target='_blank'>paper</a>.</dd>
 
       <dt>real-&gt;string</dt>
-      <dd>Real numbers are converted to strings using <em>Grisu 2</em> by 
+      <dd>Real numbers are converted to strings using <em>Grisu 2</em> by
         <a href="https://florian.loitsch.com/home" target="_blank">Florian Loitsch</a>.
-        This was translated from C++ found at 
+        This was translated from C++ found at
         <a href="https://github.com/romange/Grisu" target="_blank">github.com/romange/Grisu</a>
       </dd>
     </dl>
     </ul>
     <p>
-      Additionally inspiration came from a couple of places 
+      Additionally inspiration came from a couple of places
     </p>
     <dl>
       <dt>Lispy</dt>
-      <dd><a href="https://norvig.com" target="_blank">Peter Norvig's</a> article 
+      <dd><a href="https://norvig.com" target="_blank">Peter Norvig's</a> article
         <a href="https://norvig.com/lispy.html" target="_blank">
           (How to Write a (Lisp) Interpreter (in Python))
         </a> was a critical source of inspiration.
       </dd>
       <dt>EPLAiP</dt>
-      <dd>Nearly a decade ago a <span title="Hi Ashley!">friend</span> gave me a 
+      <dd>Nearly a decade ago a <span title="Hi Ashley!">friend</span> gave me a
         copy of <a href="https://billhails.net/EPLAiP.pdf" target="_blank">
-          Exploring Programming Language Architecture in Perl</a> by 
-        <a href="https://billhails.net" target="_blank">Bill Hails</a>. 
+          Exploring Programming Language Architecture in Perl</a> by
+        <a href="https://billhails.net" target="_blank">Bill Hails</a>.
         Definitely worth reading regardless of your language of choice (I haven't written PERL this millenium).
       </dd>
     </dl>

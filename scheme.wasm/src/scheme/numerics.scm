@@ -76,13 +76,13 @@
     (else (exp (* b (log a))))))
 (define (sqrt x)
   (cond
-    ((negative? x) (error "Cannot take negative square-root"))
     ((zero? x) 0)
-    ((integer? x)
+    ((and (integer? x) (positive? x))
       (let-values (((root rem) (exact-integer-sqrt x)))
         (if (zero? rem)
           root
           (expt x 0.5))))
+    ((integer? x) (make-rectangular 0 (sqrt (abs x))))
     (else (expt x 0.5))))
 (define pi (* 4 (atan 1)))
 (define (acos x) (- (* pi 0.5) (asin x)))
