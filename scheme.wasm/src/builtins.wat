@@ -234,8 +234,6 @@
 (table $table-builtin 228 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
-  (local $quote i32)
-
   (%define %add-special (%sym %num)
     (call $environment-add
       (local.get $env)

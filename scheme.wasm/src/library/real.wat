@@ -236,7 +236,6 @@
   (local $num-args i32)
   (local $num i32)
   (local $base i32)
-  (local $num-type i32)
   (local $ln-num f64)
   (local $ln-base f64)
 

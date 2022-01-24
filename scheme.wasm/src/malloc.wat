@@ -302,8 +302,6 @@
 (func $malloc-zero (param $ptr i32) (param $size i32)
   (local $rounded i32)
   (local $end i32)
-  (local $rem i32)
-  (local $temp i64)
 
   ;; end = ptr + size
   (local.set $end (i32.add (local.get $ptr) (local.get $size)))

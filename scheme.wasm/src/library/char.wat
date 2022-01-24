@@ -213,174 +213,105 @@
 )
 
 (func $char-equal (param $env i32) (param $args i32) (result i32)
-  (local $cmp i32)
-  (local $cmp-type i32)
-  (local $temp i32)
-
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
       (br_if $b_fail (i32.eqz (call $all-char (local.get $args))))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
 
-  (return (call $char-cmp-impl (local.get $args) (i32.const 0) (i32.const 0)))
-)
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $char-cmp-impl (local.get $args) (i32.const 0) (i32.const 0))))
 
 (func $char-gt (param $env i32) (param $args i32) (result i32)
-  (local $cmp i32)
-  (local $cmp-type i32)
-  (local $temp i32)
-
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
       (br_if $b_fail (i32.eqz (call $all-char (local.get $args))))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
 
-  (return (call $char-cmp-impl (local.get $args) (i32.const 1) (i32.const 0)))
-)
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $char-cmp-impl (local.get $args) (i32.const 1) (i32.const 0))))
 
 (func $char-ge (param $env i32) (param $args i32) (result i32)
-  (local $cmp i32)
-  (local $cmp-type i32)
-  (local $temp i32)
-
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
       (br_if $b_fail (i32.eqz (call $all-char (local.get $args))))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
 
   (return (call $char-cmp-impl (local.get $args) (i32.const 2) (i32.const 0)))
 )
 
 (func $char-lt (param $env i32) (param $args i32) (result i32)
-  (local $cmp i32)
-  (local $cmp-type i32)
-  (local $temp i32)
-
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
       (br_if $b_fail (i32.eqz (call $all-char (local.get $args))))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
 
-  (return (call $char-cmp-impl (local.get $args) (i32.const 3) (i32.const 0)))
-)
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $char-cmp-impl (local.get $args) (i32.const 3) (i32.const 0))))
 
 (func $char-le (param $env i32) (param $args i32) (result i32)
-  (local $cmp i32)
-  (local $cmp-type i32)
-  (local $temp i32)
-
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
       (br_if $b_fail (i32.eqz (call $all-char (local.get $args))))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
 
-  (return (call $char-cmp-impl (local.get $args) (i32.const 4) (i32.const 0)))
-)
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $char-cmp-impl (local.get $args) (i32.const 4) (i32.const 0))))
 
 (func $char-equal-ci (param $env i32) (param $args i32) (result i32)
-  (local $cmp i32)
-  (local $cmp-type i32)
-  (local $temp i32)
-
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
       (br_if $b_fail (i32.eqz (call $all-char (local.get $args))))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
 
-  (return (call $char-cmp-impl (local.get $args) (i32.const 0) (i32.const 1)))
-)
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $char-cmp-impl (local.get $args) (i32.const 0) (i32.const 1))))
 
 (func $char-gt-ci (param $env i32) (param $args i32) (result i32)
-  (local $cmp i32)
-  (local $cmp-type i32)
-  (local $temp i32)
-
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
       (br_if $b_fail (i32.eqz (call $all-char (local.get $args))))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
 
-  (return (call $char-cmp-impl (local.get $args) (i32.const 1) (i32.const 1)))
-)
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $char-cmp-impl (local.get $args) (i32.const 1) (i32.const 1))))
 
 (func $char-ge-ci (param $env i32) (param $args i32) (result i32)
-  (local $cmp i32)
-  (local $cmp-type i32)
-  (local $temp i32)
-
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
       (br_if $b_fail (i32.eqz (call $all-char (local.get $args))))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
 
-  (return (call $char-cmp-impl (local.get $args) (i32.const 2) (i32.const 1)))
-)
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $char-cmp-impl (local.get $args) (i32.const 2) (i32.const 1))))
 
 (func $char-lt-ci (param $env i32) (param $args i32) (result i32)
-  (local $cmp i32)
-  (local $cmp-type i32)
-  (local $temp i32)
-
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
       (br_if $b_fail (i32.eqz (call $all-char (local.get $args))))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
 
-  (return (call $char-cmp-impl (local.get $args) (i32.const 3) (i32.const 1)))
-)
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $char-cmp-impl (local.get $args) (i32.const 3) (i32.const 1))))
 
 (func $char-le-ci (param $env i32) (param $args i32) (result i32)
-  (local $cmp i32)
-  (local $cmp-type i32)
-  (local $temp i32)
-
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
       (br_if $b_fail (i32.eqz (call $all-char (local.get $args))))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
 
-  (return (call $char-cmp-impl (local.get $args) (i32.const 4) (i32.const 1)))
-)
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $char-cmp-impl (local.get $args) (i32.const 4) (i32.const 1))))
 
 ;; cmp-ops are
 ;;  0 =

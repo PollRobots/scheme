@@ -462,7 +462,6 @@
   (local $left-reg i32)
   (local $right-reg i32)
   (local $reg-type i32)
-  (local $temp-64 i32)
 
   (local.set $left-type (%get-type $left))
   (local.set $right-type (%get-type $right))
@@ -555,7 +554,6 @@
   (local $type i32)
   (local $num-64 i64)
   (local $mp i32)
-  (local $sign i32)
   (local $real f64)
 
   (local.set $type (%get-type $num))
@@ -594,7 +592,6 @@
   (local $type i32)
   (local $num-64 i64)
   (local $mp i32)
-  (local $sign i32)
   (local $real f64)
 
   (local.set $type (%get-type $num))
@@ -637,8 +634,6 @@
   (local $quot-64 i64)
   (local $rem-64 i64)
   (local $res-64 i64)
-  (local $dvdnd-mp i32)
-  (local $dvsr-mp i32)
   (local $quot-mp i32)
   (local $rem-mp i32)
   (local $temp-mp i32)
@@ -898,7 +893,6 @@
 
 (func $gcd-impl (param $a i32) (param $b i32) (result i32)
   (local $res64 i64)
-  (local $temp i32)
 
   (local.set $a (call $num-core-abs (local.get $a)))
   (local.set $b (call $num-core-abs (local.get $b)))

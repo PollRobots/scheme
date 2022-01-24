@@ -128,6 +128,7 @@
   (local.set $first (i32.const 1))
   ;; acc-off = 0
   (local.set $acc-off (i32.const 0))
+  (local.set $char (i32.const 0))
 
   ;; while (true) {
   (loop $forever

@@ -31,7 +31,7 @@
         (local.set $temp64 (i64.load offset=4 (local.get $k)))
         (br_if $fail (i64.gt_u (local.get $temp64) (i64.const 0xFFFF_FFFF)))
         (local.set $k (i32.wrap_i64 (local.get $temp64)))
-        
+
         (br_if $one_arg (i32.eq (local.get $num-args) (i32.const 1)))
         (br_if $fail (i32.gt_u (local.get $num-args) (i32.const 2)))
 
@@ -42,7 +42,7 @@
         (local.set $byte (i32.wrap_i64 (local.get $temp64)))
 
         (br $check))
-      
+
       (local.set $byte (i32.const 0))
       (br $check))
 
@@ -52,7 +52,7 @@
   (call $memset (local.get $ptr) (local.get $byte) (local.get $k))
 
   (return
-    (call $heap-alloc 
+    (call $heap-alloc
       (global.get $g-heap)
       (%bytevector-type)
       (local.get $ptr)
@@ -141,10 +141,10 @@
 
     (return (call $argument-error (local.get $args))))
 
-  (i32.store8 
+  (i32.store8
     (i32.add (%car-l $vector) (local.get $k))
     (local.get $byte))
-  
+
   (return (global.get $g-nil)))
 
 ;; (bytevector-copy <bytevector> [<start> [<end>]])
@@ -205,13 +205,13 @@
   (local.set $ptr (call $malloc (local.get $dest-len)))
 
   (if (local.get $dest-len) (then
-      (call $memcpy 
-        (local.get $ptr) 
+      (call $memcpy
+        (local.get $ptr)
         (i32.add (%car-l $vector) (local.get $start))
         (local.get $dest-len))))
 
   (return
-    (call $heap-alloc 
+    (call $heap-alloc
       (global.get $g-heap)
       (%bytevector-type)
       (local.get $ptr)
@@ -233,7 +233,6 @@
   (local $temp64 i64)
   (local $src-len i32)
   (local $dest-len i32)
-  (local $ptr i32)
 
   (block $check (block $fail (block $four_args (block $three_args
           (local.set $num-args (call $list-len (local.get $args)))
@@ -302,7 +301,7 @@
   (local.set $from-ptr (%car-l $from))
 
   (if (local.get $src-len) (then
-      (call $memmove 
+      (call $memmove
         (i32.add (local.get $to-ptr) (local.get $at))
         (i32.add (local.get $from-ptr) (local.get $start))
         (local.get $src-len))))
@@ -343,12 +342,12 @@
       (%chk-type $end $temp %cons-type)
       (%pop-l $vector $temp)
       (local.set $vector-len (%cdr-l $vector))
-      (call $memcpy 
+      (call $memcpy
         (i32.add (local.get $dest-ptr) (local.get $dest-offset))
         (%car-l $vector)
         (local.get $vector-len))
-      (local.set $dest-offset (i32.add 
-          (local.get $dest-offset) 
+      (local.set $dest-offset (i32.add
+          (local.get $dest-offset)
           (local.get $vector-len)))
 
       (br $start)))
@@ -356,7 +355,7 @@
   (%assert (i32.eq (local.get $dest-offset) (local.get $len)))
 
   (return
-    (call $heap-alloc 
+    (call $heap-alloc
       (global.get $g-heap)
       (%bytevector-type)
       (local.get $dest-ptr)
@@ -422,7 +421,7 @@
   (i32.store (local.get $ptr) (local.get $dest-len))
 
   (if (local.get $dest-len) (then
-      (call $memcpy 
+      (call $memcpy
         (i32.add (local.get $ptr) (i32.const 4))
         (i32.add (%car-l $vector) (local.get $start))
         (local.get $dest-len))))
@@ -492,15 +491,14 @@
   (local.set $ptr (call $malloc (local.get $dest-len)))
 
   (if (local.get $dest-len) (then
-      (call $memcpy 
+      (call $memcpy
         (local.get $ptr)
         (i32.add (i32.add (local.get $string) (local.get $start)) (i32.const 4))
         (local.get $dest-len))))
 
   (return
-    (call $heap-alloc 
+    (call $heap-alloc
       (global.get $g-heap)
       (%bytevector-type)
       (local.get $ptr)
       (local.get $dest-len))))
-

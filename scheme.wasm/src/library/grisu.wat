@@ -40,28 +40,28 @@
 
 (func $ieee-exponent-bits (param $f f64) (result i64)
   ;; return (bits & kExponentMask) >> (kPrecision - 1);
-  (i64.shr_u
+  (return (i64.shr_u
     (i64.and (%ieee-bits $f) (%kExponentMask))
-    (%kPrecisionMinus1)))
+    (%kPrecisionMinus1))))
 
 (func $ieee-significand-bits (param $f f64) (result i64)
   ;; return (bits & kSignificandMask);
-  (i64.and (%ieee-bits $f) (%kSignificandMask)))
+  (return (i64.and (%ieee-bits $f) (%kSignificandMask))))
 
 ;; Returns true if the sign-bit is set.
 (func $ieee-negative? (param $f f64) (result i32)
   ;; return (bits & kSignMask) != 0;
-  (i64.ne (i64.and (%ieee-bits $f) (%kSignMask)) (i64.const 0)))
+  (return (i64.ne (i64.and (%ieee-bits $f) (%kSignMask)) (i64.const 0))))
 
 ;; Returns true if this value is -0 or +0.
 (func $ieee-zero? (param $f f64) (result i32)
   ;; return (bits & ~kSignMask) == 0;
-  (i64.eqz (i64.and (%ieee-bits $f) (%kInvSignMask))))
+  (return (i64.eqz (i64.and (%ieee-bits $f) (%kInvSignMask)))))
 
 ;; Returns true if this value is denormal or 0.
 (func $ieee-denormal? (param $f f64) (result i32)
   ;; return (bits & kExponentMask) == 0;
-  (i64.eqz (i64.and (%ieee-bits $f) (%kExponentMask))))
+  (return (i64.eqz (i64.and (%ieee-bits $f) (%kExponentMask)))))
 
 ;; Returns true if this value is NaN
 (func $ieee-nan? (param $f f64) (result i32)

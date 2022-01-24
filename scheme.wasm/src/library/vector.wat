@@ -683,7 +683,6 @@
   (local $start i32)
   (local $end i32)
   (local $temp64 i64)
-  (local $buffer i32)
   (local $ptr i32)
 
   (block $b_check

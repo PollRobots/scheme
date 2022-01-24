@@ -31,8 +31,8 @@
 
     (return (call $argument-error (local.get $args))))
 
-  (return (%alloc-raise (%alloc-error-cons 
-        (local.get $msg) 
+  (return (%alloc-raise (%alloc-error-cons
+        (local.get $msg)
         (local.get $temp)))))
 
 ;; (error-object? <obj>)
@@ -43,7 +43,7 @@
       (return (call $argument-error (local.get $args)))))
 
   (local.set $obj (%car-l $args))
-  
+
   (return (select
       (global.get $g-true)
       (global.get $g-false)
@@ -52,7 +52,6 @@
 ;; (error-object-message <error-object>)
 (func $error-object-message (param $env i32) (param $args i32) (result i32)
   (local $obj i32)
-  (local $msg i32)
 
   (block $check (block $fail
       (br_if $fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
@@ -67,7 +66,6 @@
 ;; (error-object-irritants <error-object>)
 (func $error-object-irritants (param $env i32) (param $args i32) (result i32)
   (local $obj i32)
-  (local $msg i32)
 
   (block $check (block $fail
       (br_if $fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
@@ -101,7 +99,5 @@
         (call $cont-alloc
           (%guard-fn)
           (local.get $env)
-          (local.get $handler) 
+          (local.get $handler)
           (i32.const 0)))))
-
-  

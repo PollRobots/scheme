@@ -6,7 +6,7 @@
   (local $consequent i32)
   (local $alternate i32)
 
-  (block $b_check 
+  (block $b_check
     (block $b_2_args
       (block $b_fail
         (local.set $temp (local.get $args))
@@ -19,7 +19,7 @@
 
         (local.set $alternate (%car-l $temp))
         (br_if $b_check (i32.eq (local.get $num-args) (i32.const 3))))
-      
+
       (return (call $argument-error (local.get $args))))
 
     (local.set $alternate (global.get $g-nil)))
@@ -28,7 +28,7 @@
         (%eval-fn) ;; eval
         (local.get $env)
         (local.get $test)
-        (call $cont-alloc 
+        (call $cont-alloc
           (%cont-if)
           (local.get $env)
           (%cdr-l $args)
@@ -66,8 +66,8 @@
   (local $test i32)
 
   (block $b_error
-    (if (i32.eq (%get-type $args) (%nil-type)) 
-      (return (global.get $g-nil)))
+    (if (i32.eq (%get-type $args) (%nil-type)) (then
+      (return (global.get $g-nil))))
 
     (local.set $clauses (local.get $args))
     (%pop-l $clause $clauses)
@@ -116,7 +116,7 @@
 
   ;; check if this is an arrow clause
   (if (i32.eq (%car-l $clause) (global.get $g-arrow))
-    (then 
+    (then
       ;; clause, which should be (=> expr)
       ;; rewrite as (expr (quote test-res))
       (%pop-l $temp $clause)
@@ -124,9 +124,9 @@
       (if (i32.ne (%get-type $clause) (%nil-type))
         (then (return (call $argument-error (local.get $args)))))
 
-      (local.set $clause (%alloc-cons 
+      (local.set $clause (%alloc-cons
           (local.get $expr)
-          (%alloc-cons 
+          (%alloc-cons
             (%alloc-quote (local.get $test-res))
             (global.get $g-nil))))
       ;; evaluate re-written clause
@@ -137,7 +137,7 @@
             (i32.const 0)))))
 
   (return (call $eval-body (i32.const 0) (local.get $env) (local.get $clause))))
-      
+
 ;; (case <key> <clause_1> <clause_2> ...)
 ;;    clause ::=
 ;;      ((<datum_1> ...) <expression_1> ...)
@@ -145,14 +145,6 @@
 ;;      (else <expression_1> ...)
 ;;      (else => <expression>)
 (func $case (param $env i32) (param $args i32) (result i32)
-  (local $clauses i32)
-  (local $curr i32)
-  (local $key i32)
-  (local $head i32)
-  (local $tail i32)
-  (local $fn i32)
-  (local $datum i32)
-
   (if (i32.eqz (call $list-len (local.get $args)))
     (then (return (call $argument-error (local.get $args)))))
 
@@ -204,7 +196,7 @@
 
           (if (i32.eq (%car-l $tail) (global.get $g-arrow))
             (then
-              ;; this is an arrow else, 
+              ;; this is an arrow else,
               ;; check that the tail is (=> expr)
               (br_if $b_error (i32.ne (call $list-len (local.get $tail)) (i32.const 2)))
 
@@ -222,7 +214,7 @@
             (else
               ;; this is an ordinary else
               (return (call $eval-body (i32.const 0) (local.get $env) (local.get $tail)))))))
-        
+
       ;; this is a regular clause, check that head is a list...
       (br_if $b_error (i32.eqz (call $is-list-impl (local.get $head))))
 
@@ -248,8 +240,8 @@
 
                   (return (call $cont-alloc
                         (%eval-fn) ;; eval
-                        (local.get $env) 
-                        (local.get $fn) 
+                        (local.get $env)
+                        (local.get $fn)
                         (i32.const 0))))
                 (else
                   ;; this is a regular clause
@@ -293,7 +285,7 @@
     (then (return (local.get $test-res))))
 
   (return (call $and (local.get $env) (local.get $args))))
-  
+
 (func $or (param $env i32) (param $args i32) (result i32)
   (local $head i32)
 
@@ -324,7 +316,7 @@
     (then (return (local.get $test-res))))
 
   (return (call $or (local.get $env) (local.get $args))))
-  
+
 ;; (when <test> <expression_1> ...)
 (func $when (param $env i32) (param $args i32) (result i32)
   (local $test i32)
@@ -347,7 +339,7 @@
 ;; (cont-when test-res <expr> ...)
 (func $cont-when (param $env i32) (param $args i32) (result i32)
   (local $test-res i32)
-  
+
   (%pop-l $test-res $args)
   (if (call $is-truthy (local.get $test-res))
     (then (return (call $eval-body (i32.const 0) (local.get $env) (local.get $args)))))
@@ -376,7 +368,7 @@
 ;; (cont-unless test-res <expr> ...)
 (func $cont-unless (param $env i32) (param $args i32) (result i32)
   (local $test-res i32)
-  
+
   (%pop-l $test-res $args)
   (if (call $is-truthy (local.get $test-res))
     (then (return (global.get $g-nil))))

@@ -591,6 +591,7 @@ Constants are
           (local.set $template (%cdr-l $template))))
 
       (local.set $head (global.get $g-nil))
+      (local.set $tail (i32.const 0))
 
       (block $end (loop $start
           (%chk-type $end $template %cons-type)

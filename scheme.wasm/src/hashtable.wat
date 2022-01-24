@@ -18,9 +18,8 @@
   (local $ptr i32)  ;; ptr to the hashtable
 
   ;; if (capacity < 32) capacity = 32
-  (if (i32.le_s (local.get $capacity) (i32.const 32))
-    (local.set $capacity (i32.const 32))
-  )
+  (if (i32.le_s (local.get $capacity) (i32.const 32)) (then
+      (local.set $capacity (i32.const 32))))
 
   ;; size = sizeof HashTableHeader + capacity * (sizeof HashTableEntry)
   ;; size = 8 + capacity * 16
@@ -242,6 +241,7 @@
   ;; ptr += 8
   (%plus-eq $ptr 8)
 
+  (local.set $i (i32.const 0))
   ;; while (i < capacity) {
   (block $b_end
     (loop $b_start
@@ -432,7 +432,6 @@
   (local $count i32)
   (local $slot i32)
   (local $slot-ptr i32)
-  (local $slot-value i32)
 
   ;; capacity = ptr[0]
   (local.set $capacity (i32.load (local.get $ptr)))
@@ -481,10 +480,8 @@
   (result i32 )       ;; 1 if replaced, 0 otherwise
 
   (local $capacity i32)
-  (local $count i32)
   (local $slot i32)
   (local $slot-ptr i32)
-  (local $slot-value i32)
 
   ;; capacity = ptr[0]
   (local.set $capacity (i32.load (local.get $ptr)))

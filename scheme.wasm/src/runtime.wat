@@ -203,7 +203,6 @@
   (local $car i32)
   (local $cdr-str i32)
   (local $cdr i32)
-  (local $raw-token i32)
   (local $head i32)
   (local $curr i32)
   (local $list-vector i32)
@@ -789,7 +788,6 @@
   (result i32)
 
   (local $str-len i32)
-  (local $offset i32)
 
   (local.set $str-len (i32.load (local.get $str)))
   (return (call $short-str-start-with
@@ -1377,7 +1375,6 @@
   (result i32)
 
   (local $str-len i32)
-  (local $split i32)
   (local $mag i32)
   (local $mag-str i32)
   (local $mag-str-len i32)
@@ -1466,7 +1463,6 @@
   (local $roots i32)
 
   (local $cont-stack i32)
-  (local $prev-cont i32)
   (local $temp-cont i32)
   (local $next-cont i32)
   (local $curr-cont i32)
@@ -1716,8 +1712,6 @@
 
 (func $eval-inner (param $eval-fn i32) (param $env i32) (param $args i32) (result i32)
   (local $type i32)
-  (local $result i32)
-  (local $op i32)
   (local $cont i32)
 
   (local.set $type (%get-type $args))
@@ -1817,8 +1811,6 @@
 (func $apply (param $allow-def i32) (param $env i32) (param $op i32) (param $args i32) (result i32)
   (local $op-type i32)
   (local $fn i32)
-  (local $curr i32)
-  (local $head i32)
 
   (local.set $op-type (%get-type $op))
 
@@ -1927,8 +1919,6 @@
 
 (func $apply-internal (param $env i32) (param $op i32) (param $args i32) (result i32)
   (local $op-type i32)
-  (local $curr i32)
-  (local $head i32)
   (local $fn i32)
 
   (local.set $op-type (%get-type $op))
@@ -1987,9 +1977,7 @@
   (local $lambda-args i32)
   (local $formals i32)
   (local $body i32)
-  (local $body-len i32)
   (local $child-env i32)
-  (local $result i32)
 
   ;; closure = lambda[4]
   (local.set $closure (i32.load offset=4 (local.get $lambda)))
@@ -2045,7 +2033,6 @@
 ;; (cont-body-list val args ...)
 (func $cont-body-list (param $env i32) (param $args i32) (result i32)
   (local $val i32)
-  (local $stack i32)
 
   (%pop-l $val $args)
 
@@ -2059,7 +2046,6 @@
 ;; (cont-body-list-def val args ...)
 (func $cont-body-list-def (param $env i32) (param $args i32) (result i32)
   (local $val i32)
-  (local $stack i32)
 
   (%pop-l $val $args)
 

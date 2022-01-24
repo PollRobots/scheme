@@ -18,7 +18,6 @@
 
 (func $symbol=? (param $env i32) (param $args i32) (result i32)
   (local $arg i32)
-  (local $arg-type i32)
 
   (block $b_check (block $b_fail
       (br_if $b_fail (i32.eqz (call $list-len (local.get $args))))

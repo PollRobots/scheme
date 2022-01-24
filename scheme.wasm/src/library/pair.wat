@@ -184,15 +184,10 @@
   (return (i32.const 1)))
 
 (func $list? (param $env i32) (param $args i32) (result i32)
-  (local $type i32)
-  (local $arg i32)
-
-  (if (i32.ne (call $list-len (local.get $args)) (i32.const 1))
-    (then
+  (if (i32.ne (call $list-len (local.get $args)) (i32.const 1)) (then
       (return (call $argument-error (local.get $args)))))
 
-  (return
-    (select
+  (return (select
       (global.get $g-true)
       (global.get $g-false)
       (call $is-list-impl (%car-l $args)))))
@@ -271,7 +266,6 @@
 
 (func $append (param $env i32) (param $args i32) (result i32)
   (local $rev-args i32)
-  (local $arg-type i32)
   (local $appended i32)
   (local $curr i32)
   (local $curr-type i32)
@@ -379,7 +373,6 @@
   (return (local.get $rev)))
 
 (func $list-tail-impl (param $args i32) (param $obj i32) (param $k i32) (result i32)
-  (local $obj-type i32)
   (local $count i64)
 
   (local.set $count (i64.load offset=4 (local.get $k)))

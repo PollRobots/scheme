@@ -37,6 +37,7 @@
 
       ;; collect all except the last argument into a list
       (local.set $head (i32.const 0))
+      (local.set $tail (i32.const 0))
       (block $end (loop $start
           (%pop-l $curr $temp)
           ;; break out of the loop for the last item

@@ -449,12 +449,7 @@
   (return (%alloc-big-int (local.get $mp))))
 
 (func $num-equal (param $env i32) (param $args i32) (result i32)
-  (local $cmp i32)
-  (local $cmp-type i32)
-  (local $temp i32)
-
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
       (br_if $b_fail (i32.eqz (call $all-numeric (local.get $args))))
       (br $b_check))
@@ -464,12 +459,7 @@
   (return (call $num-cmp-impl (local.get $args) (i32.const 0))))
 
 (func $num-gt (param $env i32) (param $args i32) (result i32)
-  (local $cmp i32)
-  (local $cmp-type i32)
-  (local $temp i32)
-
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
       (br_if $b_fail (i32.eqz (call $all-real (local.get $args))))
       (br $b_check))
@@ -479,12 +469,7 @@
   (return (call $num-cmp-impl (local.get $args) (i32.const 1))))
 
 (func $num-ge (param $env i32) (param $args i32) (result i32)
-  (local $cmp i32)
-  (local $cmp-type i32)
-  (local $temp i32)
-
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
       (br_if $b_fail (i32.eqz (call $all-real (local.get $args))))
       (br $b_check))
@@ -494,12 +479,7 @@
   (return (call $num-cmp-impl (local.get $args) (i32.const 2))))
 
 (func $num-lt (param $env i32) (param $args i32) (result i32)
-  (local $cmp i32)
-  (local $cmp-type i32)
-  (local $temp i32)
-
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
       (br_if $b_fail (i32.eqz (call $all-real (local.get $args))))
       (br $b_check))
@@ -509,12 +489,7 @@
   (return (call $num-cmp-impl (local.get $args) (i32.const 3))))
 
 (func $num-le (param $env i32) (param $args i32) (result i32)
-  (local $cmp i32)
-  (local $cmp-type i32)
-  (local $temp i32)
-
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (call $list-len (local.get $args)) (i32.const 2)))
       (br_if $b_fail (i32.eqz (call $all-real (local.get $args))))
       (br $b_check))
@@ -531,15 +506,13 @@
 ;;  4 <=
 
 (func $num-cmp-impl (param $args i32) (param $cmp-op i32) (result i32)
-  (local $temp i32)
   (local $left i32)
   (local $right i32)
   (local $cmp-res i32)
 
   (%pop-l $right $args)
 
-  (block $done
-    (loop $continue
+  (block $done (loop $continue
       (br_if $done (i32.eq (%get-type $args) (%nil-type)))
 
       (local.set $left (local.get $right))
@@ -554,32 +527,27 @@
               (local.get $right)))
 
           ;; case 0:  =
-          (if (i32.eq (local.get $cmp-op) (i32.const 0))
-            (then
+          (if (i32.eq (local.get $cmp-op) (i32.const 0)) (then
               (br_if $b_cmp_fail (i32.ne (local.get $cmp-res) (i32.const 0)))
               (br $b_cmp_check)))
 
           ;; case 1:  >
-          (if (i32.eq (local.get $cmp-op) (i32.const 1))  ;; >
-            (then
+          (if (i32.eq (local.get $cmp-op) (i32.const 1)) (then ;; >
               (br_if $b_cmp_fail (i32.le_s (local.get $cmp-res) (i32.const 0)))
               (br $b_cmp_check)))
 
           ;; case 2:  >=
-          (if (i32.eq (local.get $cmp-op) (i32.const 2)) ;; >=
-            (then
+          (if (i32.eq (local.get $cmp-op) (i32.const 2)) (then ;; >=
               (br_if $b_cmp_fail (i32.lt_s (local.get $cmp-res) (i32.const 0)))
               (br $b_cmp_check)))
 
           ;; case 3:  <
-          (if (i32.eq (local.get $cmp-op) (i32.const 3)) ;; <
-            (then
+          (if (i32.eq (local.get $cmp-op) (i32.const 3)) (then ;; <
               (br_if $b_cmp_fail (i32.ge_s (local.get $cmp-res) (i32.const 0)))
               (br $b_cmp_check)))
 
           ;; case 4:  <=
-          (if (i32.eq (local.get $cmp-op) (i32.const 4)) ;; <=
-            (then
+          (if (i32.eq (local.get $cmp-op) (i32.const 4)) (then ;; <=
               (br_if $b_cmp_fail (i32.gt_s (local.get $cmp-res) (i32.const 0)))
               (br $b_cmp_check))))
 
@@ -712,10 +680,8 @@
 ;; (abs <num>)
 (func $num-abs (param $env i32) (param $args i32) (result i32)
   (local $num i32)
-  (local $fnum f64)
 
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 1)))
       (br_if $b_fail (i32.eqz (call $all-real (local.get $args))))
       (br $b_check))

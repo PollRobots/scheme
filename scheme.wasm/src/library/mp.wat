@@ -32,8 +32,6 @@ data: u32[size] -- the words of the number, words themselves are little
   (local $ptr i32)
   (local $i i32)
   (local $digit i32)
-  (local $word i32)
-  (local $bit i32)
   (local $temp i64)
   (local $offset i32)
   (local $str-ptr i32)
@@ -643,10 +641,8 @@ data: u32[size] -- the words of the number, words themselves are little
 (func $mp-sub (param $left i32) (param $right i32) (result i32)
   (local $left-length i32)
   (local $right-length i32)
-  (local $final-length i32)
   (local $left-offset i32)
   (local $right-offset i32)
-  (local $dest-offset i32)
   (local $temp-res i64)
   (local $res i32)
   (local $neg i32)
@@ -930,7 +926,6 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
   (return (call $mp-normalize (local.get $res))))
 
 (func $mp-10-pow (param $pow i32) (result i32)
-  (local $split i32)
   (local $val i32)
   (local $bits i32)
   (local $curr i32)
@@ -1167,7 +1162,6 @@ multiply(a[1..p], b[1..q], base)                            // Operands containi
 ;; as the low word
 (func $mp-div (param $dividend i32) (param $divisor i32) (result i64)
   (local $quot i32)
-  (local $temp i32)
   (local $rem i32)
   (local $res-len i32)
   (local $dvnd-sig i32) ;; number of significant words in the dividend

@@ -7,8 +7,6 @@
 
 
 (func $environment-init (param $heap i32) (param $outer i32) (result i32)
-  (local $hashtable i32)
-
   ;; hashtable = hashtable-init(0)
   ;; return heap-alloc(heap, 9, hashtable, outer)
   (return

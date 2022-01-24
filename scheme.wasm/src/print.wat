@@ -205,8 +205,6 @@
         (i32.const 16)))))
 
 (func $print-error (param $ptr i32)
-  (local $data i32)
-
   (call $print-symbol (global.get $g-lt))
   (call $print-symbol (global.get $g-error))
   (call $print-symbol (global.get $g-space))

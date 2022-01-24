@@ -8,7 +8,6 @@
   (local $name i32)
   (local $temp i32)
   (local $body i32)
-  (local $child-env i32)
   (local $binding i32)
   (local $var i32)
   (local $init i32)
@@ -477,7 +476,6 @@
       (local.get $body))))
 
 (func $let*-values-init (param $env i32) (param $formals-list i32) (param $init-list i32) (param $body i32) (result i32)
-  (local $formals i32)
   (local $init i32)
   (if (i32.eq (%get-type $formals-list) (%nil-type))
     (then (return (call $eval-body (i32.const 1) (local.get $env) (local.get $body)))))
