@@ -752,6 +752,36 @@
 
   (return (i32.eq (local.get $word) (local.get $short-str))))
 
+(func $str-index-of-ascii
+  (param $str i32)
+  (param $offset i32)
+  (param $char i32)
+  (result i32)
+
+  (local $str-len i32)
+  (local $ptr i32)
+
+  (local.set $str-len (i32.load (local.get $str)))
+
+  (if (i32.ge_s (local.get $offset) (local.get $str-len)) (then
+      (return (i32.const 0))))
+
+  (local.set $ptr (i32.add
+      (i32.add (local.get $str) (local.get $offset))
+      (i32.const 4)))
+
+  (block $end (loop $start
+      (br_if $end (i32.eq (local.get $offset) (local.get $str-len)))
+
+      (if (i32.eq (local.get $char) (i32.load8_u (local.get $ptr))) (then
+          (return (local.get $offset))))
+
+      (%inc $offset)
+      (%inc $ptr)
+      (br $start)))
+
+  (return (i32.const 0)))
+
 (func $short-str-ends-with
   (param $str i32)
   (param $short-str i32)
@@ -843,6 +873,7 @@
   (local $real f64)
   (local $rational i32)
   (local $numerator i32)
+  (local $at-index i32)
 
   (if (i32.ne (%get-type $str) (%str-type)) (then
       (return (global.get $g-false))))
@@ -961,6 +992,17 @@
       (return (call $string->complex-rect
           (local.get $str-ptr)
           (local.get $offset)
+          (local.get $radix)
+          (local.get $inexact)
+          (local.get $exact)))))
+  (if (local.tee $at-index (call $str-index-of-ascii
+        (local.get $str-ptr)
+        (local.get $offset)
+        (i32.const 0x40))) (then ;; '@'
+      (return (call $string->complex-polar
+          (local.get $str-ptr)
+          (local.get $offset)
+          (local.get $at-index)
           (local.get $radix)
           (local.get $inexact)
           (local.get $exact)))))
@@ -1324,6 +1366,81 @@
       (local.set $complex (call $exact-impl (local.get $complex)))))
 
   (return (local.get $complex)))
+
+(func $string->complex-polar
+  (param $str-ptr i32)
+  (param $offset i32)
+  (param $at-index i32)
+  (param $radix i32)
+  (param $inexact i32)
+  (param $exact i32)
+  (result i32)
+
+  (local $str-len i32)
+  (local $split i32)
+  (local $mag i32)
+  (local $mag-str i32)
+  (local $mag-str-len i32)
+  (local $ang i32)
+  (local $ang-str i32)
+  (local $ang-str-len i32)
+  (local $complex i32)
+  (local $cos i32)
+  (local $sin i32)
+
+  (local.set $str-len (i32.load (local.get $str-ptr)))
+
+  ;; parse the magnitude part
+  (local.set $mag-str-len (i32.sub (local.get $at-index) (local.get $offset)))
+  (local.set $mag-str (call $malloc (i32.add
+        (local.get $mag-str-len)
+        (i32.const 4))))
+  (i32.store (local.get $mag-str) (local.get $mag-str-len))
+  (call $memcpy
+    (i32.add (local.get $mag-str) (i32.const 4))
+    (i32.add (i32.add (local.get $str-ptr) (local.get $offset)) (i32.const 4))
+    (local.get $mag-str-len))
+
+  (local.set $mag (call $string->number-impl
+      (%alloc-str (local.get $mag-str))
+      (local.get $radix)))
+  (if (i32.eqz (call $numeric? (local.get $mag)))
+      (then (return (local.get $mag))))
+
+  ;; parse the angle part
+  (%inc $at-index)
+  (local.set $ang-str-len (i32.sub (local.get $str-len) (local.get $at-index)))
+  (local.set $ang-str (call $malloc (i32.add
+        (local.get $ang-str-len)
+        (i32.const 4))))
+  (i32.store (local.get $ang-str) (local.get $ang-str-len))
+  (call $memcpy
+    (i32.add (local.get $ang-str) (i32.const 4))
+    (i32.add (i32.add (local.get $str-ptr) (local.get $at-index)) (i32.const 4))
+    (local.get $ang-str-len))
+
+  (local.set $ang (call $string->number-impl
+      (%alloc-str (local.get $ang-str))
+      (local.get $radix)))
+  (if (i32.eqz (call $numeric? (local.get $ang)))
+      (then (return (local.get $ang))))
+
+  (local.set $ang (call $inexact-impl (local.get $ang)))
+
+  (local.set $cos (%alloc-f64 (call $cos-impl (f64.load offset=4 (local.get $ang)))))
+  (local.set $sin (%alloc-f64 (call $sin-impl (f64.load offset=4 (local.get $ang)))))
+
+  (local.set $complex (%alloc-complex
+      (call $num-core-mul (local.get $mag) (local.get $cos))
+      (call $num-core-mul (local.get $mag) (local.get $sin))))
+
+  (if (local.get $inexact) (then
+      (local.set $complex (call $inexact-impl (local.get $complex)))))
+  (if (local.get $exact) (then
+      (local.set $complex (call $exact-impl (local.get $complex)))))
+
+  (return (local.get $complex)))
+
 
 (func $should-collect (result i32)
   ;; If there is currently a collection, then incremental collection should be
