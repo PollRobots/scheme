@@ -1,3 +1,4 @@
+import { report } from "process";
 import * as fluent from "./fluent";
 import { Atom, isAtom, isList, List, ParsedWat } from "./parsedwat";
 import { isCommentToken, isWhitespaceToken } from "./tokens";
@@ -13,6 +14,7 @@ interface FunctionSignature {
 interface LocalDeclaration {
   name: string;
   type: WatType;
+  refCount: number;
 }
 
 interface GlobalDeclaration extends LocalDeclaration {
@@ -24,6 +26,89 @@ interface ValidatorContext {
   locals: Map<string, LocalDeclaration>;
   globals: Map<string, GlobalDeclaration>;
   blocks: string[];
+  report: ValidatorReporter;
+}
+
+export class ValidatorReporter {
+  private readonly warnings: [number, string][] = [];
+  private readonly errors: [number, string][] = [];
+
+  constructor() {}
+
+  addError(line: number, message: string) {
+    this.errors.push([line, message]);
+  }
+
+  addWarning(line: number, message: string) {
+    this.warnings.push([line, message]);
+  }
+
+  get hasErrors(): boolean {
+    return this.errors.length > 0;
+  }
+
+  get hasWarnings(): boolean {
+    return this.warnings.length > 0;
+  }
+
+  *warningsAndErrors(): Generator<[number, "w" | "e", string]> {
+    for (const [line, message] of this.warnings) {
+      yield [line, "w", message];
+    }
+    for (const [line, message] of this.errors) {
+      yield [line, "e", message];
+    }
+  }
+
+  report(fileOffsets: [number, string][]) {
+    const combined = Array.from(this.warningsAndErrors());
+    combined.sort(([l_a, t_a, m_a], [l_b, t_b, m_b]) => {
+      if (l_a != l_b) {
+        return l_a - l_b;
+      } else if (t_a != t_b) {
+        return t_a == "e" ? -1 : 1;
+      } else if (m_a != m_b) {
+        return m_a < m_b ? -1 : 1;
+      } else {
+        return 0;
+      }
+    });
+
+    let index = 0;
+    let [line_offset, filename] = fileOffsets[index];
+    for (const [line, type, message] of combined) {
+      console.log(`${type == "w" ? "WARNING" : "ERROR"}: ${message}`);
+      if (line > 0) {
+        while (
+          index < fileOffsets.length - 1 &&
+          line > fileOffsets[index + 1][0]
+        ) {
+          index++;
+          [line_offset, filename] = fileOffsets[index];
+        }
+
+        const file_line = line - line_offset;
+        console.log(`        ${filename}:${file_line}`);
+      }
+    }
+    console.log();
+    console.log(
+      `Validation pass completed with ${this.warnings.length} warnings and ${this.errors.length} errors.`
+    );
+  }
+}
+
+class ValidationError extends Error {
+  private readonly line_: number;
+
+  constructor(line: number, message: string) {
+    super(message);
+    this.line_ = line;
+  }
+
+  get line(): number {
+    return this.line_;
+  }
 }
 
 type Validator = (
@@ -32,75 +117,79 @@ type Validator = (
   list: List
 ) => WatType[];
 
-export function validateWat(parsedWat: ParsedWat) {
+export function validateWat(parsedWat: ParsedWat): ValidatorReporter {
+  const report = new ValidatorReporter();
   if (isAtom(parsedWat)) {
     if (
       !isCommentToken(parsedWat.token) &&
       !isWhitespaceToken(parsedWat.token)
     ) {
-      throw new Error(`Unexpected top-level token at ${parsedWat.line}`);
+      report.addError(parsedWat.line, `Unexpected top-level token`);
     }
-    return;
+    return report;
   } else if (isList(parsedWat)) {
     if (parsedWat.isComment) {
-      return;
+      return report;
     }
 
     const first = parsedWat.firstSignificantAtom();
 
     if (parsedWat.isDefinition) {
-      throw new Error(`Unexpected macro definition at ${parsedWat.line}`);
+      report.addError(parsedWat.line, `Unexpected macro definition`);
     } else if (parsedWat.isMacro) {
-      throw new Error(
-        `Unexpanded macro ${parsedWat.macroName} at ${parsedWat.line}`
+      report.addError(
+        parsedWat.line,
+        `Unexpanded macro ${parsedWat.macroName}`
       );
+    } else {
+      validateModule(parsedWat, report);
     }
-
-    validateModule(parsedWat);
   } else {
-    throw new Error(`Unexpected top-level parse object at ${parsedWat.line}`);
+    report.addError(parsedWat.line, `Unexpected top-level parse object`);
   }
+  return report;
 }
 
 function isAtomStartedList(list: List): Atom {
   const first = Array.from(fluent.take(list.getSignificantElements(), 1));
   if (first.length == 0) {
-    throw new Error("Unexpected empty list");
+    throw new ValidationError(0, "Unexpected empty list");
   } else if (!isAtom(first[0])) {
-    throw new Error(
-      `Expecting list to start with atom, got ${first[0].toString()} at ${
-        list.line
-      }`
+    throw new ValidationError(
+      list.line,
+      `Expecting list to start with atom, got ${first[0].toString()}`
     );
   }
   return first[0];
 }
 
-function validateModule(module: List) {
+function validateModule(module: List, report: ValidatorReporter) {
   const first = isAtomStartedList(module);
   if (first.token.content !== "module") {
-    throw new Error(
-      `Expecting module, got ${first.toString()}, at ${first.line}`
-    );
+    report.addError(first.line, `Expecting module, got ${first.toString()}`);
+    return;
   }
   const functions = new Map<string, FunctionSignature>();
   const globals = new Map<string, GlobalDeclaration>();
   extractFunctionSignatures(
     fluent.skip(module.getSignificantElements(), 1),
     functions,
-    globals
+    globals,
+    report
   );
   validateModuleLevel(
     fluent.skip(module.getSignificantElements(), 1),
     functions,
-    globals
+    globals,
+    report
   );
 }
 
 function extractFunctionSignatures(
   elements: Generator<ParsedWat>,
   functions: Map<string, FunctionSignature>,
-  globals: Map<string, GlobalDeclaration>
+  globals: Map<string, GlobalDeclaration>,
+  report: ValidatorReporter
 ) {
   for (const elem of elements) {
     if (isList(elem)) {
@@ -110,23 +199,27 @@ function extractFunctionSignatures(
         extractFunctionSignatures(
           fluent.skip(elem.getSignificantElements(), 1),
           functions,
-          globals
+          globals,
+          report
         );
         continue;
       }
 
       const start = isAtomStartedList(elem);
       if (start.token.content === "func") {
-        const signature = extractFunctionSignature(elem);
+        const signature = extractFunctionSignature(elem, report);
         functions.set(signature.name, signature);
       } else if (start.token.content === "global") {
-        validateGlobal(elem, globals);
+        validateGlobal(elem, globals, report);
       }
     }
   }
 }
 
-function extractFunctionSignature(func: List): FunctionSignature {
+function extractFunctionSignature(
+  func: List,
+  report: ValidatorReporter
+): FunctionSignature {
   const elements = Array.from(func.getSignificantElements());
   assertAtom(elements.shift(), "func");
   const name = assertAtomMatch(elements.shift(), kIdentifierReg, "identifier");
@@ -139,8 +232,9 @@ function extractFunctionSignature(func: List): FunctionSignature {
   do {
     const curr = elements.shift();
     if (!isList(curr)) {
-      throw new Error(
-        `Function ${name} got ${curr}, expecting a list, at ${name.line}`
+      report.addError(
+        name.line,
+        `Function ${name} got ${curr}, expecting a list`
       );
       continue;
     }
@@ -185,11 +279,12 @@ function extractFunctionSignature(func: List): FunctionSignature {
 function validateModuleLevel(
   elements: Generator<ParsedWat>,
   functions: Map<string, FunctionSignature>,
-  globals: Map<string, GlobalDeclaration>
+  globals: Map<string, GlobalDeclaration>,
+  report: ValidatorReporter
 ) {
   for (const elem of elements) {
     if (isAtom(elem)) {
-      throw new Error(`Unexpected atom in module ${elem.line}`);
+      report.addError(elem.line, `Unexpected atom ${elem} in module`);
     } else if (isList(elem)) {
       if (elem.isComment) {
         continue;
@@ -198,7 +293,8 @@ function validateModuleLevel(
         validateModuleLevel(
           fluent.skip(elem.getSignificantElements(), 1),
           functions,
-          globals
+          globals,
+          report
         );
         continue;
       }
@@ -206,7 +302,7 @@ function validateModuleLevel(
       const start = isAtomStartedList(elem);
       switch (start.token.content) {
         case "func":
-          validateFunction(elem, functions, globals);
+          validateFunction(elem, functions, globals, report);
           break;
         case "global":
           // already validated
@@ -219,7 +315,7 @@ function validateModuleLevel(
         case "export":
           break;
         default:
-          throw new Error(`Unexpected '${start}' in module at ${start.line}`);
+          report.addError(start.line, `Unexpected '${start}' in module`);
       }
     }
   }
@@ -227,26 +323,26 @@ function validateModuleLevel(
 
 function assertAtom(elem: ParsedWat | undefined, content: string): Atom {
   if (!elem) {
-    throw new Error(`Expecting ${content}, got nothing`);
+    throw new ValidationError(0, `Expecting ${content}, got nothing`);
   }
   if (!isAtom(elem)) {
-    throw new Error(`Expecting ${content}, got ${elem} at ${elem.line}`);
+    throw new ValidationError(elem.line, `Expecting ${content}, got ${elem}`);
   }
   if (elem.token.content !== content) {
-    throw new Error(`Expecting ${content}, got ${elem} at ${elem.line}`);
+    throw new ValidationError(elem.line, `Expecting ${content}, got ${elem}`);
   }
   return elem;
 }
 
 function assertAtomType(elem: ParsedWat | undefined, type: string) {
   if (!elem) {
-    throw new Error(`Expecting ${type}, got nothing`);
+    throw new ValidationError(0, `Expecting ${type}, got nothing`);
   }
   if (!isAtom(elem)) {
-    throw new Error(`Expecting ${type}, got ${elem} at ${elem.line}`);
+    throw new ValidationError(elem.line, `Expecting ${type}, got ${elem}`);
   }
   if (elem.token.type !== type) {
-    throw new Error(`Expecting ${type}, got ${elem} at ${elem.line}`);
+    throw new ValidationError(elem.line, `Expecting ${type}, got ${elem}`);
   }
 }
 
@@ -256,16 +352,18 @@ function assertAtomMatch(
   desc?: string
 ): Atom {
   if (!elem) {
-    throw new Error(`Expecting ${desc || content}, got nothing`);
+    throw new ValidationError(0, `Expecting ${desc || content}, got nothing`);
   }
   if (!isAtom(elem)) {
-    throw new Error(
-      `Expecting ${desc || content}, got ${elem} at ${elem.line}`
+    throw new ValidationError(
+      elem.line,
+      `Expecting ${desc || content}, got ${elem}`
     );
   }
   if (!elem.token.content.match(content)) {
-    throw new Error(
-      `Expecting ${desc || content}, got ${elem} at ${elem.line}`
+    throw new ValidationError(
+      elem.line,
+      `Expecting ${desc || content}, got ${elem}`
     );
   }
   return elem;
@@ -287,20 +385,26 @@ function assertAtomMatchOptional(
 const kIdentifierReg = /^\$[0-9a-zA-Z!#$%&'*+.\/:<=>?@\\^_`|~-]+$/;
 const kNumTypeReg = /^(i32|i64|f32|f64)$/;
 
-function validateGlobal(global: List, globals: Map<string, GlobalDeclaration>) {
+function validateGlobal(
+  global: List,
+  globals: Map<string, GlobalDeclaration>,
+  report: ValidatorReporter
+) {
   const elements = Array.from(global.getSignificantElements());
   const first = elements.shift() as Atom;
   assertAtom(first, "global");
   if (elements.length != 3) {
-    throw new Error(
-      `Invalid global declaration at ${
-        global.line
-      }, expecting 4 elements, got ${1 + elements.length} at ${global.line}`
+    report.addError(
+      global.line,
+      `Invalid global declaration, expecting 4 elements, got ${
+        1 + elements.length
+      }`
     );
+    return;
   }
   const name = assertAtomMatch(elements.shift(), kIdentifierReg, "identifier");
   if (globals.has(name.token.content)) {
-    throw new Error(`Duplicate global ${name} at ${global.line}`);
+    report.addError(global.line, `Duplicate global ${name}`);
   }
 
   const rawType = elements.shift() as ParsedWat;
@@ -312,38 +416,49 @@ function validateGlobal(global: List, globals: Map<string, GlobalDeclaration>) {
   } else if (isList(rawType)) {
     const typeElements = Array.from(rawType.getSignificantElements());
     if (typeElements.length !== 2) {
-      throw new Error(
-        `Invalid global declaration at ${global.line}, expecting 2 elements in type, got ${typeElements.length} at ${global.line}`
+      report.addError(
+        global.line,
+        `Invalid global declaration, expecting 2 elements in type, got ${typeElements.length}`
       );
+      return;
     }
     assertAtom(typeElements.shift(), "mut");
     type = assertAtomMatch(typeElements.shift(), kNumTypeReg, "type").token
       .content as WatType;
     mutable = true;
   } else {
-    throw new Error(
-      `Unexpected type ${rawType} in global ${name} declaration at ${global.line}`
+    report.addError(
+      global.line,
+      `Unexpected type ${rawType} in global ${name} declaration`
     );
+    return;
   }
 
   const initializer = elements.shift();
   if (isList(initializer)) {
     const constType = constValidator(
       first,
-      { functions: new Map(), locals: new Map(), globals: globals, blocks: [] },
+      {
+        functions: new Map(),
+        locals: new Map(),
+        globals: globals,
+        blocks: [],
+        report: report,
+      },
       initializer
     );
     if (constType.length !== 1) {
-      throw new Error(`Unexpected type from const validator at ${global.line}`);
-    }
-    if (constType[0] != type) {
-      throw new Error(
-        `Mismatched initializer ${initializer}, expecting ${type}.const, in global ${name} declaration at ${global.line}`
+      report.addError(global.line, `Unexpected type from const validator`);
+    } else if (constType[0] != type) {
+      report.addError(
+        global.line,
+        `Mismatched initializer ${initializer}, expecting ${type}.const, in global ${name} declaration`
       );
     }
   } else {
-    throw new Error(
-      `Unexpected initializer ${initializer} in global ${name} declaration at ${global.line}`
+    report.addError(
+      global.line,
+      `Unexpected initializer ${initializer} in global ${name} declaration`
     );
   }
 
@@ -351,13 +466,15 @@ function validateGlobal(global: List, globals: Map<string, GlobalDeclaration>) {
     name: name.token.content,
     mutable: mutable,
     type: type,
+    refCount: 0,
   });
 }
 
 function validateFunction(
   func: List,
   functions: Map<string, FunctionSignature>,
-  globals: Map<string, GlobalDeclaration>
+  globals: Map<string, GlobalDeclaration>,
+  report: ValidatorReporter
 ) {
   const elements = Array.from(func.getSignificantElements());
   assertAtom(elements.shift(), "func");
@@ -369,8 +486,9 @@ function validateFunction(
   do {
     const curr = elements.shift();
     if (!isList(curr)) {
-      throw new Error(
-        `Function ${name} got ${curr}, expecting a list, at ${name.line}`
+      report.addError(
+        name.line,
+        `Function ${name} got ${curr}, expecting a list`
       );
       continue;
     }
@@ -412,11 +530,25 @@ function validateFunction(
     }
 
     if (state === "instr") {
-      validateInstructions(
-        name,
-        { functions: functions, locals: locals, globals: globals, blocks: [] },
-        elements
-      );
+      const context = {
+        functions: functions,
+        locals: locals,
+        globals: globals,
+        blocks: [],
+        report: report,
+      };
+      elements.unshift(curr);
+      validateInstructions(name, context, elements);
+
+      for (const unused of fluent.filter(
+        locals.values(),
+        (el) => el.refCount == 0
+      )) {
+        report.addWarning(
+          name.line,
+          `Unused local variable ${unused.name} in ${name}`
+        );
+      }
       return;
     }
   } while (elements.length);
@@ -453,13 +585,15 @@ function validateParamOrLocal(
 
   if (name) {
     if (locals.has(name.token.content)) {
-      throw new Error(
-        `Duplicate ${paramOrLocal} ${name} in ${funcName} at ${name.line}`
+      throw new ValidationError(
+        name.line,
+        `Duplicate ${paramOrLocal} ${name} in ${funcName}`
       );
     }
     locals.set(name.token.content, {
       name: name.token.content,
       type: type.token.content as WatType,
+      refCount: paramOrLocal == "local" ? 0 : 1,
     });
   }
 }
@@ -511,44 +645,58 @@ function validateInstruction(
   expectedType: WatType
 ) {
   if (isAtom(instruction)) {
-    // TODO validate non s-expression
-    console.warn(
-      `Instruction '${instruction}' not in S-Experession form in ${funcName} at ${instruction.line}`
+    context.report.addWarning(
+      instruction.line,
+      `Instruction '${instruction}' not in S-Experession form in ${funcName}`
     );
   } else if (isList(instruction)) {
     if (instruction.isComment) {
       return;
     }
-    const mnem = isAtomStartedList(instruction);
-    const validator = lookupInstructionValidator(funcName, mnem);
-    const resultType = validator(funcName, context, instruction);
-    switch (expectedType) {
-      case "none":
-        if (resultType.length != 0) {
-          console.warn(
-            `Expecting ${mnem} not to push, it put ${resultType.join(
-              ", "
-            )} on the stack in ${funcName} at ${mnem.line}`
-          );
-        }
-        break;
-      case "any":
-        break;
-      default:
-        if (resultType.length != 1) {
-          console.warn(
-            `Expecting ${mnem} to push ${expectedType} onto the stack, in ${funcName} at ${mnem.line}`
-          );
-        } else if (resultType[0] === "any") {
-          // we don't know what type this instruction generated, so we'll assume it is ok
-        } else if (resultType[0] !== expectedType) {
-          console.warn(
-            `Expecting ${mnem} to push ${expectedType} onto the stack, got ${resultType[0]}, in ${funcName} at ${mnem.line}`
-          );
-        }
+    try {
+      const mnem = isAtomStartedList(instruction);
+      const validator = lookupInstructionValidator(funcName, mnem);
+      const resultType = validator(funcName, context, instruction);
+      switch (expectedType) {
+        case "none":
+          if (resultType.length != 0) {
+            context.report.addWarning(
+              mnem.line,
+              `Expecting ${mnem} not to push, it put ${resultType.join(
+                ", "
+              )} on the stack in ${funcName}`
+            );
+          }
+          break;
+        case "any":
+          break;
+        default:
+          if (resultType.length != 1) {
+            context.report.addWarning(
+              mnem.line,
+              `Expecting ${mnem} to push ${expectedType} onto the stack, in ${funcName}`
+            );
+          } else if (resultType[0] === "any") {
+            // we don't know what type this instruction generated, so we'll assume it is ok
+          } else if (resultType[0] !== expectedType) {
+            context.report.addWarning(
+              mnem.line,
+              `Expecting ${mnem} to push ${expectedType} onto the stack, got ${resultType[0]}, in ${funcName}`
+            );
+          }
+      }
+    } catch (err) {
+      if (err instanceof ValidationError) {
+        context.report.addError(err.line, err.message);
+      } else {
+        throw err;
+      }
     }
   } else {
-    throw new Error(`unexpected type ${instruction} in ${funcName}`);
+    context.report.addError(
+      instruction.line,
+      `unexpected type ${instruction} in ${funcName}`
+    );
   }
 }
 
@@ -660,7 +808,9 @@ kUnaryInstructions.forEach((el) => {
   if (parts.length === 1 || !parts[0].match(kNumTypeReg)) {
     throw new Error(`Unexpected unary instruction ${el}`);
   }
-  const inputMatch = parts[1].match(/^(?:[a-z]*_)*(i32|i64|f32|f64)(?:_[a-z]*)*$/);
+  const inputMatch = parts[1].match(
+    /^(?:[a-z]*_)*(i32|i64|f32|f64)(?:_[a-z]*)*$/
+  );
   if (inputMatch) {
     kInstructionValidators.set(el, (funcName, context, list) =>
       unaryValidator(
@@ -801,8 +951,9 @@ kStoreInstructions.forEach((el) =>
 function lookupInstructionValidator(funcName: Atom, instr: Atom) {
   const validator = kInstructionValidators.get(instr.token.content);
   if (!validator) {
-    throw new Error(
-      `Unknown instruction ${instr} in ${funcName} at ${instr.line}`
+    throw new ValidationError(
+      instr.line,
+      `Unknown instruction ${instr} in ${funcName}`
     );
   }
   return validator;
@@ -830,7 +981,7 @@ function getValidator(
   context: ValidatorContext,
   list: List,
   checkLocals: boolean
-) {
+): WatType[] {
   const elements = Array.from(list.getSignificantElements());
   const first = elements.shift();
   const name = assertAtomMatch(elements.shift(), kIdentifierReg, "identifier");
@@ -838,25 +989,38 @@ function getValidator(
   if (checkLocals) {
     const local = context.locals.get(name.token.content);
     if (!local) {
-      throw new Error(
-        `${first} has unknown identifier ${name} in ${funcName} at ${name.line}`
+      context.report.addError(
+        name.line,
+        `${first} has unknown identifier ${name} in ${funcName}`
       );
+    } else {
+      type = local.type;
+      if (local.refCount == 0) {
+        context.report.addWarning(
+          name.line,
+          `Maybe reading uninitialized local ${name} in ${funcName}`
+        );
+      }
+      local.refCount++;
     }
-    type = local.type;
   } else {
     const global = context.globals.get(name.token.content);
     if (!global) {
-      throw new Error(
-        `${first} has unknown identifier ${name} in ${funcName} at ${name.line}`
+      context.report.addError(
+        name.line,
+        `${first} has unknown identifier ${name} in ${funcName}`
       );
+    } else {
+      type = global.type;
+      global.refCount++;
     }
-    type = global.type;
   }
   if (elements.length !== 0) {
-    throw new Error(
+    context.report.addError(
+      name.line,
       `${first} should have 1 argument, found ${
         1 + elements.length
-      } in ${funcName} at ${name.line}`
+      } in ${funcName}`
     );
   }
 
@@ -892,33 +1056,41 @@ function setValidator(
   if (checkLocals) {
     const local = context.locals.get(name.token.content);
     if (!local) {
-      throw new Error(
-        `${first} has unknown identifier ${name} in ${funcName} at ${name.line}`
+      context.report.addError(
+        name.line,
+        `${first} has unknown identifier ${name} in ${funcName}`
       );
+    } else {
+      type = local.type;
+      local.refCount++;
     }
-    type = local.type;
   } else {
     const global = context.globals.get(name.token.content);
     if (!global) {
-      throw new Error(
-        `${first} has unknown identifier ${name} in ${funcName} at ${name.line}`
+      context.report.addError(
+        name.line,
+        `${first} has unknown identifier ${name} in ${funcName}`
       );
+    } else {
+      if (!global.mutable) {
+        throw new Error(
+          `Cannot write to immtable global ${name} in ${funcName} at ${name.line}`
+        );
+      }
+      type = global.type;
+      global.refCount++;
     }
-    if (!global.mutable) {
-      throw new Error(
-        `Cannot write to immtable global ${name} in ${funcName} at ${name.line}`
-      );
-    }
-    type = global.type;
   }
   if (elements.length !== 1) {
-    throw new Error(
+    context.report.addError(
+      name.line,
       `${first} should have 2 arguments, found ${
         1 + elements.length
-      } in ${funcName} at ${name.line}`
+      } in ${funcName}`
     );
+  } else {
+    validateInstruction(funcName, context, elements[0], type);
   }
-  validateInstruction(funcName, context, elements[0], type);
 
   if (first.toString().endsWith(".tee")) {
     return [type];
@@ -934,17 +1106,20 @@ function constValidator(
   const elements = Array.from(list.getSignificantElements());
   const first = elements.shift() as Atom;
   if (elements.length !== 1) {
-    throw new Error(
+    context.report.addError(
+      first.line,
       `${first} should have 1 argument, found ${
         1 + elements.length
-      } in ${funcName} at ${first.line}`
+      } in ${funcName}`
     );
-  }
-  const constant = elements.shift();
-  if (!isAtom(constant)) {
-    throw new Error(
-      `${first} should have constant argument, found ${constant} in ${funcName} at ${first.line}`
-    );
+  } else {
+    const constant = elements.shift();
+    if (!isAtom(constant)) {
+      context.report.addError(
+        first.line,
+        `${first} should have constant argument, found ${constant} in ${funcName}`
+      );
+    }
   }
   const parts = first.toString().split(".");
   if (
@@ -952,8 +1127,9 @@ function constValidator(
     !parts[0].match(kNumTypeReg) ||
     parts[1] !== "const"
   ) {
-    throw new Error(
-      `${first} cannot be validated using the const validator in ${funcName} at ${first.line}`
+    context.report.addError(
+      first.line,
+      `${first} cannot be validated using the const validator in ${funcName}`
     );
   }
   return [parts[0] as WatType];
@@ -971,15 +1147,18 @@ function loadValidator(
     elements.shift();
   }
   if (elements.length != 1) {
-    throw new Error(
-      `${first} should have 1 argument, found ${elements.length} in ${funcName} at ${first.line}`
+    context.report.addError(
+      first.line,
+      `${first} should have 1 argument, found ${elements.length} in ${funcName}`
     );
+  } else {
+    validateInstruction(funcName, context, elements[0], "i32");
   }
-  validateInstruction(funcName, context, elements[0], "i32");
   const parts = first.toString().split(".");
   if (parts.length !== 2 || !parts[0].match(kNumTypeReg)) {
-    throw new Error(
-      `${first} cannot be validated using the load validator in ${funcName} at ${first.line}`
+    context.report.addError(
+      first.line,
+      `${first} cannot be validated using the load validator in ${funcName}`
     );
   }
   return [parts[0] as WatType];
@@ -997,18 +1176,22 @@ function storeValidator(
     elements.shift();
   }
   if (elements.length != 2) {
-    throw new Error(
-      `${first} should have 2 arguments, found ${elements.length} in ${funcName} at ${first.line}`
+    context.report.addError(
+      first.line,
+      `${first} should have 2 arguments, found ${elements.length} in ${funcName}`
     );
+  } else {
+    validateInstruction(funcName, context, elements[0], "i32");
+    const parts = first.toString().split(".");
+    if (parts.length !== 2 || !parts[0].match(kNumTypeReg)) {
+      context.report.addError(
+        first.line,
+        `${first} cannot be validated using the store validator in ${funcName}`
+      );
+    } else {
+      validateInstruction(funcName, context, elements[1], parts[0] as WatType);
+    }
   }
-  validateInstruction(funcName, context, elements[0], "i32");
-  const parts = first.toString().split(".");
-  if (parts.length !== 2 || !parts[0].match(kNumTypeReg)) {
-    throw new Error(
-      `${first} cannot be validated using the store validator in ${funcName} at ${first.line}`
-    );
-  }
-  validateInstruction(funcName, context, elements[1], parts[0] as WatType);
 
   return [];
 }
@@ -1023,17 +1206,20 @@ function callValidator(
   const name = elements.shift() as Atom;
   assertAtomMatch(name, kIdentifierReg, "identifier");
   if (!context.functions.has(name.token.content)) {
-    throw new Error(
-      `Calling unknown function ${name} in ${funcName} at ${name.line}`
+    context.report.addError(
+      name.line,
+      `Calling unknown function ${name} in ${funcName}`
     );
+    return ["any"];
   }
 
   const signature = context.functions.get(
     name.token.content
   ) as FunctionSignature;
   if (signature.params.length !== elements.length) {
-    throw new Error(
-      `Call to function ${name} in ${funcName} has ${elements.length} arguments, expecting ${signature.params.length}. at ${name.line}`
+    context.report.addError(
+      name.line,
+      `Call to function ${name} in ${funcName} has ${elements.length} arguments, expecting ${signature.params.length}`
     );
   }
 
@@ -1065,15 +1251,18 @@ function returnValidator(
 ): WatType[] {
   const signature = context.functions.get(funcName.token.content);
   if (!signature) {
-    throw new Error(
-      `Cannot find function declaration for ${funcName} at ${list.line}`
+    context.report.addError(
+      list.line,
+      `Cannot find function declaration for ${funcName}`
     );
+    return [];
   }
   const elements = Array.from(list.getSignificantElements());
   const ret = assertAtom(elements.shift(), "return");
   if (elements.length != signature.result.length) {
-    throw new Error(
-      `return should have ${signature.result.length} arguments, found ${elements.length} in ${funcName} at ${ret.line}`
+    context.report.addError(
+      ret.line,
+      `return should have ${signature.result.length} arguments, found ${elements.length} in ${funcName}`
     );
   }
   for (const [element, returnType] of fluent.zip(elements, signature.result)) {
@@ -1092,15 +1281,21 @@ function ifValidator(
   const key = assertAtom(elements.shift(), "if");
   const test = elements.shift();
   if (!test || !isList(test)) {
-    throw new Error(
-      `Expecting (<test> ...) in if in ${funcName} at ${key.line}`
+    context.report.addError(
+      key.line,
+      `Expecting (<test> ...) in if in ${funcName}`
     );
+    return [];
   }
   validateInstruction(funcName, context, test, "i32");
 
   const then = elements.shift();
   if (!then || !isList(then)) {
-    throw new Error(`Expecting (then ...) in if in ${funcName} at ${key.line}`);
+    context.report.addError(
+      key.line,
+      `Expecting (then ...) in if in ${funcName}`
+    );
+    return [];
   }
   const thenElements = Array.from(then.getSignificantElements());
   assertAtom(thenElements.shift(), "then");
@@ -1112,21 +1307,25 @@ function ifValidator(
 
   const elseElement = elements.shift();
   if (!elseElement || !isList(elseElement)) {
-    throw new Error(`Expecting (else ...) in if in ${funcName} at ${key.line}`);
+    context.report.addError(
+      key.line,
+      `Expecting (else ...) in if in ${funcName}`
+    );
+    return [];
   }
   const elseElements = Array.from(elseElement.getSignificantElements());
   assertAtom(elseElements.shift(), "else");
   validateInstructions(funcName, context, elseElements);
 
-  if (elements.length == 0) {
-    return [];
+  if (elements.length != 0) {
+    context.report.addError(
+      key.line,
+      `if should have at most 3 arguments, found ${
+        2 + elements.length
+      } in ${funcName}`
+    );
   }
-
-  throw new Error(
-    `if should have at most 3 arguments, found ${
-      2 + elements.length
-    } in ${funcName} at ${key.line}`
-  );
+  return [];
 }
 
 function thunkValidator(
@@ -1138,8 +1337,9 @@ function thunkValidator(
   const first = elements.shift() as Atom;
 
   if (elements.length != 0) {
-    throw new Error(
-      `${first} should have no, found ${elements.length} in ${funcName} at ${first.line}`
+    context.report.addError(
+      first.line,
+      `${first} should have no, found ${elements.length} in ${funcName}`
     );
   }
   if (first.token.content === "memory.size") {
@@ -1159,12 +1359,13 @@ function unaryValidator(
   const first = elements.shift() as Atom;
 
   if (elements.length != 1) {
-    throw new Error(
-      `${first} should have 1 argument, found ${elements.length} in ${funcName} at ${first.line}`
+    context.report.addError(
+      first.line,
+      `${first} should have 1 argument, found ${elements.length} in ${funcName}`
     );
+  } else {
+    validateInstruction(funcName, context, elements[0], inputType);
   }
-
-  validateInstruction(funcName, context, elements[0], inputType);
   return outputType == "none" ? [] : [outputType];
 }
 
@@ -1180,23 +1381,25 @@ function binaryValidator(
   const elements = Array.from(list.getSignificantElements());
   const first = elements.shift() as Atom;
 
-  if (elements.length != 2) {
-    throw new Error(
-      `${first} should have 2 arguments, found ${elements.length} in ${funcName} at ${first.line}`
-    );
-  }
-
   const parts = first.toString().split(".");
   if (parts.length !== 2 || !parts[0].match(kNumTypeReg)) {
-    throw new Error(
-      `${first} cannot be validated using the binary-op validator in ${funcName} at ${first.line}`
+    context.report.addError(
+      first.line,
+      `${first} cannot be validated using the binary-op validator in ${funcName}`
     );
+    parts.unshift("i32");
   }
   const type: WatType = parts[0] as WatType;
 
-  validateInstruction(funcName, context, elements[0], type);
-  validateInstruction(funcName, context, elements[1], type);
-
+  if (elements.length != 2) {
+    context.report.addError(
+      first.line,
+      `${first} should have 2 arguments, found ${elements.length} in ${funcName}`
+    );
+  } else {
+    validateInstruction(funcName, context, elements[0], type);
+    validateInstruction(funcName, context, elements[1], type);
+  }
   return [isComparison(parts[1]) ? "i32" : type];
 }
 
@@ -1209,15 +1412,16 @@ function selectValidator(
   const first = assertAtom(elements.shift(), "select");
 
   if (elements.length != 3) {
-    throw new Error(
-      `${first} should have 3 arguments, found ${elements.length} in ${funcName} at ${first.line}`
+    context.report.addError(
+      first.line,
+      `${first} should have 3 arguments, found ${elements.length} in ${funcName}`
     );
+  } else {
+    // TODO first and second instructions of select should have the expected output type
+    validateInstruction(funcName, context, elements[0], "any");
+    validateInstruction(funcName, context, elements[1], "any");
+    validateInstruction(funcName, context, elements[2], "i32");
   }
-
-  // TODO first and second instructions of select should have the expected output type
-  validateInstruction(funcName, context, elements[0], "any");
-  validateInstruction(funcName, context, elements[1], "any");
-  validateInstruction(funcName, context, elements[2], "i32");
 
   return ["any"];
 }
@@ -1232,8 +1436,9 @@ function blockValidator(
   const name = assertAtomMatch(elements.shift(), kIdentifierReg, "identifier");
 
   if (context.blocks.some((el) => el === name.token.content)) {
-    throw new Error(
-      `${first} has duplicate label ${name} in ${funcName} at ${name.line}`
+    context.report.addError(
+      name.line,
+      `${first} has duplicate label ${name} in ${funcName}`
     );
   }
 
@@ -1257,18 +1462,20 @@ function brifValidator(
   const name = assertAtomMatch(elements.shift(), kIdentifierReg, "identifier");
 
   if (!context.blocks.some((el) => el === name.token.content)) {
-    throw new Error(
-      `${first} has unknown label ${name} in ${funcName} at ${name.line}`
+    context.report.addError(
+      name.line,
+      `${first} has unknown label ${name} in ${funcName}`
     );
   }
 
   if (elements.length != 1) {
-    throw new Error(
-      `${first} should have 1 argument, found ${elements.length} in ${funcName} at ${first.line}`
+    context.report.addError(
+      first.line,
+      `${first} should have 1 argument, found ${elements.length} in ${funcName}`
     );
+  } else {
+    validateInstruction(funcName, context, elements[0], "i32");
   }
-
-  validateInstruction(funcName, context, elements[0], "i32");
   return [];
 }
 
@@ -1282,14 +1489,16 @@ function brValidator(
   const name = assertAtomMatch(elements.shift(), kIdentifierReg, "identifier");
 
   if (!context.blocks.some((el) => el === name.token.content)) {
-    throw new Error(
-      `${first} has unknown label ${name} in ${funcName} at ${name.line}`
+    context.report.addError(
+      name.line,
+      `${first} has unknown label ${name} in ${funcName}`
     );
   }
 
   if (elements.length) {
-    throw new Error(
-      `${first} should have no arguments, found ${elements.length} in ${funcName} at ${first.line}`
+    context.report.addError(
+      first.line,
+      `${first} should have no arguments, found ${elements.length} in ${funcName}`
     );
   }
   return [];
@@ -1305,8 +1514,9 @@ function typeValidator(
   assertAtomMatch(elements.shift(), kIdentifierReg, "identifier");
 
   if (elements.length) {
-    throw new Error(
-      `${first} should have no arguments, found ${elements.length} in ${funcName} at ${first.line}`
+    context.report.addError(
+      first.line,
+      `${first} should have no arguments, found ${elements.length} in ${funcName}`
     );
   }
   return ["any"];

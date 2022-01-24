@@ -152,14 +152,28 @@ function getVersion() {
   }
 }
 
-function stringify(parsed: ParsedWat, validate: boolean): string {
+function stringify(
+  parsed: ParsedWat,
+  validate: boolean,
+  fileOffsets: [number, string][]
+): string {
   if (validate) {
-    validateWat(parsed);
+    const reporter = validateWat(parsed);
+    if (reporter.hasWarnings || reporter.hasErrors) {
+      reporter.report(fileOffsets);
+      if (reporter.hasErrors) {
+        throw new Error("Validation pass detected errors");
+      }
+    }
   }
   return parsed.toString();
 }
 
-export function emit(parsed: ParsedWat[], validate: boolean) {
+export function emit(
+  parsed: ParsedWat[],
+  validate: boolean,
+  fileOffsets: [number, string][]
+) {
   const scope = new ExpansionScope();
   scope.add({
     name: "%str",
@@ -214,10 +228,10 @@ export function emit(parsed: ParsedWat[], validate: boolean) {
     const expanded = element.expand(scope);
     if (Array.isArray(expanded)) {
       expanded.forEach((el) => {
-        output.push(stringify(el, validate));
+        output.push(stringify(el, validate, fileOffsets));
       });
     } else {
-      output.push(stringify(expanded, validate));
+      output.push(stringify(expanded, validate, fileOffsets));
     }
   }
 

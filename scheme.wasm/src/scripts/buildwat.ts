@@ -249,7 +249,7 @@ async function main() {
   if (opts.macros) {
     try {
       const parsed = parse(joined);
-      const expanded = emit(parsed, !!opts.validate);
+      const expanded = emit(parsed, !!opts.validate, fileOffsets);
       console.log("Expanded macros");
       joined = expanded.join("");
     } catch (e) {
