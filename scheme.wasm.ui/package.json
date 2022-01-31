@@ -8,6 +8,7 @@
     "start-prod": "webpack server --mode production --no-hot",
     "build-prod": "webpack --mode production",
     "build-dev": "webpack --mode development",
+    "clean": "rimraf -rf ./dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
