@@ -32,7 +32,7 @@ some of the optional features.
 - [x] Vectors
 - [x] Bytevectors
 - [x] Values
-- [ ] Records
+- [x] Records
 - [x] Tail call optimization &mdash; internally `eval` uses a continuation passing
       style, so TCO comes for free.
 - [x] `call/cc` and exceptions

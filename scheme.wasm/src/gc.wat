@@ -204,6 +204,18 @@ while the working set is non-empty:
           (call $gc-maybe-touched-push (%cdr-l $curr))
           (br $b_switch)))
 
+      ;; case record-type
+      (if (i32.eq (local.get $type) (%record-type)) (then
+          (call $gc-touched-vector (local.get $curr))))
+
+      ;; case record-meta-type
+      (if (i32.eq (local.get $type) (%record-meta-type)) (then
+          (call $gc-maybe-touched-push (%car-l $curr))))
+
+      ;; case record-method-type
+      (if (i32.eq (local.get $type) (%record-method-type)) (then
+          (call $gc-maybe-touched-push (%car-l $curr))))
+
       ;; }
     )
 
@@ -218,6 +230,8 @@ while the working set is non-empty:
   (unreachable)
 )
 
+;; Marks a vector as touched, also used for records, which use the same storage
+;; model
 (func $gc-touched-vector (param $vec i32)
   (local $ptr i32)
   (local $count i32)
@@ -317,18 +331,21 @@ while the working set is non-empty:
             ;; }
             )
             ;; } else if (type == %vector-type) {
-            (if (i32.eq (local.get $type) (%vector-type))
-              (then (call $malloc-free (%car-l $ptr))))
+            (if (i32.eq (local.get $type) (%vector-type)) (then
+                (call $malloc-free (%car-l $ptr))))
 
             ;; } else if (type == %bytevector-type) {
-            (if (i32.eq (local.get $type) (%bytevector-type))
-              (then (call $malloc-free (%car-l $ptr))))
+            (if (i32.eq (local.get $type) (%bytevector-type)) (then
+                (call $malloc-free (%car-l $ptr))))
             ;; }
             (if (i32.eq (local.get $type) (%cont-type)) (then
                 (call $cont-free (%car-l $ptr))))
 
             (if (i32.eq (local.get $type) (%big-int-type)) (then
                 (call $mp-free (%car-l $ptr))))
+
+            (if (i32.eq (local.get $type) (%record-type)) (then
+                (call $malloc-free (%car-l $ptr))))
 
             ;; heap-free(ptr)
             (call $heap-free (local.get $heap) (local.get $ptr))
@@ -472,6 +489,9 @@ while the working set is non-empty:
         (br_if $b_then (i32.eq (local.get $type) (%syntax-rules-type)))
         (br_if $b_then (i32.eq (local.get $type) (%rational-type)))
         (br_if $b_then (i32.eq (local.get $type) (%complex-type)))
+        (br_if $b_then (i32.eq (local.get $type) (%record-type)))
+        (br_if $b_then (i32.eq (local.get $type) (%record-meta-type)))
+        (br_if $b_then (i32.eq (local.get $type) (%record-method-type)))
         (br $b_else)
       )
       ;; mark-touched(item)

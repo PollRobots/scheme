@@ -1890,6 +1890,11 @@
           (local.get $op)
           (local.get $args)))))
 
+  (if (i32.eq (local.get $op-type) (%record-method-type)) (then
+      (return (call $apply-record-method
+          (local.get $op)
+          (local.get $args)))))
+
   ;;   any other type:
   (return (%alloc-error-cons
       (global.get $g-apply)
@@ -1946,6 +1951,11 @@
     (if (i32.eq (local.get $op-type) (%syntax-rules-type)) (then
         (return (call $apply-syntax-rules
             (local.get $env)
+            (local.get $op)
+            (local.get $args)))))
+
+    (if (i32.eq (local.get $op-type) (%record-method-type)) (then
+        (return (call $apply-record-method
             (local.get $op)
             (local.get $args)))))
 

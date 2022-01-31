@@ -23,6 +23,7 @@
     "src/print.wat",
     "src/quote.wat",
     "src/reader.wat",
+    "src/record.wat",
     "src/runtime.wat",
     "src/start.wat",
     "src/syntax.wat",

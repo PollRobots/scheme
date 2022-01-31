@@ -230,8 +230,10 @@
 (%define %builtin-real-part ()                (i32.const 225))
 (%define %builtin-imag-part ()                (i32.const 226))
 (%define %builtin-complex? ()                 (i32.const 227))
+(%define %special-define-record-type ()       (i32.const 228))
+(%define %builtin-record->list ()             (i32.const 229))
 
-(table $table-builtin 228 anyfunc)
+(table $table-builtin 230 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
   (%define %add-special (%sym %num)
@@ -427,6 +429,7 @@
   (%add-builtin (%str %sym-128 128 "real-part") (%builtin-real-part))
   (%add-builtin (%str %sym-128 128 "imag-part") (%builtin-imag-part))
   (%add-builtin (%str %sym-128 128 "complex?") (%builtin-complex?))
+  (%add-builtin (%str %sym-128 128 "record->list") (%builtin-record->list))
 
   (%add-special (%sym-32 0x6669 2) (%special-if))               ;; 'if'
   (%add-special (global.get $g-let) (%special-let))             ;; 'let'
@@ -448,7 +451,8 @@
   (%add-special (%sym-32 0x6e656877 4) (%special-when))         ;; 'when'
   (%add-special (%sym-64 0x7373656c6e75 6) (%special-unless))   ;; 'unless'
   (%add-special (%sym-64 0x6e69676562 5) (%special-begin))      ;; 'begin'
-  (%add-special (%str %sym-128 128 "define-syntax") (%special-define-syntax)) ;; 'define-syntax'
+  (%add-special (%str %sym-128 128 "define-syntax") (%special-define-syntax))
+  (%add-special (%str %sym-192 192 "define-record-type") (%special-define-record-type))
 )
 
 (elem $table-builtin (%special-if) $if)
@@ -470,6 +474,7 @@
 (elem $table-builtin (%special-unless) $unless)
 (elem $table-builtin (%special-begin) $begin)
 (elem $table-builtin (%special-define-syntax) $define-syntax)
+(elem $table-builtin (%special-define-record-type) $define-record-type)
 
 (elem $table-builtin (%cont-apply) $cont-apply)
 (elem $table-builtin (%cont-apply-def) $cont-apply-def)
@@ -676,3 +681,4 @@
 (elem $table-builtin (%builtin-real-part) $real-part)
 (elem $table-builtin (%builtin-imag-part) $imag-part)
 (elem $table-builtin (%builtin-complex?) $complex?)
+(elem $table-builtin (%builtin-record->list) $record->list)

@@ -113,6 +113,17 @@
 ;;   next-heap: i32 ptr -- pointer to the next heap
 ;;   entries:   HeapEntry[Size]
 
+;; Record:
+;;   car: i32 ptr to (same as vector) - 0th item is type
+;;   cdr: i32 count - size of ptr
+
+;; Record-type:
+;;   car: i32 ptr - params from call to define-record-type
+
+;; Record-method:
+;;   car: i32 ptr - Record-type
+;;   cdr: i8      - Method type (ctor 0, predicate 1, accessor 2, modifier 3)
+;;   cdr: i24     - field index
 
 (func $heap-create (param $size i32) (result i32)
   (local $heap-size i32)

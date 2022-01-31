@@ -66,7 +66,10 @@
 (%define %syntax-rules-type () (i32.const 21))
 (%define %rational-type () (i32.const 22))
 (%define %complex-type () (i32.const 23))
-(%define %max-heap-type () (i32.const 23))
+(%define %record-type () (i32.const 24))
+(%define %record-meta-type () (i32.const 25))
+(%define %record-method-type () (i32.const 26))
+(%define %max-heap-type () (i32.const 26))
 
 (%define %get-type (%arg) (i32.and (i32.load8_u (local.get %arg)) (i32.const 0x1F)))
 (%define %get-gc-flags (%arg) (i32.load8_u offset=1 (local.get %arg)))
@@ -131,6 +134,7 @@
 (%define %alloc-quote (%val) (%alloc-cons (global.get $g-quote) (%alloc-cons %val (global.get $g-nil))))
 (%define %alloc-raise (%error) (call $heap-alloc (global.get $g-heap) (%except-type) %error (i32.const 1)))
 (%define %alloc-raise-continuable (%error) (call $heap-alloc (global.get $g-heap) (%except-type) %error (i32.const 2)))
+
 
 (%define %pack-64 (%hi %lo) (i64.or (i64.shl (i64.extend_i32_u %hi) (i64.const 32)) (i64.extend_i32_u %lo)))
 (%define %pack-64-l (%hi %lo) (%pack-64 (local.get %hi) (local.get %lo)))

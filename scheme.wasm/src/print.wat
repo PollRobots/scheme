@@ -145,6 +145,17 @@
         (call $print-complex (local.get $ptr))
         (br $b_switch)))
 
+    (if (i32.eq (local.get $type) (%record-type)) (then
+        (call $print-record (local.get $ptr))
+        (br $b_switch)))
+
+    (if (i32.eq (local.get $type) (%record-meta-type)) (then
+        (call $print-record-type (local.get $ptr))
+        (br $b_switch)))
+
+    (if (i32.eq (local.get $type) (%record-method-type)) (then
+        (call $print-record-method (local.get $ptr))
+        (br $b_switch)))
 
     ;; default:
     (call $print-other (global.get $g-unknown) (local.get $type) (local.get $ptr))
@@ -153,6 +164,7 @@
   ;; }
   )
 )
+
 
 (func $print-complex (param $num i32)
   (local $str i32)
@@ -243,6 +255,55 @@
   (call $print (%cdr-l $ptr))
   (call $print-symbol (global.get $g-gt))
 )
+
+(func $print-record (param $record i32)
+  (local $ptr i32)
+  (local $len i32)
+  (local $type i32)
+
+  (local.set $ptr (%car-l $record))
+  (local.set $len (%cdr-l $record))
+
+  (call $print-symbol (global.get $g-lt))
+  (call $print-symbol (%str %sym-64 64 "record "))
+
+  (local.set $type (i32.load (local.get $ptr)))
+  (call $print (%car (%car-l $type)))
+
+  (%plus-eq $ptr 4)
+  (%dec $len)
+
+  (block $end (loop $start
+      (br_if $end (i32.eqz (local.get $len)))
+
+      (call $print-symbol (global.get $g-space))
+      (call $print (i32.load (local.get $ptr)))
+
+      (%plus-eq $ptr 4)
+      (%dec $len)
+      (br $start)))
+
+  (call $print-symbol (global.get $g-gt)))
+
+(func $print-record-type (param $record-type i32)
+  (call $print-symbol (global.get $g-lt))
+  (call $print-symbol (%str %sym-128 128 "record-type "))
+
+  (call $print (%car (%car-l $record-type)))
+  (call $print-symbol (global.get $g-space))
+  (call $print-integer (i64.extend_i32_u (local.get $record-type)) (i32.const 16))
+
+  (call $print-symbol (global.get $g-gt)))
+
+(func $print-record-method (param $record-method i32)
+  (call $print-symbol (global.get $g-lt))
+  (call $print-symbol (%str %sym-128 128 "record-method "))
+
+  (call $print (%car (%car (%car-l $record-method))))
+  (call $print-symbol (global.get $g-space))
+  (call $print-integer (i64.extend_i32_u (local.get $record-method)) (i32.const 16))
+
+  (call $print-symbol (global.get $g-gt)))
 
 (func $print-vector (param $vector i32)
   (local $ptr i32)

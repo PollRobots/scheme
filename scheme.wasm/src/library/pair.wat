@@ -591,77 +591,81 @@
   (return (local.get $list))
 )
 
+(func $all-cons (param $args i32) (result i32)
+  (local $curr i32)
+
+  (block $done (loop $forever
+      (br_if $done (i32.eq (%get-type $args) (%nil-type)))
+
+      (%pop-l $curr $args)
+
+      (if (i32.ne (%get-type $curr) (%cons-type))
+        (then (return (i32.const 0))))
+
+      (br $forever)))
+
+  (return (i32.const 1)))
+
+
 (func $assq (param $env i32) (param $args i32) (result i32)
   (local $obj i32)
   (local $list i32)
+
+  (block $check (block $fail
+      (br_if $fail (i32.ne (call $list-len (local.get $args)) (i32.const 2)))
+      (local.set $obj (%car-l $args))
+      (local.set $list (%car (%cdr-l $args)))
+      (br_if $fail (i32.eqz (call $is-list-impl (local.get $list))))
+      (br_if $fail (i32.eqz (call $all-cons (local.get $list))))
+      (br $check))
+
+    (return (call $argument-error (local.get $args))))
+
+  (return (call $assq-impl (local.get $obj) (local.get $list))))
+
+(func $assq-impl (param $obj i32) (param $list i32) (result i32)
   (local $item i32)
 
-  (if (i32.ne (call $list-len (local.get $args)) (i32.const 2))
-    (then (return (call $argument-error (local.get $args))))
-  )
+  (loop $forever
+    (if (i32.eq (local.get $list) (global.get $g-nil)) (then
+        (return (global.get $g-false))))
 
-  (local.set $obj (%car-l $args))
-  (local.set $list (%car (%cdr-l $args)))
+    (%pop-l $item $list)
 
-  (block $b_end
-    (loop $b_start
-      (if (i32.eq (%get-type $list) (%nil-type))
-        (then (return (global.get $g-false)))
-      )
-      (if (i32.ne (%get-type $list) (%cons-type))
-        (then (return (call $argument-error (local.get $args))))
-      )
+    (if (i32.eq (%car-l $item) (local.get $obj)) (then
+        (return (local.get $item))))
 
-      (local.set $item (%car-l $list))
-      (if (i32.ne (%get-type $item) (%cons-type))
-        (then (return (call $argument-error (local.get $args))))
-      )
+    (br $forever))
 
-      (br_if $b_end (i32.eq (%car-l $item) (local.get $obj)))
-
-      (local.set $list (%cdr-l $list))
-      (br $b_start)
-    )
-  )
-
-  (return (%car-l $list))
-)
+  (unreachable))
 
 (func $assv (param $env i32) (param $args i32) (result i32)
   (local $obj i32)
   (local $list i32)
   (local $item i32)
 
-  (if (i32.ne (call $list-len (local.get $args)) (i32.const 2))
-    (then (return (call $argument-error (local.get $args))))
-  )
+  (block $check (block $fail
+      (br_if $fail (i32.ne (call $list-len (local.get $args)) (i32.const 2)))
+      (local.set $obj (%car-l $args))
+      (local.set $list (%car (%cdr-l $args)))
+      (br_if $fail (i32.eqz (call $is-list-impl (local.get $list))))
+      (br_if $fail (i32.eqz (call $all-cons (local.get $list))))
+      (br $check))
 
-  (local.set $obj (%car-l $args))
-  (local.set $list (%car (%cdr-l $args)))
+    (return (call $argument-error (local.get $args))))
 
-  (block $b_end
-    (loop $b_start
-      (if (i32.eq (%get-type $list) (%nil-type))
-        (then (return (global.get $g-false)))
-      )
-      (if (i32.ne (%get-type $list) (%cons-type))
-        (then (return (call $argument-error (local.get $args))))
-      )
+  (loop $forever
+    (if (i32.eq (local.get $list) (global.get $g-nil)) (then
+        (return (global.get $g-false))))
 
-      (local.set $item (%car-l $list))
-      (if (i32.ne (%get-type $item) (%cons-type))
-        (then (return (call $argument-error (local.get $args))))
-      )
+    (%pop-l $item $list)
 
-      (br_if $b_end (call $equal-inner (%car-l $item) (local.get $obj) (i32.const 0)))
+    (if (call $equal-inner (%car-l $item) (local.get $obj) (i32.const 0)) (then
+        (return (local.get $item))))
 
-      (local.set $list (%cdr-l $list))
-      (br $b_start)
-    )
-  )
+    (br $forever))
 
-  (return (%car-l $list))
-)
+  (unreachable))
 
 (func $assoc (param $env i32) (param $args i32) (result i32)
   (local $num-args i32)
