@@ -1277,6 +1277,7 @@
 
   (local $str-len i32)
   (local $split i32)
+  (local $before-split i32)
   (local $real i32)
   (local $real-str i32)
   (local $real-str-len i32)
@@ -1288,7 +1289,28 @@
   (local.set $str-len (i32.load (local.get $str-ptr)))
   ;; start searching at the offset before the i
   (local.set $split (i32.sub (local.get $str-len) (i32.const 2)))
+  (local.set $before-split (i32.sub (local.get $split) (i32.const 1)))
+
   (block $end (loop $start
+
+      ;; checks if the character before the split is an 'e' or 'E'
+      (block $no-exp (block $exp
+          (br_if $exp (call $short-str-start-with
+              (local.get $str-ptr)
+              (local.get $before-split)
+              (i32.const 0x65) ;; 'e'
+              (i32.const 1)))
+          (br_if $exp (call $short-str-start-with
+              (local.get $str-ptr)
+              (local.get $before-split)
+              (i32.const 0x45) ;; 'E'
+              (i32.const 1)))
+          (br $no-exp))
+        ;; skip over the exponent
+        (%dec $split)
+        (%dec $before-split)
+        (br $start))
+
       (br_if $end (call $short-str-start-with
           (local.get $str-ptr)
           (local.get $split)
@@ -1303,6 +1325,7 @@
           ;; no sign character found, this is invalid
           (return (global.get $g-false))))
       (%dec $split)
+      (%dec $before-split)
       (br $start)))
 
   (if (i32.eq (local.get $split) (local.get $offset))
