@@ -4,9 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>
-    <%= htmlWebpackPlugin.options.title %>
-  </title>
+  <title>scheme.wasm</title>
   <script>
     window.addEventListener('error', event => {
       const app = document.getElementById('app');
@@ -37,16 +35,15 @@
 
 <body>
   <div id="app"></div>
-  <script crossorigin src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
-  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.31.1/min/vs/loader.min.js"></script>
+  <script src="./vs/loader.js"></script>
   <script>
-    require.config({ paths: { vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.31.1/min/vs/" } });
+    const baseUrl = location.origin + location.pathname.split('/').slice(0, -1).join('/');
+    require.config({ paths: { vs: `${baseUrl}/vs` } });
     window.MonacoEnvironment = {
       getWorkerUrl: function (moduleId, label) {
         return `data:text/javascript;charset=utf-8,${encodeURIComponent(`
-          self.MonacoEnvironment = { baseUrl: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.31.1/min/"};
-          importScripts("https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.31.1/min/vs/base/worker/workerMain.min.js");`
+          self.MonacoEnvironment = { baseUrl: ${JSON.stringify(baseUrl)} };
+          importScripts(${JSON.stringify(baseUrl)}+"/vs/base/worker/workerMain.js");`
         )}`;
       }
     };

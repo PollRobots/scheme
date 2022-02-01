@@ -8,9 +8,6 @@ module.exports = (env, argv) => {
   // Selects a different template file for the start page based on whether
   // this is a "production" build or not
   const isProduction = argv.mode === "production";
-  const index_template = isProduction
-    ? "./index.prod.html"
-    : "./index.dev.html";
 
   return {
     entry: "./src/index.tsx", // The entry point into the bundle
@@ -56,8 +53,6 @@ module.exports = (env, argv) => {
     },
 
     externals: {
-      react: "React",
-      "react-dom": "ReactDOM",
       "monaco-editor": [],
     },
 
@@ -72,9 +67,8 @@ module.exports = (env, argv) => {
     plugins: [
       new CleanWebpack(),
       new HtmlWebpack({
-        title: "scheme.wasm UI", // Title is injected into the page template
         filename: "scheme.wasm.html", // The output name when built
-        template: index_template,
+        template: "./index.html",
       }),
       new CopyWebpack({
         patterns: [
@@ -82,6 +76,17 @@ module.exports = (env, argv) => {
           { from: "../scheme.wasm/dist/unicode/blocks.json.gz", to: "unicode" },
           { from: "../scheme.wasm/src/scheme", to: "scheme" },
           { from: "./about.html", to: "static" },
+          {
+            from: "../node_modules/monaco-editor/min/vs",
+            to: "vs",
+            globOptions: {
+              ignore: ["**/basic-languages/**", "**/language/**"],
+            },
+          },
+          {
+            from: "../node_modules/monaco-editor/min-maps",
+            to: "min-maps"
+          }
         ],
       }),
     ],
