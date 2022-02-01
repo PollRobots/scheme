@@ -76,6 +76,7 @@ module.exports = (env, argv) => {
           { from: "../scheme.wasm/dist/unicode/blocks.json.gz", to: "unicode" },
           { from: "../scheme.wasm/src/scheme", to: "scheme" },
           { from: "./about.html", to: "static" },
+          { from: "./fonts", to: "fonts" },
           {
             from: "../node_modules/monaco-editor/min/vs",
             to: "vs",
@@ -85,8 +86,8 @@ module.exports = (env, argv) => {
           },
           {
             from: "../node_modules/monaco-editor/min-maps",
-            to: "min-maps"
-          }
+            to: "min-maps",
+          },
         ],
       }),
     ],

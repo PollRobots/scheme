@@ -12,14 +12,13 @@ import { Terminal } from "./components/Terminal";
 import { EditorThemeProvider, ThemeProvider } from "./components/ThemeProvider";
 import { kSolarizedDark, kSolarizedLight } from "./monaco/solarized";
 import { reference } from "./util";
-
-import fonts from "./styles/fonts.module.css";
-import css from "./styles/page.module.css";
 import { DataLine } from "./components/TerminalData";
 import { RuntimeWorker } from "./RuntimeWorker";
 import { Debugger } from "./components/Debugger";
 
-reference(fonts, css);
+import css from "./styles/page.module.css";
+
+reference(css);
 
 interface AppState {
   theme: string;
