@@ -1,4 +1,6 @@
-<img style="display:block;margin:1em auto;" src="scheme.wasm.ui/favicon/scheme.wasm.logo.svg" alt="scheme.wasm logo">
+<h1 align="center">
+  <img src="scheme.wasm.ui/favicon/scheme.wasm.logo.svg?raw=true" alt="scheme.wasm logo"/>
+</h1>
 
 ![Node.js CI](https://github.com/pollrobots/scheme/actions/workflows/node.js.yml/badge.svg)
 ![CodeQL](https://github.com/pollrobots/scheme/actions/workflows/codeql-analysis.yml/badge.svg)
@@ -6,7 +8,7 @@
 
 [![GitHub stars](https://img.shields.io/github/stars/pollrobots/scheme.svg?style=social&label=Star)](https://github.com/pollrobots/scheme/stargazers)
 
-# scheme
+# scheme.wasm
 
 An R7RS Scheme implemented in WebAssembly
 
