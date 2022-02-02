@@ -209,6 +209,7 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
             <TerminalData text={this.props.output} />
             <TerminalInput
               prompt={this.props.prompt}
+              color={theme.foreground}
               waiting={this.props.waiting}
               readonly={this.props.pause}
               value={this.state.input}

@@ -15,6 +15,7 @@ interface TerminalInputProps {
   readonly: boolean;
   waiting: boolean;
   prompt: string;
+  color?: string;
   onEnter: (text: string) => void;
   onUp: () => void;
   onDown: () => void;
@@ -158,7 +159,7 @@ export class TerminalInput extends React.Component<
             border: "none",
             font: "inherit",
             fontSize: "inherit",
-            color: "inherit",
+            color: "transparent",
             padding: 0,
             margin: 0,
             outline: "none",
@@ -166,6 +167,7 @@ export class TerminalInput extends React.Component<
             wordBreak: "break-all",
             gridColumnStart: 2,
             gridRowStart: 1,
+            caretColor: this.props.color,
           }}
           title="Open editor with Ctrl+E, or Escape"
           innerRef={this.ref}
