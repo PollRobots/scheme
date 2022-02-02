@@ -2,8 +2,8 @@
   <img src="scheme.wasm.ui/favicon/scheme.wasm.logo.svg?raw=true" alt="scheme.wasm logo"/>
 </h1>
 
-![Node.js CI](https://github.com/pollrobots/scheme/actions/workflows/node.js.yml/badge.svg)
-![CodeQL](https://github.com/pollrobots/scheme/actions/workflows/codeql-analysis.yml/badge.svg)
+[![Node.js CI](https://github.com/pollrobots/scheme/actions/workflows/node.js.yml/badge.svg)](https://github.com/PollRobots/scheme/actions/workflows/node.js.yml)
+[![CodeQL](https://github.com/pollrobots/scheme/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/PollRobots/scheme/actions/workflows/codeql-analysis.yml)
 [![FOSSA Status](https://app.fossa.com/api/projects/custom%2B29853%2Fgithub.com%2FPollRobots%2Fscheme.svg?type=shield)](https://app.fossa.com/projects/custom%2B29853%2Fgithub.com%2FPollRobots%2Fscheme?ref=badge_shield)
 
 [![GitHub stars](https://img.shields.io/github/stars/pollrobots/scheme.svg?style=social&label=Star)](https://github.com/pollrobots/scheme/stargazers)
