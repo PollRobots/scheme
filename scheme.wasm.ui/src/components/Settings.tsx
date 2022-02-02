@@ -1,4 +1,5 @@
 import React from "react";
+import { Logo } from "../icons/logo";
 import { Theme } from "../monaco/theme";
 import { RuntimeStatus } from "./RuntimeStatus";
 import { ThemeContext } from "./ThemeProvider";
@@ -46,6 +47,7 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
   const theme = React.useContext(ThemeContext);
   return (
     <div style={{ fontSize: `${props.fontSize}pt` }}>
+      <Logo style={{ width: "9em", margin: "0 auto", display: "block" }} />
       <div style={kSettingsSubHeading}>Appearance</div>
       <div style={{ lineHeight: "2em" }}>
         REPL Theme:{" "}

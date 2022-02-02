@@ -26,16 +26,24 @@ code {
 }
 h1 {
   font-size: 1.5em;
+  font-weight: 600;
 }
 h2 {
   font-size: 1.25em;
+  font-weight: 600;
+}
+.logo {
+  width: 9em;
+  margin: 1em 1em -2em auto;
+  display: block;
 }
     </style>
   </head>
   <body>
-    <h1>About Scheme.wasm</h1>
+    <img src="/static/scheme.wasm.logo.svg" alt="scheme.wasm logo" class="logo"/>
+    <h1>About scheme.wasm</h1>
     <p>
-      Scheme.wasm is a partial implementation of
+      scheme.wasm is a partial implementation of
       <a href="https://small.r7rs.org/" target="_blank">r7rs scheme</a>,
       written entirely in WebAssembly using the WebAssembly Text
       format. The only external imports are for IO (<code>read</code>,

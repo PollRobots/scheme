@@ -126,6 +126,7 @@ module.exports = (env, argv) => {
           { from: "../scheme.wasm/dist/unicode/blocks.json.gz", to: "unicode" },
           { from: "../scheme.wasm/src/scheme", to: "scheme" },
           { from: "./about.html", to: "static" },
+          { from: "./favicon", to: "static" },
           { from: "./fonts", to: "fonts" },
           {
             from: "../node_modules/monaco-editor/min/vs",
