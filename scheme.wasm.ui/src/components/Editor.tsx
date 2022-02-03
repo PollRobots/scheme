@@ -1,7 +1,8 @@
 import React from "react";
 import monaco from "monaco-editor";
 import { registerLanguage } from "../monaco/scheme";
-import { defineThemes } from "../monaco/solarized";
+import * as solarized from "../monaco/solarized";
+import * as solarizedContrast from "../monaco/solarized-contrast";
 
 interface EditorProperties {
   height?: string | number;
@@ -31,7 +32,8 @@ const Editor: React.FunctionComponent<EditorProperties> = (props) => {
     let editor: monaco.editor.IStandaloneCodeEditor;
     if (ref.current) {
       registerLanguage();
-      defineThemes();
+      solarized.defineThemes();
+      solarizedContrast.defineThemes();
       // @ts-ignore
       editor = window.monaco.editor.create(ref.current, {
         language: props.defaultLanguage,

@@ -13,6 +13,7 @@ interface TerminalProps {
   output: DataLine[];
   prompt: string;
   waiting: boolean;
+  highlighting: boolean;
   pause: boolean;
   fontSize: number;
   onInput: (str: string) => Promise<void>;
@@ -206,12 +207,16 @@ export class Terminal extends React.Component<TerminalProps, TerminalState> {
             onContextMenu={(e) => this.onContextMenu(e)}
           >
             {this.props.welcomeMessage}
-            <TerminalData text={this.props.output} />
+            <TerminalData
+              text={this.props.output}
+              highlighting={this.props.highlighting}
+            />
             <TerminalInput
               prompt={this.props.prompt}
               color={theme.foreground}
               waiting={this.props.waiting}
               readonly={this.props.pause}
+              highlighting={this.props.highlighting}
               value={this.state.input}
               onEnter={(text) => this.onEnter(this.props.prompt, text)}
               onUp={() => this.onUp()}

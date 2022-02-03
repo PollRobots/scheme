@@ -14,6 +14,7 @@ interface TerminalInputProps {
   value: string;
   readonly: boolean;
   waiting: boolean;
+  highlighting: boolean;
   prompt: string;
   color?: string;
   onEnter: (text: string) => void;
@@ -159,7 +160,7 @@ export class TerminalInput extends React.Component<
             border: "none",
             font: "inherit",
             fontSize: "inherit",
-            color: "transparent",
+            color: this.props.highlighting ? "transparent" : "inherit",
             padding: 0,
             margin: 0,
             outline: "none",
@@ -176,33 +177,35 @@ export class TerminalInput extends React.Component<
           onChange={(e) => this.setState({ text: e.target.value })}
           onKeyDown={(e) => this.onKeyDown(e)}
         />
-        <div
-          style={{
-            display: "inline-block",
-            whiteSpace: "pre-wrap",
-            background: "inherit",
-            border: "none",
-            font: "inherit",
-            fontSize: "inherit",
-            color: "inherit",
-            padding: 0,
-            margin: 0,
-            outline: "none",
-            userSelect: "none",
-            caretColor: "none",
-            wordWrap: "break-word",
-            wordBreak: "break-all",
-            gridColumnStart: 2,
-            gridRowStart: 1,
-          }}
-          dangerouslySetInnerHTML={{
-            __html: Prism.highlight(
-              this.cleanHtml(this.state.text),
-              Prism.languages.scheme,
-              "scheme"
-            ),
-          }}
-        />
+        {this.props.highlighting ? (
+          <div
+            style={{
+              display: "inline-block",
+              whiteSpace: "pre-wrap",
+              background: "inherit",
+              border: "none",
+              font: "inherit",
+              fontSize: "inherit",
+              color: "inherit",
+              padding: 0,
+              margin: 0,
+              outline: "none",
+              userSelect: "none",
+              caretColor: "none",
+              wordWrap: "break-word",
+              wordBreak: "break-all",
+              gridColumnStart: 2,
+              gridRowStart: 1,
+            }}
+            dangerouslySetInnerHTML={{
+              __html: Prism.highlight(
+                this.cleanHtml(this.state.text),
+                Prism.languages.scheme,
+                "scheme"
+              ),
+            }}
+          />
+        ) : null}
       </div>
     );
   }

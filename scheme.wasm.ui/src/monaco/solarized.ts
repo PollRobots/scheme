@@ -38,9 +38,6 @@ export const kSolarizedLight: Theme = {
   boldForeground: kSolarizedColors.base03,
 };
 
-export const kDarkThemeName = "r7rsSchemeThemeDark";
-export const kLightThemeName = "r7rsSchemeThemeLight";
-
 export function defineThemes() {
   // @ts-ignore
   window.monaco.editor.defineTheme(kSolarizedDark.name, {

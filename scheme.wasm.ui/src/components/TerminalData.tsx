@@ -10,6 +10,11 @@ export interface DataLine {
 
 interface TerminalDataProps {
   text: DataLine[];
+  highlighting: boolean;
+}
+
+interface TerminalDataLineProps extends DataLine {
+  highlighting: boolean;
 }
 
 export const TerminalData: React.FunctionComponent<TerminalDataProps> = (
@@ -17,12 +22,20 @@ export const TerminalData: React.FunctionComponent<TerminalDataProps> = (
 ) => (
   <div>
     {props.text.map((el, i) => {
-      return <TerminalDataLine key={`line${i}`} {...el} />;
+      return (
+        <TerminalDataLine
+          key={`line${i}`}
+          {...el}
+          highlighting={props.highlighting}
+        />
+      );
     })}
   </div>
 );
 
-const TerminalDataLine: React.FunctionComponent<DataLine> = (props) => {
+const TerminalDataLine: React.FunctionComponent<TerminalDataLineProps> = (
+  props
+) => {
   if (!props.text.length && props.type !== "prompted") {
     return (
       <div>
@@ -52,16 +65,22 @@ const TerminalDataLine: React.FunctionComponent<DataLine> = (props) => {
         >
           {props.first ? prompt : "".padEnd(prompt?.length, " ")}
         </span>
-        <span
-          style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}
-          dangerouslySetInnerHTML={{
-            __html: Prism.highlight(
-              props.text,
-              Prism.languages.scheme,
-              "scheme"
-            ),
-          }}
-        />
+        {props.highlighting ? (
+          <span
+            style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}
+            dangerouslySetInnerHTML={{
+              __html: Prism.highlight(
+                props.text,
+                Prism.languages.scheme,
+                "scheme"
+              ),
+            }}
+          />
+        ) : (
+          <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+            {props.text}
+          </span>
+        )}
       </div>
     );
   }

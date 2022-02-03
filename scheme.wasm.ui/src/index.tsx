@@ -6,11 +6,20 @@ import { Burger } from "./components/Burger";
 import { Flyout } from "./components/Flyout";
 import { HeapInspector } from "./components/HeapInspector";
 import { SchemeRuntimeProvider } from "./components/SchemeRuntimeProvider";
-import { Settings, SettingsBase } from "./components/Settings";
+import {
+  ExtendedThemeDescriptor,
+  Settings,
+  SettingsBase,
+  ThemeDescriptor,
+} from "./components/Settings";
 import { SettingsMenu } from "./components/SettingsMenu";
 import { Terminal } from "./components/Terminal";
 import { EditorThemeProvider, ThemeProvider } from "./components/ThemeProvider";
 import { kSolarizedDark, kSolarizedLight } from "./monaco/solarized";
+import {
+  kSolarizedContrastDark,
+  kSolarizedContrastLight,
+} from "./monaco/solarized-contrast";
 import { reference } from "./util";
 import { DataLine } from "./components/TerminalData";
 import { RuntimeWorker } from "./RuntimeWorker";
@@ -21,8 +30,8 @@ import css from "./styles/page.module.css";
 reference(css);
 
 interface AppState {
-  theme: string;
-  editorTheme: string;
+  theme: ThemeDescriptor;
+  editorTheme: ExtendedThemeDescriptor;
   prompt: string;
   fontSize: number;
   open: boolean;
@@ -30,6 +39,7 @@ interface AppState {
   waiting: boolean;
   about: boolean;
   first: boolean;
+  highlighting: boolean;
   inspector: boolean;
   persist: boolean;
   output: DataLine[];
@@ -49,6 +59,7 @@ const kDefaultState: AppState = {
   stopped: true,
   waiting: false,
   first: true,
+  highlighting: true,
   inspector: false,
   persist: false,
   fontSize: 12,
@@ -88,6 +99,7 @@ function storeSettings(settings: SettingsBase) {
     theme: settings.theme,
     editorTheme: settings.editorTheme,
     fontSize: settings.fontSize,
+    highlighting: settings.highlighting,
     inspector: settings.inspector,
     persist: true,
   };
@@ -104,7 +116,10 @@ function loadSettings(): Partial<SettingsBase> {
       if (
         Reflect.has(data, "theme") &&
         typeof data.theme === "string" &&
-        (data.theme === "Dark" || data.theme === "Light")
+        (data.theme === "Dark" ||
+          data.theme === "Light" ||
+          data.theme === "ContrastDark" ||
+          data.theme === "ContrastLight")
       ) {
         settings.theme = data.theme;
       }
@@ -113,6 +128,8 @@ function loadSettings(): Partial<SettingsBase> {
         typeof data.editorTheme === "string" &&
         (data.editorTheme === "Dark" ||
           data.editorTheme === "Light" ||
+          data.editorTheme === "ContrastDark" ||
+          data.editorTheme === "ContrastLight" ||
           data.editorTheme === "Same")
       ) {
         settings.editorTheme = data.editorTheme;
@@ -124,6 +141,12 @@ function loadSettings(): Partial<SettingsBase> {
         data.fontSize <= 96
       ) {
         settings.fontSize = data.fontSize;
+      }
+      if (
+        Reflect.has(data, "highlighting") &&
+        typeof data.highlighting === "boolean"
+      ) {
+        settings.highlighting = data.highlighting;
       }
       if (
         Reflect.has(data, "inspector") &&
@@ -323,12 +346,30 @@ class App extends React.Component<{}, AppState> {
   }
 
   getEditorTheme() {
-    if (this.state.editorTheme == "Same") {
-      return false;
-    } else if (this.state.editorTheme == "Dark") {
+    if (this.state.editorTheme == "Dark") {
       return kSolarizedDark;
-    } else {
+    } else if (this.state.editorTheme == "Light") {
       return kSolarizedLight;
+    } else if (this.state.editorTheme == "ContrastDark") {
+      return kSolarizedContrastDark;
+    } else if (this.state.editorTheme == "ContrastLight") {
+      return kSolarizedContrastLight;
+    } else {
+      return false;
+    }
+  }
+
+  getTheme() {
+    if (this.state.theme == "Dark") {
+      return kSolarizedDark;
+    } else if (this.state.theme == "Light") {
+      return kSolarizedLight;
+    } else if (this.state.theme == "ContrastDark") {
+      return kSolarizedContrastDark;
+    } else if (this.state.theme == "ContrastLight") {
+      return kSolarizedContrastLight;
+    } else {
+      return kSolarizedDark;
     }
   }
 
@@ -345,9 +386,7 @@ class App extends React.Component<{}, AppState> {
       ? kMobileRootStyle
       : kDefaultRootStyle;
     return (
-      <ThemeProvider
-        value={this.state.theme == "Dark" ? kSolarizedDark : kSolarizedLight}
-      >
+      <ThemeProvider value={this.getTheme()}>
         <SchemeRuntimeProvider value={this.runtime}>
           <EditorThemeProvider value={this.getEditorTheme()}>
             <div style={{ ...rootStyle, fontSize: `${this.state.fontSize}pt` }}>
@@ -355,6 +394,7 @@ class App extends React.Component<{}, AppState> {
                 prompt={this.getPrompt()}
                 pause={this.state.stopped}
                 waiting={this.state.waiting}
+                highlighting={this.state.highlighting}
                 welcomeMessage="Welcome to scheme.wasm"
                 fontSize={(4 * this.state.fontSize) / 3}
                 onInput={(str) => this.onInput(str)}
@@ -389,6 +429,7 @@ class App extends React.Component<{}, AppState> {
                 <Settings
                   theme={this.state.theme}
                   editorTheme={this.state.editorTheme}
+                  highlighting={this.state.highlighting}
                   inspector={this.state.inspector}
                   fontSize={this.state.fontSize}
                   persist={this.state.persist}

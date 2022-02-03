@@ -5,9 +5,17 @@ import { RuntimeStatus } from "./RuntimeStatus";
 import { ThemeContext } from "./ThemeProvider";
 import { ToggleSwitch } from "./ToggleSwitch";
 
+export type ThemeDescriptor =
+  | "Dark"
+  | "Light"
+  | "ContrastDark"
+  | "ContrastLight";
+export type ExtendedThemeDescriptor = ThemeDescriptor | "Same";
+
 export interface SettingsBase {
-  theme: string;
-  editorTheme: string;
+  theme: ThemeDescriptor;
+  editorTheme: ExtendedThemeDescriptor;
+  highlighting: boolean;
   inspector: boolean;
   fontSize: number;
   persist: boolean;
@@ -56,12 +64,17 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
           value={props.theme}
           onChange={(e) => {
             if (props.onChange) {
-              props.onChange({ ...props, theme: e.target.value });
+              props.onChange({
+                ...props,
+                theme: e.target.value as ThemeDescriptor,
+              });
             }
           }}
         >
           <option value="Dark">Dark</option>
           <option value="Light">Light</option>
+          <option value="ContrastDark">High Contrast Dark</option>
+          <option value="ContrastLight">High Contrast Light</option>
         </select>
       </div>
       <div style={{ lineHeight: "2em" }}>
@@ -71,13 +84,18 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
           value={props.editorTheme}
           onChange={(e) => {
             if (props.onChange) {
-              props.onChange({ ...props, editorTheme: e.target.value });
+              props.onChange({
+                ...props,
+                editorTheme: e.target.value as ExtendedThemeDescriptor,
+              });
             }
           }}
         >
           <option value="Same">Same as REPL</option>
           <option value="Dark">Dark</option>
           <option value="Light">Light</option>
+          <option value="ContrastDark">High Contrast Dark</option>
+          <option value="ContrastLight">High Contrast Light</option>
         </select>
       </div>
       <div style={{ lineHeight: "2em" }}>
@@ -97,6 +115,17 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
             </option>
           ))}
         </select>
+      </div>
+      <div style={{ lineHeight: "2em" }}>
+        <span style={{ marginRight: "0.5em" }}>Syntax Highlighting</span>
+        <ToggleSwitch
+          on={props.highlighting}
+          onChange={(on) => {
+            if (props.onChange) {
+              props.onChange({ ...props, highlighting: on });
+            }
+          }}
+        />
       </div>
       <div style={kSettingsSubHeading}>Debug</div>
       <div style={{ lineHeight: "2em" }}>
