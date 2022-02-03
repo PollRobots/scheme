@@ -3,7 +3,7 @@ import monaco from "monaco-editor";
 
 import { IconButton } from "./IconButton";
 import { EditorThemeContext, ThemeContext } from "./ThemeProvider";
-import { Cut, Copy, Paste, Undo, Redo, Open, Save } from "../icons/copy";
+import { Cut, Copy, Paste, Undo, Redo, Open, Save } from "../icons/icons";
 import { kLanguageId } from "../monaco/scheme";
 import { openFilePicker, saveFilePicker } from "../util";
 import Editor from "./Editor";
