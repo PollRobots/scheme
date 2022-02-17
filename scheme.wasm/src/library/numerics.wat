@@ -399,6 +399,9 @@
 
     (return (call $argument-error (%alloc-list-1 (local.get $num)))))
 
+  (if (f64.eq (local.get $v) (f64.const 0)) (then
+      (return (global.get $g-zero))))
+
   (local.set $neg (call $ieee-negative? (local.get $v)))
 
   (local.set $e (i32.sub
@@ -1152,6 +1155,16 @@
   (local.set $high (call $exact-impl (call $num-core-add
         (local.get $x)
         (local.get $y))))
+
+  ;; If the range overlaps zero, then the rationalized value must be zero,
+  ;; which is canonically the simplest rational value.
+  (if (i32.le_s 
+        (call $num-core-cmp (local.get $low) (global.get $g-zero)) 
+        (i32.const 0)) (then
+      (if (i32.ge_s
+            (call $num-core-cmp (local.get $high) (global.get $g-zero))
+            (i32.const 0)) (then
+          (return (global.get $g-zero))))))
 
   (if (i32.eq (%get-type $low) (%rational-type))
     (then
