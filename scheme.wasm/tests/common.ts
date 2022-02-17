@@ -222,7 +222,9 @@ export async function loadWasm(
       },
     };
     imports["time"] = modules.time || {
-      current: () => Date.now() / 1000,
+      currentSecond: () => Date.now() / 1000,
+      currentJiffy: () => Math.round(performance.now()),
+      jiffiesPerSecond: () => 1000,
     };
 
     const module = await WebAssembly.instantiate(wasm, imports);

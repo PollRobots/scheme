@@ -68,6 +68,8 @@ module.exports = (env, argv) => {
       },
       headers: {
         "Content-Security-Policy": cspHeader,
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp",
       },
     },
     devtool: isProduction ? undefined : "source-map",

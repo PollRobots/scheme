@@ -1,4 +1,5 @@
 import pako from "pako";
+import { Jiffies } from "./Jiffies";
 import { SchemeType } from "./SchemeType";
 
 type WriteCallback = (str: string) => void;
@@ -28,6 +29,7 @@ export class SchemeRuntime {
   private partial_: boolean = false;
   private waiting_: boolean = false;
   private readonly promises_: Map<number, ImportPromiseResolver> = new Map();
+  private readonly jiffies_: Jiffies = Jiffies.init();
 
   constructor(module: WebAssembly.Module) {
     this.module_ = module;
@@ -579,8 +581,10 @@ export class SchemeRuntime {
         read: (filenamePtr: number) => this.fileRead(filenamePtr),
       },
       time: {
-        current: () => Date.now() / 1000
-      }
+        currentSecond: () => Date.now() / 1000,
+        currentJiffy: () => this.jiffies_.current,
+        jiffiesPerSecond: () => this.jiffies_.jiffiesPerSecond,
+      },
     };
 
     this.instance_ = await WebAssembly.instantiate(this.module_, imports);

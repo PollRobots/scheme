@@ -92,8 +92,22 @@
     },
     {
       "module": "time",
-      "name": "current",
-      "index": "$time-current",
+      "name": "currentSecond",
+      "index": "$time-current-second",
+      "params": [],
+      "result": "f64"
+    },
+    {
+      "module": "time",
+      "name": "currentJiffy",
+      "index": "$time-current-jiffy",
+      "params": [],
+      "result": "f64"
+    },
+    {
+      "module": "time",
+      "name": "jiffiesPerSecond",
+      "index": "$time-jiffies-per-second",
       "params": [],
       "result": "f64"
     }
