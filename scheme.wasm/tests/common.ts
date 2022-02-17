@@ -169,12 +169,17 @@ export interface FileModule extends Record<string, Function> {
   read: (filenamePtr: number) => number;
 }
 
+export interface TimeModule extends Record<string, Function> {
+  current: () => number;
+}
+
 export async function loadWasm(
   modules: {
     io?: IoModule;
     process?: ProcessModule;
     unicode?: UnicodeModule;
     file?: FileModule;
+    time?: TimeModule;
   } = {}
 ): Promise<WebAssembly.Instance> {
   const wasm = await fs.readFile("dist/test.wasm");
@@ -215,6 +220,9 @@ export async function loadWasm(
         console.log(`file-read ${filenamePtr.toString(16)}`);
         return filenamePtr;
       },
+    };
+    imports["time"] = modules.time || {
+      current: () => Date.now() / 1000,
     };
 
     const module = await WebAssembly.instantiate(wasm, imports);

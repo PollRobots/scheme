@@ -232,8 +232,9 @@
 (%define %builtin-complex? ()                 (i32.const 227))
 (%define %special-define-record-type ()       (i32.const 228))
 (%define %builtin-record->list ()             (i32.const 229))
+(%define %builtin-current-second ()           (i32.const 230))
 
-(table $table-builtin 230 anyfunc)
+(table $table-builtin 231 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
   (%define %add-special (%sym %num)
@@ -430,6 +431,7 @@
   (%add-builtin (%str %sym-128 128 "imag-part") (%builtin-imag-part))
   (%add-builtin (%str %sym-128 128 "complex?") (%builtin-complex?))
   (%add-builtin (%str %sym-128 128 "record->list") (%builtin-record->list))
+  (%add-builtin (%str %sym-128 128 "current-second") (%builtin-current-second))
 
   (%add-special (%sym-32 0x6669 2) (%special-if))               ;; 'if'
   (%add-special (global.get $g-let) (%special-let))             ;; 'let'
@@ -682,3 +684,4 @@
 (elem $table-builtin (%builtin-imag-part) $imag-part)
 (elem $table-builtin (%builtin-complex?) $complex?)
 (elem $table-builtin (%builtin-record->list) $record->list)
+(elem $table-builtin (%builtin-current-second) $current-second)

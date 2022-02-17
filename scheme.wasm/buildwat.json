@@ -43,6 +43,7 @@
     "src/library/real.wat",
     "src/library/string.wat",
     "src/library/symbol.wat",
+    "src/library/time.wat",
     "src/library/trig.wat",
     "src/library/vector.wat"
   ],
@@ -88,6 +89,13 @@
         "i32"
       ],
       "result": "i32"
+    },
+    {
+      "module": "time",
+      "name": "current",
+      "index": "$time-current",
+      "params": [],
+      "result": "f64"
     }
   ],
   "exports": [

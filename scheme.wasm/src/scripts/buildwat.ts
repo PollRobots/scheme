@@ -5,10 +5,10 @@ import wabt from "wabt";
 import path from "path";
 import { emit, parse } from "./watmacro";
 
-type WasmNumericType = "i32" | "i64";
+type WasmNumericType = "i32" | "i64" | "f32" | "f64";
 
 function isWasmNumericType(value: any): value is WasmNumericType {
-  return value === "i32" || value === "i64";
+  return value === "i32" || value === "i64" || value === "f32" || value === "f64";
 }
 
 interface ConfigImportFunc {

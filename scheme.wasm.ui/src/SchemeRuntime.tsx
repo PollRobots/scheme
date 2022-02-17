@@ -578,6 +578,9 @@ export class SchemeRuntime {
       file: {
         read: (filenamePtr: number) => this.fileRead(filenamePtr),
       },
+      time: {
+        current: () => Date.now() / 1000
+      }
     };
 
     this.instance_ = await WebAssembly.instantiate(this.module_, imports);
