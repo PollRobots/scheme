@@ -154,6 +154,10 @@ describe("scheme", () => {
     throw new Error(`scheme tests in ${filename} failed`);
   };
 
+  it("test/boolean.spec.scm", async () => {
+    await testFile("test/boolean.spec.scm");
+  });
+
   it("test/pair.spec.scm", async () => {
     await testFile("test/pair.spec.scm");
   });
