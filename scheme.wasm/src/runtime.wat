@@ -29,6 +29,7 @@
 (global $g-eval             (mut i32) (i32.const 0))
 (global $g-exp              (mut i32) (i32.const 0))
 (global $g-false-str        (mut i32) (i32.const 0))
+(global $g-false-str-long   (mut i32) (i32.const 0))
 (global $g-fold-case        (mut i32) (i32.const 0))
 (global $g-fzero            (mut i32) (i32.const 0))
 (global $g-gc-run           (mut i32) (i32.const 0))
@@ -58,6 +59,7 @@
 (global $g-syntax-error     (mut i32) (i32.const 0))
 (global $g-syntax-rules     (mut i32) (i32.const 0))
 (global $g-true-str         (mut i32) (i32.const 0))
+(global $g-true-str-long    (mut i32) (i32.const 0))
 (global $g-u8-open          (mut i32) (i32.const 0))
 (global $g-u8vec            (mut i32) (i32.const 0))
 (global $g-underscore       (mut i32) (i32.const 0))
@@ -82,6 +84,8 @@
 
   (global.set $g-true-str (%sym-32 0x7423 2))     ;; '#t'
   (global.set $g-false-str (%sym-32 0x6623 2))    ;; '#f'
+  (global.set $g-true-str-long (%str %sym-64 64 "#true"))
+  (global.set $g-false-str-long (%str %sym-64 64 "#false"))
   (global.set $g-nil-str (%sym-32 0x2928 2))      ;; '()'
   (global.set $g-newline  (%sym-32 0x0A 1))       ;; '\n'
   (global.set $g-collect (%sym-64 0x207463656c6c6f43 8))  ;; 'collect'
@@ -452,12 +456,21 @@
       (i32.const 2))
     (then (return (global.get $g-true))))
 
+  ;; if (token-str == '#true')
+  (if (call $str-eq (local.get $token-str) (%car (global.get $g-true-str-long))) (then
+    (return (global.get $g-true))))
+
   ;; if (token-str == '#f') {
   (if (call $short-str-eq
       (local.get $token-str)
       (i32.const 0x6623)
       (i32.const 2))
     (then (return (global.get $g-false))))
+
+  ;; if (token-str == '#false')
+  (if (call $str-eq (local.get $token-str) (%car (global.get $g-false-str-long))) (then
+    (return (global.get $g-false))))
+
 
   ;; if token-str.startsWith('str ')
   ;; if (short-str-start-with(token-str, 0, 'str ', 4)) {

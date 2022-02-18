@@ -8,12 +8,14 @@
   (test-case "(boolean? <obj>)" (lambda ()
     (assert (boolean? #t))
     (assert (boolean? #f))
+    (assert (boolean? #true))
+    (assert (boolean? #false))
     (assert-not (boolean? 0))
     (assert-not (boolean? '()))))
 
   (test-case "(boolean=? <boolean1> <boolean2> <boolean3> ...)" (lambda ()
-    (assert (boolean=? #t #t (= 1 1)))
-    (assert (boolean=? #f #f (= 1 2)))
+    (assert (boolean=? #t #true (= 1 1)))
+    (assert (boolean=? #f #false (= 1 2)))
     (assert-not (boolean=? #t #f))
     (assert-not (boolean=? 1 2))))
 
