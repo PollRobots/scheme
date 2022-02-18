@@ -131,11 +131,26 @@
         (local.set $result (i32.const 1))
         (br $b_cmp)))
 
+    (if (i32.eq (local.get $a-type) (%bytevector-type)) (then
+      (br_if $b_cmp (i32.ne (local.tee $count (%cdr-l $a)) (%cdr-l $b)))
+      (local.set $a-ptr (%car-l $a))
+      (local.set $b-ptr (%car-l $b))
+      (block $end (loop $start
+          (br_if $end (i32.eqz (local.get $count)))
+
+          (br_if $b_cmp (i32.ne 
+              (i32.load8_u (local.get $a-ptr))
+              (i32.load8_u (local.get $b-ptr))))
+          (%inc $a-ptr)
+          (%inc $b-ptr)
+          (%dec $count)
+          (br $start)))
+      (local.set $result (i32.const 1))
+      (br $b_cmp)))
+
     (if (i32.eq (local.get $a-type) (%lambda-type)) (then
         (local.set $result (call $equal-inner (%cdr-l $a) (%cdr-l $b) (local.get $deep)))
         (br $b_cmp))))
-
-
 
   (return (local.get $result)))
 

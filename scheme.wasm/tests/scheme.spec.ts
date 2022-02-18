@@ -158,6 +158,10 @@ describe("scheme", () => {
     await testFile("test/boolean.spec.scm");
   });
 
+  it("test/bytevector.spec.scm", async () => {
+    await testFile("test/bytevector.spec.scm");
+  });
+
   it("test/pair.spec.scm", async () => {
     await testFile("test/pair.spec.scm");
   });
