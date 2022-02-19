@@ -478,7 +478,6 @@
 (elem $table-builtin (%special-or) $or)
 (elem $table-builtin (%special-when) $when)
 (elem $table-builtin (%special-unless) $unless)
-(elem $table-builtin (%special-begin) $begin)
 (elem $table-builtin (%special-define-syntax) $define-syntax)
 (elem $table-builtin (%special-define-record-type) $define-record-type)
 

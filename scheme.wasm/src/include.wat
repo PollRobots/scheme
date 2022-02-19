@@ -126,7 +126,7 @@
       (return (local.get $datum))))
 
   (return (call $cont-alloc
-      (%eval-fn)
+      (%eval-fn-def)
       (local.get $env)
       (local.get $datum)
       (call $cont-alloc

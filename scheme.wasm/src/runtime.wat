@@ -1864,6 +1864,12 @@
               (%cdr-l $op)
               (local.get $args)))))
 
+      (if (i32.eq (local.get $fn) (%special-begin)) (then
+          (return (call $eval-body 
+              (local.get $allow-def)
+              (local.get $env)
+              (local.get $args)))))
+
       (return (call_indirect $table-builtin (type $builtin-type)
           (local.get $env)
           (local.get $args)

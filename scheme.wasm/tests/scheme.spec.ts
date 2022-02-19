@@ -162,14 +162,6 @@ describe("scheme", () => {
     await testFile("test/bytevector.spec.scm");
   });
 
-  it("test/pair.spec.scm", async () => {
-    await testFile("test/pair.spec.scm");
-  });
-
-  it("test/symbol.spec.scm", async () => {
-    await testFile("test/symbol.spec.scm");
-  });
-
   it("test/char.spec.scm", async () => {
     await testFile("test/char.spec.scm");
   });
@@ -182,12 +174,24 @@ describe("scheme", () => {
     await testFile("test/equivalence.spec.scm");
   });
 
+  it("test/include-ci.spec.scm", async () => {
+    await testFile("test/include-ci.spec.scm");
+  });
+
   it("test/number.spec.scm", async () => {
     await testFile("test/number.spec.scm");
   });
 
-  it("test/include-ci.spec.scm", async () => {
-    await testFile("test/include-ci.spec.scm");
+  it("test/pair.spec.scm", async () => {
+    await testFile("test/pair.spec.scm");
+  });
+
+  it("test/sequence.spec.scm", async () => {
+    await testFile("test/sequence.spec.scm");
+  });
+
+  it("test/symbol.spec.scm", async () => {
+    await testFile("test/symbol.spec.scm");
   });
 
   it("test/time.spec.scm", async () => {
