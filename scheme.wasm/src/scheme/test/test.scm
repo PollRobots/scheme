@@ -91,3 +91,24 @@
         (list
           "unknown"
           (lambda () (error "test-case name is not a string" name))))))
+
+  (define (flaky-test-case retry-count name fn)
+    (letrec ((retry-fn (lambda (attempt)
+              (let ((res (call/cc (lambda (cont)
+                    (with-exception-handler
+                      (lambda (ex) 
+                        (if (error-object? ex)
+                          (begin
+                            (display (error-object-message ex))
+                            (if (not (null? (error-object-irritants ex)))
+                              (apply display-all ": " (error-object-irritants ex))))
+                          (display ex))
+                        (display #\newline)
+                        (cont (string-append "flaky test " name " failed after " (number->string retry-count) " attempts")))
+                      (lambda ()
+                        (fn)
+                        (cont #f)))))))
+                  (if res
+                    (if (>= attempt retry-count) (error res) (retry-fn (+ attempt 1)))
+                    ())))))
+      (test-case name (lambda () (retry-fn 1)))))

@@ -21,7 +21,7 @@
     ; should be at least millisecond jiffieness
     (assert (>= (jiffies-per-second 1000))))))
 
-  (test-case "time sanity check (slow)" (lambda ()
+  (flaky-test-case 5 "time sanity check (slow)" (lambda ()
     (define check
       (let* ((start-second (current-second))
             (start-jiffy (current-jiffy))
@@ -33,6 +33,6 @@
                   (inner))))
       
     (assert (>= check 0.25))
-    (assert (< check 0.35))))
+    (assert (< check 0.26))))
 )
     
