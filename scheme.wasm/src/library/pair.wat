@@ -520,30 +520,22 @@
   (local $obj i32)
   (local $list i32)
   (local $cmp i32)
-  (local $cmp-type i32)
   (local $cmp-args i32)
 
   (local.set $num-args (call $list-len (local.get $args)))
 
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (local.get $num-args) (i32.const 2)))
       (br_if $b_fail (i32.gt_u (local.get $num-args) (i32.const 3)))
       (if (i32.eq (local.get $num-args) (i32.const 3))
         (then
           (local.set $cmp (%car (%cdr (%cdr-l $args))))
-          (local.set $cmp-type (%get-type $cmp))
-          (br_if $b_check (i32.eq (local.get $cmp-type) (%builtin-type)))
-          (br_if $b_check (i32.eq (local.get $cmp-type) (%special-type)))
-          (br_if $b_check (i32.eq (local.get $cmp-type) (%lambda-type)))
-          (br $b_fail)
-        )
-        (else (local.set $cmp (i32.const 0)))
-      )
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+          (br_if $b_check (call $procedure?-impl (local.get $cmp)))
+          (br $b_fail))
+        (else (local.set $cmp (i32.const 0))))
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
 
   (local.set $obj (%car-l $args))
   (local.set $list (%car (%cdr-l $args)))
@@ -673,30 +665,22 @@
   (local $list i32)
   (local $item i32)
   (local $cmp i32)
-  (local $cmp-type i32)
   (local $cmp-args i32)
 
   (local.set $num-args (call $list-len (local.get $args)))
 
-  (block $b_check
-    (block $b_fail
+  (block $b_check (block $b_fail
       (br_if $b_fail (i32.lt_u (local.get $num-args) (i32.const 2)))
       (br_if $b_fail (i32.gt_u (local.get $num-args) (i32.const 3)))
       (if (i32.eq (local.get $num-args) (i32.const 3))
         (then
           (local.set $cmp (%car (%cdr (%cdr-l $args))))
-          (local.set $cmp-type (%get-type $cmp))
-          (br_if $b_check (i32.eq (local.get $cmp-type) (%builtin-type)))
-          (br_if $b_check (i32.eq (local.get $cmp-type) (%special-type)))
-          (br_if $b_check (i32.eq (local.get $cmp-type) (%lambda-type)))
-          (br $b_fail)
-        )
-        (else (local.set $cmp (i32.const 0)))
-      )
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+          (br_if $b_check (call $procedure?-impl (local.get $cmp)))
+          (br $b_fail))
+        (else (local.set $cmp (i32.const 0))))
+      (br $b_check))
+
+    (return (call $argument-error (local.get $args))))
 
   (local.set $obj (%car-l $args))
   (local.set $list (%car (%cdr-l $args)))
