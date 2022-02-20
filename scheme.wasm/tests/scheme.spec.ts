@@ -209,4 +209,8 @@ describe("scheme", () => {
   it("test/trig.spec.scm", async () => {
     await testFile("test/trig.spec.scm");
   });
+
+  it("test/vector.spec.scm", async () => {
+    await testFile("test/vector.spec.scm");
+  });
 });
