@@ -24,8 +24,10 @@
     ((assert-equal x y m ...)
       (begin
         (verbose-display-all "\x1b;[94massert (equal? " 'x " " 'y ")\x1b;[0m" #\newline)
-        (if (not (equal? x y))
-            (error "Assert failed" 'x " should equal " 'y ", " m ...))))))
+        (let ((xval x)
+              (yval y))
+          (if (not (equal? xval yval))
+              (error "Assert failed" 'x ", which is: " xval " should equal " 'y ", which is: " yval " " m ...)))))))
 
 (define-syntax assert-error
   (syntax-rules ()

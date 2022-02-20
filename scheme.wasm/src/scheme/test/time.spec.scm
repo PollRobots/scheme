@@ -32,7 +32,7 @@
                                   (inner)))))
                   (inner))))
       
-    (assert (>= check 0.25))
-    (assert (< check 0.26))))
+    (assert (>= check 0.25) " check: " check)
+    (assert (< check 0.26) " check: " check)))
 )
     
