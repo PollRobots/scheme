@@ -700,6 +700,7 @@
   (local $cp-len i32)
   (local $buffer i32)
   (local $ptr i32)
+  (local $str i32)
 
   (block $b_check
     (block $b_fail
@@ -732,11 +733,11 @@
       (local.set $arg (%cdr-l $arg))
       (br $b_start)))
 
-  (return
-    (%alloc-str
-      (call $str-from-code-points
+  (local.set $str (%alloc-str (call $str-from-code-points
         (local.get $buffer)
-        (local.get $cp-len)))))
+        (local.get $cp-len))))
+  (call $malloc-free (local.get $buffer))
+  (return (local.get $str)))
 
 (func $string-append (param $env i32) (param $args i32) (result i32)
   (block $b_check
