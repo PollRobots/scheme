@@ -69,7 +69,7 @@
 
 ;; (vector obj ...)
 (func $vector (param $env i32) (param $args i32) (result i32)
-  (return (call $make-vector-internal (local.get $args))))
+  (return (call $make-vector-internal (local.get $args) (i32.const 0))))
 
 ;; (list->vector list)
 (func $list->vector (param $env i32) (param $args i32) (result i32)
@@ -84,7 +84,7 @@
 
     (return (call $argument-error (local.get $args))))
 
-  (return (call $make-vector-internal (local.get $list))))
+  (return (call $make-vector-internal (local.get $list) (i32.const 0))))
 
 ;; (vector-length vector)
 (func $vector-length (param $env i32) (param $args i32) (result i32)
@@ -144,6 +144,7 @@
       (br_if $b_fail (i32.ne (call $list-len (local.get $temp)) (i32.const 3)))
       (%pop-l $vector $temp)
       (%chk-type $b_fail $vector %vector-type)
+      (br_if $b_fail (i32.and (%get-flags $vector) (i32.const 2)))
 
       (%pop-l $k $temp)
       (%chk-type $b_fail $k %i64-type)
@@ -257,6 +258,7 @@
 
           (%pop-l $to $temp)
           (%chk-type $b_fail $to %vector-type)
+          (br_if $b_fail (i32.and (%get-flags $to) (i32.const 2)))
 
           (%pop-l $at $temp)
           (%chk-type $b_fail $at %i64-type)
@@ -634,16 +636,13 @@
   ;; accumulate the length
   (local.set $length (i32.const 0))
   (local.set $curr (local.get $args))
-  (block $b_end
-    (loop $b_start
+  (block $b_end (loop $b_start
       (br_if $b_end (i32.eq (%get-type $curr) (%nil-type)))
 
-      (local.set $length
-        (i32.add
-          (local.get $length)
-          (%cdr (%car-l $curr))))
+      (%pop-l $curr-vec $curr)
 
-      (local.set $curr (%cdr-l $curr))
+      (local.set $length (i32.add (local.get $length) (%cdr-l $curr-vec)))
+
       (br $b_start)))
 
   (local.set $ptr
@@ -652,12 +651,11 @@
 
   ;; copy each vector contents over
   (local.set $curr (local.get $args))
-  (block $b_end
-    (loop $b_start
+  (block $b_end (loop $b_start
       (br_if $b_end (i32.eq (%get-type $curr) (%nil-type)))
 
-      (local.set $curr-vec (%car-l $curr))
-      (local.set $curr-byte-len (%word-size-l $curr-vec))
+      (%pop-l $curr-vec $curr)
+      (local.set $curr-byte-len (%word-size (%cdr-l $curr-vec)))
 
       (call $memcpy
         (local.get $ptr)
@@ -667,7 +665,6 @@
 
       (local.set $ptr (i32.add (local.get $ptr) (local.get $curr-byte-len)))
 
-      (local.set $curr (%cdr-l $curr))
       (br $b_start)))
 
   (return (call $heap-alloc (global.get $g-heap) (%vector-type) (local.get $vec-ptr) (local.get $length))))
@@ -696,6 +693,7 @@
 
           (%pop-l $vector $temp)
           (%chk-type $b_fail $vector %vector-type)
+          (br_if $b_fail (i32.and (%get-flags $vector) (i32.const 2)))
           (local.set $vec-ptr (%car-l $vector))
           (local.set $vec-len (%cdr-l $vector))
 

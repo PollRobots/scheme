@@ -706,7 +706,7 @@ Constants are
           (return (local.get $head)))
         (else
           ;; return a vector
-          (return (call $make-vector-internal (local.get $head))))))
+          (return (call $make-vector-internal (local.get $head) (i32.const 1))))))
 
   ;; everything else
   (return (local.get $template)))

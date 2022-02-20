@@ -255,7 +255,7 @@
           (if (i32.eq (local.get $list-vector) (i32.const 1))
             (then (return (global.get $g-nil))))
           (if (i32.eq (local.get $list-vector) (i32.const 2))
-            (then (return (call $make-vector-internal (global.get $g-nil))))
+            (then (return (call $make-vector-internal (global.get $g-nil) (i32.const 1))))
             (else (return (call $make-byte-vector-internal (global.get $g-nil)))))))
 
       ;; car = string->datum(car-str)
@@ -284,7 +284,7 @@
               (then (return (local.get $head)))
             )
             (if (i32.eq (local.get $list-vector) (i32.const 2))
-              (then (return (call $make-vector-internal (local.get $head))))
+              (then (return (call $make-vector-internal (local.get $head) (i32.const 1))))
             )
             (return (call $make-byte-vector-internal (local.get $head)))))
 
@@ -375,7 +375,7 @@
   ;; return atom(token);
   (return (call $atom (%alloc-str (local.get $token-str)))))
 
-(func $make-vector-internal (param $list i32) (result i32)
+(func $make-vector-internal (param $list i32) (param $readonly i32) (result i32)
   (local $len i32)
   (local $ptr i32)
   (local $vec i32)
@@ -389,6 +389,9 @@
       (%vector-type)
       (local.get $ptr)
       (local.get $len)))
+
+  (if (local.get $readonly) (then
+      (%set-flags $vec (i32.const 2))))
 
   (loop $forever
     (if (i32.eq (%get-type $list) (%nil-type))
