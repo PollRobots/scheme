@@ -42,6 +42,7 @@
 
 (func $symbol->string (param $env i32) (param $args i32) (result i32)
   (local $arg i32)
+  (local $str i32)
 
   (block $b_check
     (block $b_fail
@@ -54,7 +55,9 @@
   )
 
   (local.set $arg (%car-l $args))
-  (return (%alloc-str (call $str-dup (%car-l $arg))))
+  (local.set $str (%alloc-str (call $str-dup (%car-l $arg))))
+  (%set-flags $str (%immutable-flag))
+  (return (local.get $str))
 )
 
 (func $string->symbol (param $env i32) (param $args i32) (result i32)

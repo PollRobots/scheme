@@ -267,7 +267,7 @@
       (local.set $curr (local.tee $head (%alloc-cons
             (local.get $car)
             (global.get $g-nil))))
-      (%set-flags $curr (i32.const 2))
+      (%set-flags $curr (%immutable-flag))
 
       ;; while (true) {
       (loop $forever
@@ -333,7 +333,7 @@
 
         ;; curr = curr[8]
         (local.set $curr (%cdr-l $curr))
-        (%set-flags $curr (i32.const 2))
+        (%set-flags $curr (%immutable-flag))
 
         (br $forever))))
 
@@ -391,7 +391,7 @@
       (local.get $len)))
 
   (if (local.get $readonly) (then
-      (%set-flags $vec (i32.const 2))))
+      (%set-flags $vec (%immutable-flag))))
 
   (loop $forever
     (if (i32.eq (%get-type $list) (%nil-type))
@@ -489,7 +489,9 @@
         (i32.sub (local.get $str-len) (i32.const 4)))
       (local.set $atom-str (call $str-dup (i32.add (local.get $token-str) (i32.const 4))))
       (i32.store offset=4 (local.get $token-str) (i32.const 0x20727473))
-      (return (%alloc-str (local.get $atom-str)))))
+      (local.set $atom (%alloc-str (local.get $atom-str)))
+      (%set-flags $atom (%immutable-flag))
+      (return (local.get $atom))))
 
   ;; if (short-str-start-with(token-str, 0, 'tok ', 4)) {
   (if (call $short-str-start-with
@@ -1770,7 +1772,7 @@
 
       (if (i32.eqz (call $is-list-impl (local.get $args))) (then
           (return (%alloc-raise (%alloc-error
-                (%str %sym-128 128 "improper list")
+                (%str %sym-128 128 "improper-list")
                 (local.get $args))))))
 
       (if (global.get $g-dump-eval)

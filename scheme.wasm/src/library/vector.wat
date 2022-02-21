@@ -144,7 +144,7 @@
       (br_if $b_fail (i32.ne (call $list-len (local.get $temp)) (i32.const 3)))
       (%pop-l $vector $temp)
       (%chk-type $b_fail $vector %vector-type)
-      (br_if $b_fail (i32.and (%get-flags $vector) (i32.const 2)))
+      (br_if $b_fail (i32.and (%get-flags $vector) (%immutable-flag)))
 
       (%pop-l $k $temp)
       (%chk-type $b_fail $k %i64-type)
@@ -258,7 +258,7 @@
 
           (%pop-l $to $temp)
           (%chk-type $b_fail $to %vector-type)
-          (br_if $b_fail (i32.and (%get-flags $to) (i32.const 2)))
+          (br_if $b_fail (i32.and (%get-flags $to) (%immutable-flag)))
 
           (%pop-l $at $temp)
           (%chk-type $b_fail $at %i64-type)
@@ -693,7 +693,7 @@
 
           (%pop-l $vector $temp)
           (%chk-type $b_fail $vector %vector-type)
-          (br_if $b_fail (i32.and (%get-flags $vector) (i32.const 2)))
+          (br_if $b_fail (i32.and (%get-flags $vector) (%immutable-flag)))
           (local.set $vec-ptr (%car-l $vector))
           (local.set $vec-len (%cdr-l $vector))
 

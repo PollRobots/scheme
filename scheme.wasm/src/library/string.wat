@@ -212,6 +212,7 @@
 
       (local.set $str (%car-l $args))
       (br_if $b_fail (i32.ne (%get-type $str) (%str-type)))
+      (br_if $b_fail (i32.and (%get-flags $str) (%immutable-flag)))
       (local.set $str-ptr (%car-l $str))
 
       (local.set $k (%car (%cdr-l $args)))
@@ -742,7 +743,6 @@
 (func $string-append (param $env i32) (param $args i32) (result i32)
   (block $b_check
     (block $b_fail
-      (br_if $b_fail (i32.eqz (call $list-len (local.get $args))))
       (br_if $b_fail (i32.eqz (call $all-string (local.get $args))))
       (br $b_check))
     (return (call $argument-error (local.get $args))))
@@ -827,7 +827,8 @@
 
           (local.set $to (%car-l $args))
           (local.set $args (%cdr-l $args))
-          (br_if $b_fail (i32.ne (%get-type $to) (%str-type)))
+          (%chk-type $b_fail $to %str-type)
+          (br_if $b_fail (i32.and (%get-flags $to) (%immutable-flag)))
 
           (local.set $at (%car-l $args))
           (local.set $args (%cdr-l $args))
@@ -939,6 +940,7 @@
 
           (%pop-l $str $temp)
           (%chk-type $b_fail $str %str-type)
+          (br_if $b_fail (i32.and (%get-flags $str) (%immutable-flag)))
           (local.set $str-ptr (%car-l $str))
           (local.set $str-len (call $str-code-point-len (local.get $str-ptr)))
 

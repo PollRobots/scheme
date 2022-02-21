@@ -76,6 +76,9 @@
 (%define %set-gc-flags (%arg %flags) (i32.store8 offset=1 (local.get %arg) %flags))
 (%define %get-flags (%arg) (i32.load8_u offset=2 (local.get %arg)))
 (%define %set-flags (%arg %flags) (i32.store8 offset=2 (local.get %arg) %flags))
+(%define %visited-flag () (i32.const 1))
+(%define %visited-not-flag () (i32.const 0xFE))
+(%define %immutable-flag () (i32.const 2))
 
 (%define %car (%cons) (i32.load offset=4 %cons))
 (%define %car-l (%cons) (i32.load offset=4 (local.get %cons)))

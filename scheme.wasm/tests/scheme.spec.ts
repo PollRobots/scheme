@@ -198,6 +198,10 @@ describe("scheme", () => {
     await testFile("test/sequence.spec.scm");
   });
 
+  it("test/string.spec.scm", async () => {
+    await testFile("test/string.spec.scm");
+  });
+
   it("test/symbol.spec.scm", async () => {
     await testFile("test/symbol.spec.scm");
   });

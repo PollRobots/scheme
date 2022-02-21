@@ -70,7 +70,7 @@
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 2)))
       (local.set $arg (%car-l $args))
       (br_if $b_fail (i32.ne (%get-type $arg) (%cons-type)))
-      (br_if $b_fail (i32.and (%get-flags $arg) (i32.const 2)))
+      (br_if $b_fail (i32.and (%get-flags $arg) (%immutable-flag)))
       (br $b_check)
     )
     (return (call $argument-error (local.get $args)))
@@ -91,7 +91,7 @@
       (br_if $b_fail (i32.ne (call $list-len (local.get $args)) (i32.const 2)))
       (local.set $arg (%car-l $args))
       (br_if $b_fail (i32.ne (%get-type $arg) (%cons-type)))
-      (br_if $b_fail (i32.and (%get-flags $arg) (i32.const 2)))
+      (br_if $b_fail (i32.and (%get-flags $arg) (%immutable-flag)))
       (br $b_check)
     )
     (return (call $argument-error (local.get $args)))
@@ -143,13 +143,13 @@
           (br $b_end)))
 
       (local.set $flags (%get-flags $arg))
-      (if (i32.and (local.get $flags) (i32.const 1)) (then
+      (if (i32.and (local.get $flags) (%visited-flag)) (then
         ;; this list is circular
         (local.set $result (i32.const 0))
         (br $b_end)))
 
       ;; mark the list item as visited
-      (%set-flags $arg (i32.or (local.get $flags) (i32.const 1)))
+      (%set-flags $arg (i32.or (local.get $flags) (%visited-flag)))
 
       (local.set $arg (%cdr-l $arg))
       (br $b_start)))
@@ -160,8 +160,8 @@
       (br_if $b_end (i32.ne (%get-type $arg) (%cons-type)))
 
       (local.set $flags (%get-flags $arg))
-      (br_if $b_end (i32.eqz (i32.and (local.get $flags) (i32.const 1))))
-      (%set-flags $arg (i32.and (local.get $flags) (i32.const 0xFE)))
+      (br_if $b_end (i32.eqz (i32.and (local.get $flags) (%visited-flag))))
+      (%set-flags $arg (i32.and (local.get $flags) (%visited-not-flag)))
 
       (local.set $arg (%cdr-l $arg))
       (br $b_start)))
@@ -447,7 +447,7 @@
   (if (i32.eq (%get-type $tail) (%except-type)) (then
       (return (local.get $tail))))
 
-  (if (i32.and (%get-flags $tail) (i32.const 2)) (then
+  (if (i32.and (%get-flags $tail) (%immutable-flag)) (then
       (return (call $argument-error (local.get $args)))))
 
   (local.set $val (%car (%cdr (%cdr-l $args))))
