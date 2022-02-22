@@ -186,6 +186,10 @@ describe("scheme", () => {
     await testFile("test/include-ci.spec.scm");
   });
 
+  it("test/lazy.spec.scm", async () => {
+    await testFile("test/lazy.spec.scm");
+  });
+
   it("test/number.spec.scm", async () => {
     await testFile("test/number.spec.scm");
   });

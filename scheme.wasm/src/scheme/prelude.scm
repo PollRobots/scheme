@@ -2,7 +2,7 @@
 (cond
   ((not have-prelude?)
     (include
-      "delay.scm"
+      "lazy.scm"
       "pair.scm"
       "numerics.scm"
       "procedures.scm")
