@@ -27,12 +27,11 @@
             (start-jiffy (current-jiffy))
             (end-jiffy (+ start-jiffy (/ (jiffies-per-second) 4))))
             (letrec ((inner (lambda ()
-                              (if (>= (current-jiffy) end-jiffy) 
+                              (if (> (current-jiffy) end-jiffy)
                                   (- (current-second) start-second)
                                   (inner)))))
                   (inner))))
-      
+
     (assert (>= check 0.25) " check: " check)
     (assert (< check 0.26) " check: " check)))
 )
-    
