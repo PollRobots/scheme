@@ -5,7 +5,9 @@
 (define (zero? x) (= x 0))
 (define (positive? x) (> x 0))
 (define (negative? x) (< x 0))
-(define (even? x) (zero? (floor-remainder (exact x) 2)))
+(define (even? x) (cond
+  ((integer? x) (zero? (floor-remainder (abs x) 2)))
+  (else (error "invalid integer"))))
 (define (odd? x) (not (even? x)))
 
 (define (make-polar r a) (make-rectangular (* r (cos a)) (* r (sin a))))
@@ -68,6 +70,11 @@
 (define (square x) (* x x))
 (define (expt a b)
   (cond
+    ((zero? a)
+      (cond 
+        ((zero? b) 1)
+        ((positive? (real-part b)) 0)
+        (else (error "invalid expt"))))
     ((and (integer? b) (positive? b))
       (* a (expt a (- b 1))))
     ((and (integer? b) (zero? b)) 1)
