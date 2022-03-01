@@ -69,7 +69,9 @@ class SchemeWorker {
     const resolver = this.pendingResponses.get(cmd.id);
     if (resolver) {
       this.pendingResponses.delete(cmd.id);
-      resolver(cmd);
+      if (typeof resolver === "function") {
+        resolver(cmd);
+      }
     }
   }
 
