@@ -112,18 +112,28 @@ export class TerminalInput extends React.Component<
   }
 
   onKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !this.props.waiting) {
-      this.props.onEnter(this.getValue());
-      this.setState({ text: "" });
+    if (e.key === "Enter") {
+      if (!this.props.waiting) {
+        this.props.onEnter(this.getValue());
+        this.setState({ text: "" });
+      }
     } else if (this.props.readonly) {
       this.setState({ text: "" });
-      // ignore everything while readonly
+      // ignore unmodified keys while readonly.
+      if (e.ctrlKey || e.altKey || e.metaKey || e.key === "Tab") {
+        return;
+      }
     } else if (e.key === "ArrowUp") {
       this.props.onUp();
     } else if (e.key === "ArrowDown") {
       this.props.onDown();
     } else if (e.key === "Escape" || (e.key === "e" && e.ctrlKey)) {
       this.props.onEscape(this.getValue());
+    } else if (e.key === "Tab") {
+      // Prevent tab from moving the focus by stopping propagation.
+      // Manually add tab to the end of the text. This is a hack.
+      // TODO: insert tab correctly at the current location.
+      this.setState({ text: this.state.text + "\t" });
     } else {
       return;
     }

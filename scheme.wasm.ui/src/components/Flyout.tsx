@@ -1,4 +1,5 @@
 import React from "react";
+import { FocusContextProvider } from "./FocusContext";
 import { ThemeContext } from "./ThemeProvider";
 
 interface FlyoutProps {
@@ -97,7 +98,9 @@ export const Flyout: React.FunctionComponent<FlyoutProps> = (props) => {
             borderRadius: "0 0 0 0.5em",
           }}
         >
-          {props.children}
+          <FocusContextProvider value={state.expanded}>
+            {props.children}
+          </FocusContextProvider>
         </div>
       </div>
     </div>

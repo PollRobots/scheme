@@ -3,7 +3,9 @@ import { EmergencyStop } from "./EmergencyStop";
 import { SchemeRuntimeContext } from "./SchemeRuntimeProvider";
 import { ThemeContext } from "./ThemeProvider";
 
-export const RuntimeStatus: React.FunctionComponent = (props) => {
+export const RuntimeStatus: React.FunctionComponent<{ disabled?: boolean }> = (
+  props
+) => {
   const theme = React.useContext(ThemeContext);
   const runtime = React.useContext(SchemeRuntimeContext);
 
@@ -64,7 +66,9 @@ export const RuntimeStatus: React.FunctionComponent = (props) => {
         {debugging()}
         <EmergencyStop
           msgs={["Stop Runtime", "Confirm"]}
-          disabled={!runtime || runtime.stopped || !runtime.loaded}
+          disabled={
+            props.disabled || !runtime || runtime.stopped || !runtime.loaded
+          }
           title="This will terminate the scheme runtime worker process."
           style={{
             fontSize: "inherit",

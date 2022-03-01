@@ -1,4 +1,5 @@
 import React from "react";
+import { FocusContextProvider } from "./FocusContext";
 import { ThemeContext } from "./ThemeProvider";
 
 interface SettingsMenuProps {
@@ -31,7 +32,9 @@ export const SettingsMenu: React.FunctionComponent<SettingsMenuProps> = (
         boxShadow: "rgba(0, 0, 0, 0.5) 0.5em 0 1em",
       }}
     >
-      {props.children}
+      <FocusContextProvider value={props.open}>
+        {props.children}
+      </FocusContextProvider>
     </div>
   );
 };

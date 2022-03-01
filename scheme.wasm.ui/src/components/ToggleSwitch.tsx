@@ -3,6 +3,7 @@ import { ThemeContext } from "./ThemeProvider";
 
 interface ToggleSwitchProps {
   on: boolean;
+  disabled?: boolean;
   labelOn?: string;
   labelOff?: string;
   onChange?: (on: boolean) => void;
@@ -23,6 +24,11 @@ const kToggleSwitchStyle: React.CSSProperties = {
   display: "inline-block",
   verticalAlign: "text-bottom",
   userSelect: "none",
+};
+
+const kToggleSwitchDisabledStyle: React.CSSProperties = {
+  ...kToggleSwitchStyle,
+  opacity: 0.75,
 };
 
 const kToggleLabelStyle: React.CSSProperties = {
@@ -53,18 +59,23 @@ export const ToggleSwitch: React.FunctionComponent<ToggleSwitchProps> = (
 ) => {
   const theme = React.useContext(ThemeContext);
   const id = React.useRef(generateId());
+
+  const onChange = () => {
+    if (props.onChange && !props.disabled) {
+      props.onChange(!props.on);
+    }
+  };
   return (
-    <div style={kToggleSwitchStyle}>
+    <div
+      style={props.disabled ? kToggleSwitchDisabledStyle : kToggleSwitchStyle}
+    >
       <input
         style={{ display: "none" }}
         type="checkbox"
         id={id.current}
+        disabled={props.disabled}
         checked={props.on}
-        onChange={() => {
-          if (props.onChange) {
-            props.onChange(!props.on);
-          }
-        }}
+        onChange={() => onChange()}
       />
       <label
         htmlFor={id.current}
@@ -75,12 +86,10 @@ export const ToggleSwitch: React.FunctionComponent<ToggleSwitchProps> = (
           backgroundColor: props.on ? theme.blue : theme.background,
           borderColor: theme.base00,
         }}
-        tabIndex={0}
+        tabIndex={props.disabled ? -1 : 0}
         onKeyPress={(e) => {
           if (e.code === "Space" || e.code === "Enter") {
-            if (props.onChange) {
-              props.onChange(!props.on);
-            }
+            onChange();
           }
         }}
       >

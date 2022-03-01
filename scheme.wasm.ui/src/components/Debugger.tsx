@@ -6,6 +6,7 @@ import { ThemeContext } from "./ThemeProvider";
 import { ToggleSwitch } from "./ToggleSwitch";
 import { EnvResponse } from "../worker/messages";
 import { RuntimeStatus } from "./RuntimeStatus";
+import { FocusContext } from "./FocusContext";
 
 const kEmptyDebug: DebugBreakEvent = {
   ptr: 0,
@@ -26,6 +27,7 @@ const kButtonStyle: React.CSSProperties = {
 export const Debugger: React.FunctionComponent = (props) => {
   const runtime = React.useContext(SchemeRuntimeContext);
   const theme = React.useContext(ThemeContext);
+  const focus = React.useContext(FocusContext);
   const [enabled, setEnabled] = React.useState(false);
   const [debugInfo, setDebugInfo] =
     React.useState<DebugBreakEvent>(kEmptyDebug);
@@ -126,6 +128,7 @@ export const Debugger: React.FunctionComponent = (props) => {
         <div style={{ gridColumnStart: 1 }}>
           Debugging:{" "}
           <ToggleSwitch
+            disabled={!focus}
             on={enabled}
             onChange={() => {
               runtime?.enableDebug(!enabled);
@@ -138,7 +141,7 @@ export const Debugger: React.FunctionComponent = (props) => {
           {debugInfo.ptr.toString(16)}
         </div>
         <div style={{ gridColumnStart: 3, gridRowStart: 1 }}>
-          <RuntimeStatus />
+          <RuntimeStatus disabled={!focus} />
         </div>
       </div>
       <div>
@@ -156,7 +159,7 @@ export const Debugger: React.FunctionComponent = (props) => {
             border: `solid 1px ${theme.base00}`,
             background: theme.background,
           }}
-          tabIndex={0}
+          tabIndex={focus ? 0 : -1}
           title="History of evaluated expreessions"
         >
           {history.current
@@ -179,7 +182,7 @@ export const Debugger: React.FunctionComponent = (props) => {
             background: theme.background,
           }}
           title="Current expression being evaluated"
-          tabIndex={0}
+          tabIndex={focus ? 0 : -1}
           dangerouslySetInnerHTML={
             debugInfo.ptr
               ? {
@@ -193,7 +196,7 @@ export const Debugger: React.FunctionComponent = (props) => {
         <div>
           <button
             style={buttonStyle()}
-            disabled={debugInfo.ptr == 0}
+            disabled={!focus || debugInfo.ptr == 0}
             onClick={() => debugInfo.step(false)}
             title="Evaluate the current expression"
           >
@@ -201,7 +204,7 @@ export const Debugger: React.FunctionComponent = (props) => {
           </button>
           <button
             style={buttonStyle()}
-            disabled={debugInfo.ptr == 0}
+            disabled={!focus || debugInfo.ptr == 0}
             onClick={() => debugInfo.step(true)}
             title="Evaluate the current expression, show the result when it is available"
           >
@@ -209,7 +212,7 @@ export const Debugger: React.FunctionComponent = (props) => {
           </button>
           <button
             style={buttonStyle()}
-            disabled={debugInfo.ptr == 0 || original.length > 0}
+            disabled={!focus || debugInfo.ptr == 0 || original.length > 0}
             onClick={() => {
               waitFor.current.ptr = debugInfo.ptr;
               debugInfo.step(true);
@@ -224,7 +227,7 @@ export const Debugger: React.FunctionComponent = (props) => {
               backgroundColor:
                 waitFor.current.ptr === -1 ? theme.red : theme.blue,
             }}
-            disabled={!enabled || !runtime || !runtime.waiting}
+            disabled={!focus || !enabled || !runtime || !runtime.waiting}
             onClick={() => {
               if (waitFor.current.ptr === -1) {
                 waitFor.current.ptr = 0;
@@ -256,7 +259,7 @@ export const Debugger: React.FunctionComponent = (props) => {
                 width: "30em",
                 background: theme.background,
               }}
-              tabIndex={0}
+              tabIndex={focus ? 0 : -1}
               title={`Environment 0x${el.ptr.toString(16)}`}
             >
               {el.entries

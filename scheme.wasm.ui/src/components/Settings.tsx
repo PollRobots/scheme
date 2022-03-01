@@ -1,6 +1,7 @@
 import React from "react";
 import { Logo } from "../icons/logo";
 import { Theme } from "../monaco/theme";
+import { FocusContext } from "./FocusContext";
 import { RuntimeStatus } from "./RuntimeStatus";
 import { ThemeContext } from "./ThemeProvider";
 import { ToggleSwitch } from "./ToggleSwitch";
@@ -53,6 +54,7 @@ function selectStyle(theme: Theme): React.CSSProperties {
 
 export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
   const theme = React.useContext(ThemeContext);
+  const focus = React.useContext(FocusContext);
   return (
     <div style={{ fontSize: `${props.fontSize}pt` }}>
       <Logo style={{ width: "9em", margin: "0 auto", display: "block" }} />
@@ -61,6 +63,7 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
         REPL Theme:{" "}
         <select
           style={selectStyle(theme)}
+          disabled={!focus}
           value={props.theme}
           onChange={(e) => {
             if (props.onChange) {
@@ -81,6 +84,7 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
         Editor Theme:{" "}
         <select
           style={selectStyle(theme)}
+          disabled={!focus}
           value={props.editorTheme}
           onChange={(e) => {
             if (props.onChange) {
@@ -102,6 +106,7 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
         Font Size:{" "}
         <select
           style={selectStyle(theme)}
+          disabled={!focus}
           value={props.fontSize}
           onChange={(e) => {
             if (props.onChange) {
@@ -120,6 +125,7 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
         <span style={{ marginRight: "0.5em" }}>Syntax Highlighting</span>
         <ToggleSwitch
           on={props.highlighting}
+          disabled={!focus}
           onChange={(on) => {
             if (props.onChange) {
               props.onChange({ ...props, highlighting: on });
@@ -132,6 +138,7 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
         <span style={{ marginRight: "0.5em" }}>Show inspector</span>
         <ToggleSwitch
           on={props.inspector}
+          disabled={!focus}
           onChange={(on) => {
             if (props.onChange) {
               props.onChange({ ...props, inspector: on });
@@ -143,6 +150,7 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
         <span style={{ marginRight: "0.5em" }}>Persist Settings</span>
         <ToggleSwitch
           on={!!props.persist}
+          disabled={!focus}
           onChange={(on) => {
             if (props.onChange) {
               props.onChange({ ...props, persist: on });
@@ -151,7 +159,7 @@ export const Settings: React.FunctionComponent<SettingsProps> = (props) => {
         />
       </div>
       <div style={kSettingsSubHeading}>Runtime</div>
-      <RuntimeStatus />
+      <RuntimeStatus disabled={!focus} />
       <div
         style={{
           ...kSettingsSubHeading,

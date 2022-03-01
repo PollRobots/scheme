@@ -1,6 +1,7 @@
 import React from "react";
 import { Theme } from "../monaco/theme";
 import { SchemeType } from "../SchemeType";
+import { FocusContext } from "./FocusContext";
 import { SchemeRuntimeContext } from "./SchemeRuntimeProvider";
 import { ThemeContext } from "./ThemeProvider";
 import { ToggleSwitch } from "./ToggleSwitch";
@@ -55,6 +56,7 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
 ) => {
   const runtime = React.useContext(SchemeRuntimeContext);
   const theme = React.useContext(ThemeContext);
+  const focus = React.useContext(FocusContext);
   const [state, setState] = React.useState<HeapInspectorState>({
     ptr: "",
     lookupRes: "",
@@ -203,6 +205,7 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
           Show empty slabs{" "}
           <ToggleSwitch
             on={state.showEmpty}
+            disabled={!focus}
             onChange={(on: boolean) => setState({ ...state, showEmpty: on })}
           />
         </div>
@@ -223,6 +226,7 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
             color: theme.foreground,
           }}
           type="text"
+          disabled={!focus}
           pattern="[0-9a-zA-Z]+"
           value={state.ptr}
           onChange={(e) => {
@@ -230,7 +234,7 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
           }}
         />
         <button
-          disabled={state.ptr === ""}
+          disabled={!focus || state.ptr === ""}
           style={buttonStyle(theme, state.ptr === "")}
           onClick={() => {
             let ptr = 0;
@@ -283,6 +287,7 @@ export const HeapInspector: React.FunctionComponent<HeapInspectorProps> = (
           GC stats
         </div>
         <button
+          disabled={!focus}
           style={{ ...buttonStyle(theme), justifySelf: "end" }}
           onClick={async () => {
             const gcResp = await runtime.gcRun(true);
