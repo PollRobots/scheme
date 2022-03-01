@@ -216,6 +216,15 @@ while the working set is non-empty:
       (if (i32.eq (local.get $type) (%record-method-type)) (then
           (call $gc-maybe-touched-push (%car-l $curr))))
 
+      ;; case case-lambda-type
+      (if (i32.eq (local.get $type) (%case-lambda-type)) (then
+          ;; gc-maybe-touched-push(car(curr))
+          (call $gc-maybe-touched-push (%car-l $curr))
+          ;; gc-maybe-touched-push(cdr(curr))
+          (call $gc-maybe-touched-push (%cdr-l $curr))
+          ;; break
+          (br $b_switch)))
+
       ;; }
     )
 
@@ -492,6 +501,7 @@ while the working set is non-empty:
         (br_if $b_then (i32.eq (local.get $type) (%record-type)))
         (br_if $b_then (i32.eq (local.get $type) (%record-meta-type)))
         (br_if $b_then (i32.eq (local.get $type) (%record-method-type)))
+        (br_if $b_then (i32.eq (local.get $type) (%case-lambda-type)))
         (br $b_else)
       )
       ;; mark-touched(item)
@@ -664,7 +674,7 @@ while the working set is non-empty:
           (%plus-eq $array-ptr 4)
           (br $inner_start)))
 
-      (local.set $array (i32.load (local.get $array)))
+     (local.set $array (i32.load (local.get $array)))
       (br $start)))
 
   (return (i32.const 0)))

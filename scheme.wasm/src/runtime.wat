@@ -1932,6 +1932,12 @@
         (local.get $op)
         (local.get $args)))))
 
+  (if (i32.eq (local.get $op-type) (%case-lambda-type)) (then
+      (return (call $apply-case-lambda
+        (local.get $env)
+        (local.get $op)
+        (local.get $args)))))
+
   (if (i32.eq (local.get $op-type) (%cont-proc-type)) (then
       (return (call $apply-cont-proc
           (local.get $op)
@@ -1989,6 +1995,13 @@
             (local.get $op)
             (local.get $args)))))
 
+    ;; case %case-lambda-type:
+    (if (i32.eq (local.get $op-type) (%case-lambda-type)) (then
+        (return (call $apply-case-lambda
+            (local.get $env)
+            (local.get $op)
+            (local.get $args)))))
+
     ;; case %cont-proc-type:
     (if (i32.eq (local.get $op-type) (%cont-proc-type)) (then
         (return (call $apply-cont-proc
@@ -2036,10 +2049,10 @@
   (local $body i32)
   (local $child-env i32)
 
-  ;; closure = lambda[4]
-  (local.set $closure (i32.load offset=4 (local.get $lambda)))
+  ;; closure = (car lambda)
+  (local.set $closure (%car-l $lambda))
   ;; lambda-args = lambda[8]
-  (local.set $lambda-args (i32.load offset=8 (local.get $lambda)))
+  (local.set $lambda-args (%cdr-l $lambda))
 
   ;; formals = car(lambda-args)
   (local.set $formals (%car-l $lambda-args))
@@ -2053,6 +2066,81 @@
   (call $zip-lambda-args (local.get $child-env) (local.get $formals) (local.get $args))
 
   (return (call $eval-body (i32.const 1) (local.get $child-env) (local.get $body))))
+
+(func $apply-case-lambda (param $env i32) (param $lambda i32) (param $args i32) (result i32)
+  (local $closure i32)
+  (local $clauses i32)
+  (local $clause i32)
+  (local $num-args i32)
+  (local $formals i32)
+  (local $body i32)
+  (local $child-env i32)
+
+  ;; clauses = (cdr lambda)
+  (local.set $clauses (%cdr-l $lambda))
+
+  (local.set $num-args (call $list-len (local.get $args)))
+
+  (block $end (loop $start
+      (if (i32.eq (local.get $clauses) (global.get $g-nil)) (then
+          (return (call $argument-error (local.get $args)))))
+
+      (%pop-l $clause $clauses)
+
+      ;; formals = car(clause)
+      (local.set $formals (%car-l $clause))
+
+      (br_if $end (call $formals-match-num-args? 
+          (local.get $formals) 
+          (local.get $num-args)))
+
+      (br $start)))
+
+  ;; body = cdr(clause)
+  (local.set $body (%cdr-l $clause))
+
+  ;; closure = (car lambda)
+  (local.set $closure (%car-l $lambda))
+  ;; child-env = environment-init(gHeap, closure)
+  (local.set $child-env (call $environment-init 
+      (global.get $g-heap) 
+      (local.get $closure)))
+
+  ;; zip-lambda-args(child-env, formals, args)
+  (call $zip-lambda-args (local.get $child-env) (local.get $formals) (local.get $args))
+
+  (return (call $eval-body (i32.const 1) (local.get $child-env) (local.get $body))))
+
+(func $formals-match-num-args? (param $formals i32) (param $count i32) (result i32)
+  (local $f-type i32)
+  (local $f-val i32)
+
+  (block $end (loop $start
+      ;; f-type = get-type(formals)
+      (local.set $f-type (%get-type $formals))
+      ;; if (f-type == symbol) break
+      ;; a trailing symbol matches all remaining args 0 or more
+      (br_if $end (i32.eq (local.get $f-type) (%symbol-type)))
+      ;; if (f-type == nil) return count == 0
+      (if (i32.eq (local.get $f-type) (%nil-type)) (then
+          ;; this is the end of the formals list, the number of remaining args 
+          ;; must be 0 to match
+          (return (i32.eqz (local.get $count)))))
+      ;; if (f-type != cons) return 0
+      (if (i32.ne (local.get $f-type) (%cons-type)) (then 
+          (return (i32.const 0))))
+
+      ;; if (count == 0) return 0
+      (if (i32.eqz (local.get $count)) (then
+          ;; we have run out of args but still have formals
+          (return (i32.const 0))))
+
+      (%pop-l $f-val $formals) 
+      (%dec $count)
+
+      (br $start)))
+
+  (return (i32.const 1)))
 
 (func $apply-cont-proc (param $cont-proc i32) (param $args i32) (result i32)
   (if (i32.ne (call $list-len (local.get $args)) (i32.const 1)) (then

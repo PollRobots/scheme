@@ -235,8 +235,9 @@
 (%define %builtin-current-second ()           (i32.const 230))
 (%define %builtin-current-jiffy ()            (i32.const 231))
 (%define %builtin-jiffies-per-second ()       (i32.const 232))
+(%define %special-case-lambda ()              (i32.const 233))
 
-(table $table-builtin 233 anyfunc)
+(table $table-builtin 234 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
   (%define %add-special (%sym %num)
@@ -459,6 +460,7 @@
   (%add-special (%sym-64 0x6e69676562 5) (%special-begin))      ;; 'begin'
   (%add-special (%str %sym-128 128 "define-syntax") (%special-define-syntax))
   (%add-special (%str %sym-192 192 "define-record-type") (%special-define-record-type))
+  (%add-special (%str %sym-128 128 "case-lambda") (%special-case-lambda))
 )
 
 (elem $table-builtin (%special-if) $if)
@@ -480,6 +482,7 @@
 (elem $table-builtin (%special-unless) $unless)
 (elem $table-builtin (%special-define-syntax) $define-syntax)
 (elem $table-builtin (%special-define-record-type) $define-record-type)
+(elem $table-builtin (%special-case-lambda) $case-lambda)
 
 (elem $table-builtin (%cont-apply) $cont-apply)
 (elem $table-builtin (%cont-apply-def) $cont-apply-def)

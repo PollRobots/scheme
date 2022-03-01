@@ -150,7 +150,12 @@
 
     (if (i32.eq (local.get $a-type) (%lambda-type)) (then
         (local.set $result (call $equal-inner (%cdr-l $a) (%cdr-l $b) (local.get $deep)))
+        (br $b_cmp)))
+
+    (if (i32.eq (local.get $a-type) (%case-lambda-type)) (then
+        (local.set $result (call $equal-inner (%cdr-l $a) (%cdr-l $b) (local.get $deep)))
         (br $b_cmp))))
+
 
   (return (local.get $result)))
 

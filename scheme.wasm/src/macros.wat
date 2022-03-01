@@ -41,7 +41,13 @@
 ;;   except = 19
 ;;   cont-proc = 20
 ;;   syntax-rules = 21
-;; kMaxType = 21
+;;   rational-type = 22
+;;   complex-type = 23
+;;   record-type = 24
+;;   record-meta-type = 25
+;;   record-method-type = 26
+;;   case-lambda = 27
+;; kMaxType = 27
 (%define %empty-type () (i32.const 0))
 (%define %nil-type () (i32.const 1))
 (%define %boolean-type () (i32.const 2))
@@ -69,7 +75,8 @@
 (%define %record-type () (i32.const 24))
 (%define %record-meta-type () (i32.const 25))
 (%define %record-method-type () (i32.const 26))
-(%define %max-heap-type () (i32.const 26))
+(%define %case-lambda-type () (i32.const 27))
+(%define %max-heap-type () (i32.const 27))
 
 (%define %get-type (%arg) (i32.and (i32.load8_u (local.get %arg)) (i32.const 0x1F)))
 (%define %get-gc-flags (%arg) (i32.load8_u offset=1 (local.get %arg)))

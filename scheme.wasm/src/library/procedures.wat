@@ -19,6 +19,7 @@
   (if (i32.eq (local.get $type) (%cont-proc-type)) (then (return (i32.const 1))))
   (if (i32.eq (local.get $type) (%syntax-rules-type)) (then (return (i32.const 1))))
   (if (i32.eq (local.get $type) (%record-method-type)) (then (return (i32.const 1))))
+  (if (i32.eq (local.get $type) (%case-lambda-type)) (then (return (i32.const 1))))
 
   (return (i32.const 0)))
 

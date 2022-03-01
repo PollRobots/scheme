@@ -162,6 +162,10 @@ describe("scheme", () => {
     await testFile("test/bytevector.spec.scm");
   });
 
+  it("test/case-lambda.spec.scm", async () => {
+    await testFile("test/case-lambda.spec.scm");
+  });
+
   it("test/char.spec.scm", async () => {
     await testFile("test/char.spec.scm");
   });

@@ -40,7 +40,11 @@
 ;;   syntax-rules = 21
 ;;   rational = 22
 ;;   complex = 23
-;; kMaxType = 23
+;;   record-type = 24
+;;   record-meta-type = 25
+;;   record-method-type = 26
+;;   case-lambda = 27
+;; kMaxType = 24
 
 ;;  Empty cell
 ;;    next-empty: i32 ptr
@@ -62,11 +66,11 @@
 ;;    hashtable: i32
 ;;    parent: i32
 
-;; Lambda
+;;  Lambda
 ;;    env : i32
 ;;    cons (formals, body): i32
 
-;; Error
+;;  Error
 ;;    symbol: i32
 ;;    data: i32
 
@@ -107,23 +111,29 @@
 ;;    car: i32 ptr - real
 ;;    cdr: i32 ptr - imaginary
 
-;; Heap
-;;   Size:      i32
-;;   Free:      i32 ptr -- pointer to an empty cell
-;;   next-heap: i32 ptr -- pointer to the next heap
-;;   entries:   HeapEntry[Size]
+;;  Record:
+;;    car: i32 ptr to (same as vector) - 0th item is type
+;;    cdr: i32 count - size of ptr
 
-;; Record:
-;;   car: i32 ptr to (same as vector) - 0th item is type
-;;   cdr: i32 count - size of ptr
+;;  Record-type:
+;;    car: i32 ptr - params from call to define-record-type
 
-;; Record-type:
-;;   car: i32 ptr - params from call to define-record-type
+;;  Record-method:
+;;    car: i32 ptr - Record-type
+;;    cdr: i8      - Method type (ctor 0, predicate 1, accessor 2, modifier 3)
+;;    cdr: i24     - field index
 
-;; Record-method:
-;;   car: i32 ptr - Record-type
-;;   cdr: i8      - Method type (ctor 0, predicate 1, accessor 2, modifier 3)
-;;   cdr: i24     - field index
+;;  Case-Lambda:
+;;    car: i32 env
+;;    cons ((formals, body) ...) : i32
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;  Heap
+;;    Size:      i32
+;;    Free:      i32 ptr -- pointer to an empty cell
+;;    next-heap: i32 ptr -- pointer to the next heap
+;;    entries:   HeapEntry[Size]
 
 (func $heap-create (param $size i32) (result i32)
   (local $heap-size i32)

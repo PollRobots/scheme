@@ -157,6 +157,13 @@
         (call $print-record-method (local.get $ptr))
         (br $b_switch)))
 
+    ;; case case-lambda:
+    (if (i32.eq (local.get $type) (%case-lambda-type))
+      (then
+        (call $print-lambda (local.get $ptr))
+        (br $b_switch)))
+
+
     ;; default:
     (call $print-other (global.get $g-unknown) (local.get $type) (local.get $ptr))
       ;; print-error();
