@@ -190,6 +190,10 @@ describe("scheme", () => {
     await testFile("test/equivalence.spec.scm");
   });
 
+  it("test/exceptions.spec.scm", async () => {
+    await testFile("test/exceptions.spec.scm");
+  });
+
   it("test/include-ci.spec.scm", async () => {
     await testFile("test/include-ci.spec.scm");
   });
