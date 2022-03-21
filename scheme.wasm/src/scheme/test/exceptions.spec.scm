@@ -64,4 +64,24 @@
             (lambda (ex) (cont ex))
             (lambda () (error "an error"))))))
       '())))
+
+  (test-case "(guard (<variable> <cond_1> <cond_2> ...) <body>)" (lambda ()
+    (assert-equal
+      (guard (condition
+          ((assq 'a condition) => cdr)
+          ((assq 'b condition)))
+        (raise (list (cons 'a 42))))
+      42)
+    (assert-equal
+      (guard (condition
+          ((assq 'a condition) => cdr)
+          ((assq 'b condition)))
+        (raise (list (cons 'b 23))))
+      '(b . 23))
+    (assert-error
+      (guard (condition
+          ((assq 'a condition) => cdr)
+          ((assq 'b condition)))
+        (raise (list (cons 'c 7)))))))
+)
 )

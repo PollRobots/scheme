@@ -106,14 +106,17 @@
 
   (%pop-l $values $args)
 
-  (if (i32.ne (%get-type $values) (%values-type)) (then
-      (return (call $argument-error (local.get $args)))))
-
   (local.set $formals (%car-l $args))
-  ;; convert values to a list
-  (local.set $values (%alloc-cons 
-      (%car-l $values) 
-      (%cdr-l $values)))
+  (if (i32.eq (%get-type $values) (%values-type)) 
+    (then
+      ;; convert values to a list
+      (local.set $values (%alloc-cons 
+          (%car-l $values) 
+          (%cdr-l $values))))
+    (else
+      (if (i32.ne (local.get $values) (global.get $g-nil)) (then
+          ;; singleton value becomes single item list
+          (local.set $values (%alloc-list-1 (local.get $values)))))))
 
   (if (i32.lt_u 
       (call $list-len (local.get $values)) 

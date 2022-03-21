@@ -1666,9 +1666,9 @@
 
               (local.set $temp-cont (call $cont-alloc
                   ;; add an eval frame for the handler
-                  (%eval-fn)
+                  (%cont-apply-internal)
                   (local.get $env)
-                  (%alloc-list-2 (local.get $handler)  (%car-l $result))
+                  (%alloc-cons (local.get $handler)  (local.get $result))
                   (call $cont-alloc
                     ;; add a re-raise frame to the stack
                     (%cont-raise)
@@ -1690,7 +1690,7 @@
               (block $b_raise_end (loop $b_raise_start
                   (br_if $b_raise_end (i32.eqz (local.get $temp-cont)))
 
-                  (local.set $curr-cont (%car-l $cont-stack))
+                  (local.set $curr-cont (%car-l $temp-cont))
 
                   ;; if this stack frame is a guard function, then stop here
                   (br_if $b_raise_end (i32.eq
@@ -1712,9 +1712,9 @@
               (local.set $temp-cont (call $cont-alloc
                   ;; add an eval frame for the handler, the result from this
                   ;; will end up on the cont stack
-                  (%eval-fn)
+                  (%cont-apply-internal)
                   (local.get $env)
-                  (%alloc-list-2 (local.get $handler)  (%car-l $result))
+                  (%alloc-cons (local.get $handler)  (local.get $result))
                   (local.get $cont-stack)))
 
               (local.set $cont-stack (local.get $temp-cont))
