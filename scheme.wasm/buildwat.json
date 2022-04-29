@@ -73,6 +73,30 @@
       ]
     },
     {
+      "module": "process",
+      "name": "getEnvironmentVariable",
+      "index": "$process-get-environment-variable",
+      "params": [
+        "i32"
+      ],
+      "result": "i32"
+    },
+    {
+      "module": "process",
+      "name": "getEnvironmentVariables",
+      "index": "$process-get-environment-variables",
+      "params": [ ],
+      "result": "i32"
+    },
+    {
+      "module": "process",
+      "name": "setEnvironmentVariable",
+      "index": "$process-set-environment-variable",
+      "params": [
+        "i32","i32"
+      ]
+    },
+    {
       "module": "unicode",
       "name": "loadData",
       "index": "$unicode-load-data",
@@ -182,6 +206,11 @@
       "name": "heapAllocError",
       "type": "func",
       "index": "$heap-alloc-error"
+    },
+    {
+      "name": "heapAllocCons",
+      "type": "func",
+      "index": "$heap-alloc-cons"
     },
     {
       "name": "readerRollback",

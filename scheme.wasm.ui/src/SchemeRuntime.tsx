@@ -5,7 +5,7 @@ import { SchemeType } from "./SchemeType";
 type WriteCallback = (str: string) => void;
 type DebugCallback = (
   ptr: number,
-  resolver: (reslultStep: boolean) => void
+  resolver: (resultStep: boolean) => void
 ) => void;
 
 class RuntimeExit extends Error {}
@@ -30,6 +30,7 @@ export class SchemeRuntime {
   private waiting_: boolean = false;
   private readonly promises_: Map<number, ImportPromiseResolver> = new Map();
   private readonly jiffies_: Jiffies = Jiffies.init();
+  private readonly environment_: Map<string, string> = new Map();
 
   constructor(module: WebAssembly.Module) {
     this.module_ = module;
@@ -179,6 +180,13 @@ export class SchemeRuntime {
   heapAllocString(str: string): number {
     return (this.exports.heapAllocString as (ptr: number) => number)(
       this.createString(str)
+    );
+  }
+
+  heapAllocCons(car: number, cdr: number): number {
+    return (this.exports.heapAllocCons as (car: number, cdr: number) => number)(
+      car,
+      cdr
     );
   }
 
@@ -431,6 +439,30 @@ export class SchemeRuntime {
     throw new RuntimeExit(`Scheme exited with code: ${exitCode}`);
   }
 
+  getEnvironmentVariable(name: number): number {
+    const value = this.environment_.get(this.getString(name));
+    if (typeof value === "string") {
+      return this.heapAllocString(value);
+    }
+    return 0;
+  }
+
+  getEnvironmentVariables(): number {
+    let tail = this.gNil;
+    for (const entry of this.environment_.entries()) {
+      const pair = this.heapAllocCons(
+        this.heapAllocString(entry[0]),
+        this.heapAllocString(entry[1])
+      );
+      tail = this.heapAllocCons(pair, tail);
+    }
+    return tail;
+  }
+
+  setEnvironmentVariable(name: number, value: number) {
+    this.environment_.set(this.getString(name), this.getString(value));
+  }
+
   unicodeLoadData(block: number, ptr: number) {
     const src = new Uint8Array(this.unicodeData_[block]);
     const dst = new Uint8Array(this.memory.buffer);
@@ -487,6 +519,11 @@ export class SchemeRuntime {
     }
     try {
       if (!this.initialized_) {
+        this.environment_.clear();
+        this.environment_.set("HOME", "/home/schemeuser");
+        this.environment_.set("LOGNAME", "schemeuser");
+        this.environment_.set("PATH", "/usr/local/bin:/usr/bin");
+        this.environment_.set("USER", "schemeuser");
         this.env_ = this.environmentInit(this.gHeap, 0);
         this.registerBuiltins(this.gHeap, this.env_);
         this.initialized_ = true;
@@ -572,6 +609,11 @@ export class SchemeRuntime {
       },
       process: {
         exit: (exitCode: number) => this.exit(exitCode),
+        getEnvironmentVariable: (name: number) =>
+          this.getEnvironmentVariable(name),
+        getEnvironmentVariables: () => this.getEnvironmentVariables(),
+        setEnvironmentVariable: (name: number, value: number) =>
+          this.setEnvironmentVariable(name, value),
       },
       unicode: {
         loadData: (block: number, ptr: number) =>

@@ -84,7 +84,7 @@ export class ExpansionScope {
 }
 
 export function convertStr(bits: number, str: string): string {
-  if (bits != 32 && bits != 64 && bits != 128 && bits != 192) {
+  if (bits != 32 && bits != 64 && bits != 128 && bits != 192 && bits != 256) {
     throw new Error(
       `Unknown bit length while converting string: ${bits} ${JSON.stringify(
         str

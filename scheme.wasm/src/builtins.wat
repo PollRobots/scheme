@@ -236,8 +236,11 @@
 (%define %builtin-current-jiffy ()            (i32.const 231))
 (%define %builtin-jiffies-per-second ()       (i32.const 232))
 (%define %special-case-lambda ()              (i32.const 233))
+(%define %builtin-get-environment-variable () (i32.const 234))
+(%define %builtin-get-environment-variables ()(i32.const 235))
+(%define %builtin-set-environment-variable () (i32.const 236))
 
-(table $table-builtin 234 anyfunc)
+(table $table-builtin 237 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
   (%define %add-special (%sym %num)
@@ -437,6 +440,9 @@
   (%add-builtin (%str %sym-128 128 "current-second") (%builtin-current-second))
   (%add-builtin (%str %sym-128 128 "current-jiffy") (%builtin-current-jiffy))
   (%add-builtin (%str %sym-192 192 "jiffies-per-second") (%builtin-jiffies-per-second))
+  (%add-builtin (%str %sym-192 192 "get-environment-variable") (%builtin-get-environment-variable))
+  (%add-builtin (%str %sym-256 256 "get-environment-variables") (%builtin-get-environment-variables))
+  (%add-builtin (%str %sym-192 192 "set-environment-variable") (%builtin-set-environment-variable))
 
   (%add-special (%sym-32 0x6669 2) (%special-if))               ;; 'if'
   (%add-special (global.get $g-let) (%special-let))             ;; 'let'
@@ -693,3 +699,6 @@
 (elem $table-builtin (%builtin-current-second) $current-second)
 (elem $table-builtin (%builtin-current-jiffy) $current-jiffy)
 (elem $table-builtin (%builtin-jiffies-per-second) $jiffies-per-second)
+(elem $table-builtin (%builtin-get-environment-variable) $get-environment-variable)
+(elem $table-builtin (%builtin-get-environment-variables) $get-environment-variables)
+(elem $table-builtin (%builtin-set-environment-variable) $set-environment-variable)

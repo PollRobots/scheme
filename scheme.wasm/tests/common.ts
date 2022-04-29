@@ -12,6 +12,7 @@ export interface CommonTestExports {
   runtimeInit: () => void;
   runtimeCleanup: () => void;
   gHeap: () => number;
+  gNil: () => number;
   gTrue: () => number;
   gFalse: () => number;
   strFrom32: (len: number, val: number) => number;
@@ -64,6 +65,7 @@ export function commonExportsFromInstance(
     runtimeInit: instance.exports.runtimeInit as () => void,
     runtimeCleanup: instance.exports.runtimeCleanup as () => void,
     gHeap: () => (instance.exports.gHeap as WebAssembly.Global).value as number,
+    gNil: () => (instance.exports.gNil as WebAssembly.Global).value as number,
     gTrue: () => (instance.exports.gTrue as WebAssembly.Global).value as number,
     gFalse: () =>
       (instance.exports.gFalse as WebAssembly.Global).value as number,
@@ -104,6 +106,87 @@ export interface IoModule extends Record<string, Function> {
 
 export interface ProcessModule extends Record<string, Function> {
   exit: (exitCode: number) => void;
+  getEnvironmentVariable: (name: number) => number;
+  getEnvironmentVariables: () => number;
+  setEnvironmentVariable: (name: number, value: number) => void;
+}
+
+export class ProcessTest {
+  private exports_: CommonTestExports | undefined;
+  private readonly env_: Map<string, string> = new Map();
+
+  public get exports(): CommonTestExports {
+    if (!this.exports_) {
+      throw new Error("Invalid Operation");
+    }
+    return this.exports_;
+  }
+
+  public set exports(v: CommonTestExports) {
+    this.exports_ = v;
+  }
+
+  exit(exitCode: number) {
+    console.warn(`(exit ${exitCode})`);
+  }
+
+  getEnvironmentVariable(name: number) {
+    if (this.exports_ === undefined) {
+      return 0;
+    }
+
+    const str = getString(this.exports_, name);
+    const value = this.env_.get(str);
+    if (typeof value === "string") {
+      return createHeapString(this.exports_, value);
+    } else {
+      return 0;
+    }
+  }
+
+  getEnvironmentVariables() {
+    if (this.exports_ === undefined) {
+      return 0;
+    }
+
+    let tail = this.exports.gNil();
+    for (const entry of this.env_.entries()) {
+      const item = this.exports_.heapAlloc(
+        this.exports_.gHeap(),
+        SchemeType.Cons,
+        createHeapString(this.exports_, entry[0]),
+        createHeapString(this.exports_, entry[1])
+      );
+      tail = this.exports_.heapAlloc(
+        this.exports_.gHeap(),
+        SchemeType.Cons,
+        item,
+        tail
+      );
+    }
+    return tail;
+  }
+
+  setEnvironmentVariable(name: number, value: number) {
+    if (this.exports_ === undefined) {
+      return;
+    }
+
+    this.env_.set(
+      getString(this.exports_, name),
+      getString(this.exports_, value)
+    );
+  }
+
+  get module(): ProcessModule {
+    return {
+      exit: (exitCode) => this.exit(exitCode),
+      getEnvironmentVariable: (name) => this.getEnvironmentVariable(name),
+      getEnvironmentVariables: () => this.getEnvironmentVariables(),
+      setEnvironmentVariable: (name, value) =>
+        this.setEnvironmentVariable(name, value),
+    };
+  }
 }
 
 export interface UnicodeModule extends Record<string, Function> {
@@ -198,6 +281,23 @@ export async function loadWasm(
     imports["process"] = modules.process || {
       exit: (exitCode: number) => {
         console.warn(`EXIT: ${exitCode}`);
+      },
+      getEnvironmentVariable: (name: number) => {
+        console.warn(
+          `(get-environment-variable 0x${name.toString(16).padStart(8, "0")})`
+        );
+        return 0;
+      },
+      getEnvironmentVariables: () => {
+        console.warn("(get-environment-variables)");
+        return 0;
+      },
+      setEnvironmentVariable: (name: number, value: number) => {
+        console.warn(
+          `(set-environment-variable 0x${name
+            .toString(16)
+            .padStart(8, "0")} 0x${value.toString(16).padStart(8, "0")})`
+        );
       },
     };
     imports["unicode"] = modules.unicode || {

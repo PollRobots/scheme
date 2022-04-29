@@ -123,6 +123,7 @@
 (%define %sym-64 (%name %len) (call $heap-alloc (global.get $g-heap) (%symbol-type) (call $str-from-64 (i32.const %len) (i64.const %name)) (i32.const 0)))
 (%define %sym-128 (%name1 %name2 %len) (call $heap-alloc (global.get $g-heap) (%symbol-type) (call $str-from-128 (i32.const %len) (i64.const %name1) (i64.const %name2)) (i32.const 0)))
 (%define %sym-192 (%name1 %name2 %name3 %len) (call $heap-alloc (global.get $g-heap) (%symbol-type) (call $str-from-192 (i32.const %len) (i64.const %name1) (i64.const %name2) (i64.const %name3)) (i32.const 0)))
+(%define %sym-256 (%name1 %name2 %name3 %name4 %len) (call $heap-alloc (global.get $g-heap) (%symbol-type) (call $str-from-256 (i32.const %len) (i64.const %name1) (i64.const %name2) (i64.const %name3) (i64.const %name4)) (i32.const 0)))
 
 (%define %alloc-char (%val) (call $heap-alloc (global.get $g-heap) (%char-type) %val (i32.const 0)))
 (%define %alloc-i32 (%val) (call $heap-alloc (global.get $g-heap) (%i64-type) %val (i32.const 0)))

@@ -14,6 +14,7 @@ import {
   IoEvent,
   IoTest,
   loadWasm,
+  ProcessTest,
   TestUnicode as UnicodeTest,
 } from "./common";
 
@@ -70,10 +71,12 @@ describe("scheme", () => {
   const io = new IoTest();
   const file = new FileTest();
   const unicode = new UnicodeTest();
+  const process = new ProcessTest();
   const wasm = loadWasm({
     io: io.module,
     file: file.module,
     unicode: unicode.module,
+    process: process.module,
   });
   let exports: TestExports;
   const written: string[] = [];
@@ -91,6 +94,7 @@ describe("scheme", () => {
     io.addEventListener("write", writeHandler);
     file.exports = exports;
     unicode.exports = exports;
+    process.exports = exports;
     await unicode.loadUnicodeBlocks();
   });
 
@@ -208,6 +212,10 @@ describe("scheme", () => {
 
   it("test/pair.spec.scm", async () => {
     await testFile("test/pair.spec.scm");
+  });
+
+  it("test/process.spec.scm", async () => {
+    await testFile("test/process.spec.scm");
   });
 
   it("test/sequence.spec.scm", async () => {

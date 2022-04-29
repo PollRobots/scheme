@@ -367,6 +367,9 @@
   ;; return empty-ptr
   (return (local.get $empty-ptr)))
 
+(func $heap-alloc-cons (param $car i32) (param $cdr i32) (result i32)
+  (return (%alloc-cons (local.get $car) (local.get $cdr))))
+
 (func $heap-alloc-string (param $str i32) (result i32)
   (return (%alloc-str (local.get $str))))
 
