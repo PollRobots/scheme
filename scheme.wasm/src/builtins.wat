@@ -239,8 +239,9 @@
 (%define %builtin-get-environment-variable () (i32.const 234))
 (%define %builtin-get-environment-variables ()(i32.const 235))
 (%define %builtin-set-environment-variable () (i32.const 236))
+(%define %builtin-command-line ()             (i32.const 237))
 
-(table $table-builtin 237 anyfunc)
+(table $table-builtin 238 anyfunc)
 
 (func $register-builtins (param $heap i32) (param $env i32)
   (%define %add-special (%sym %num)
@@ -443,6 +444,7 @@
   (%add-builtin (%str %sym-192 192 "get-environment-variable") (%builtin-get-environment-variable))
   (%add-builtin (%str %sym-256 256 "get-environment-variables") (%builtin-get-environment-variables))
   (%add-builtin (%str %sym-192 192 "set-environment-variable") (%builtin-set-environment-variable))
+  (%add-builtin (%str %sym-128 128 "command-line") (%builtin-command-line))
 
   (%add-special (%sym-32 0x6669 2) (%special-if))               ;; 'if'
   (%add-special (global.get $g-let) (%special-let))             ;; 'let'
@@ -702,3 +704,4 @@
 (elem $table-builtin (%builtin-get-environment-variable) $get-environment-variable)
 (elem $table-builtin (%builtin-get-environment-variables) $get-environment-variables)
 (elem $table-builtin (%builtin-set-environment-variable) $set-environment-variable)
+(elem $table-builtin (%builtin-command-line) $command-line)

@@ -463,6 +463,13 @@ export class SchemeRuntime {
     this.environment_.set(this.getString(name), this.getString(value));
   }
 
+  commandLine() {
+    return this.heapAllocCons(
+      this.heapAllocString("/usr/local/bin/scheme.wasm"),
+      this.gNil
+    );
+  }
+
   unicodeLoadData(block: number, ptr: number) {
     const src = new Uint8Array(this.unicodeData_[block]);
     const dst = new Uint8Array(this.memory.buffer);
@@ -520,10 +527,11 @@ export class SchemeRuntime {
     try {
       if (!this.initialized_) {
         this.environment_.clear();
-        this.environment_.set("HOME", "/home/schemeuser");
-        this.environment_.set("LOGNAME", "schemeuser");
+        this.environment_.set("HOME", "/home/schemer");
+        this.environment_.set("LOGNAME", "schemer");
         this.environment_.set("PATH", "/usr/local/bin:/usr/bin");
-        this.environment_.set("USER", "schemeuser");
+        this.environment_.set("PWD", "/home/schemer");
+        this.environment_.set("USER", "schemer");
         this.env_ = this.environmentInit(this.gHeap, 0);
         this.registerBuiltins(this.gHeap, this.env_);
         this.initialized_ = true;
@@ -614,6 +622,7 @@ export class SchemeRuntime {
         getEnvironmentVariables: () => this.getEnvironmentVariables(),
         setEnvironmentVariable: (name: number, value: number) =>
           this.setEnvironmentVariable(name, value),
+        commandLine: () => this.commandLine(),
       },
       unicode: {
         loadData: (block: number, ptr: number) =>

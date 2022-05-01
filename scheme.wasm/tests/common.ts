@@ -109,6 +109,7 @@ export interface ProcessModule extends Record<string, Function> {
   getEnvironmentVariable: (name: number) => number;
   getEnvironmentVariables: () => number;
   setEnvironmentVariable: (name: number, value: number) => void;
+  commandLine: () => number;
 }
 
 export class ProcessTest {
@@ -178,6 +179,19 @@ export class ProcessTest {
     );
   }
 
+  commandLine(): number {
+    if (this.exports_ === undefined) {
+      return 0;
+    }
+
+    return this.exports_.heapAlloc(
+      this.exports_.gHeap(),
+      SchemeType.Cons,
+      createHeapString(this.exports_, "scheme.wasm"),
+      this.exports.gNil()
+    );
+  }
+
   get module(): ProcessModule {
     return {
       exit: (exitCode) => this.exit(exitCode),
@@ -185,6 +199,7 @@ export class ProcessTest {
       getEnvironmentVariables: () => this.getEnvironmentVariables(),
       setEnvironmentVariable: (name, value) =>
         this.setEnvironmentVariable(name, value),
+      commandLine: () => this.commandLine(),
     };
   }
 }
@@ -298,6 +313,10 @@ export async function loadWasm(
             .toString(16)
             .padStart(8, "0")} 0x${value.toString(16).padStart(8, "0")})`
         );
+      },
+      commandLine: () => {
+        console.warn("(command-line)");
+        return;
       },
     };
     imports["unicode"] = modules.unicode || {

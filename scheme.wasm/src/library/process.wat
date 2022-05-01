@@ -1,3 +1,8 @@
+;; (exit [<obj>])
+;; (emergency-exit [<obj>])
+;;
+;; NOTE: exit and emergency-exit are not equivalent in the spec
+;;  when dynamic-wind is implemented these will need to be different
 (func $exit (param $env i32) (param $args i32) (result i32)
   (local $arg i32)
   (local $exit-code i32)
@@ -66,6 +71,20 @@
 
   (call $process-set-environment-variable (%car-l $name) (%car-l $value))
   (return (global.get $g-nil)))
+
+(func $command-line (param $env i32) (param $args i32) (result i32)
+  (local $list i32)
+
+  (if (call $list-len (local.get $args)) (then
+      (return (call $argument-error (local.get $args)))))
+
+  (local.set $list (call $process-command-line))
+  (if (i32.eqz (call $is-list-impl (local.get $list))) (then
+      (unreachable)))
+  (if (i32.eqz (call $all-string (local.get $list))) (then
+      (unreachable)))
+
+  (return (local.get $list)))
 
 (func $version (param $env i32) (param $args i32) (result i32)
   (if (i32.ne (local.get $args) (global.get $g-nil)) (then

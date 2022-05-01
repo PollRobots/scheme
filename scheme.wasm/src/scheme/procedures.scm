@@ -7,3 +7,4 @@
     (apply for-each proc (map vector->list args))))
 
 (define call-with-current-continuation call/cc)
+(define emergency-exit exit)

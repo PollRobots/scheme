@@ -60,58 +60,52 @@
       "module": "io",
       "name": "write",
       "index": "$io-write",
-      "params": [
-        "i32"
-      ]
+      "params": ["i32"]
     },
     {
       "module": "process",
       "name": "exit",
       "index": "$process-exit",
-      "params": [
-        "i32"
-      ]
+      "params": ["i32"]
     },
     {
       "module": "process",
       "name": "getEnvironmentVariable",
       "index": "$process-get-environment-variable",
-      "params": [
-        "i32"
-      ],
+      "params": ["i32"],
       "result": "i32"
     },
     {
       "module": "process",
       "name": "getEnvironmentVariables",
       "index": "$process-get-environment-variables",
-      "params": [ ],
+      "params": [],
       "result": "i32"
     },
     {
       "module": "process",
       "name": "setEnvironmentVariable",
       "index": "$process-set-environment-variable",
-      "params": [
-        "i32","i32"
-      ]
+      "params": ["i32", "i32"]
+    },
+    {
+      "module": "process",
+      "name": "commandLine",
+      "index": "$process-command-line",
+      "params": [],
+      "result": "i32"
     },
     {
       "module": "unicode",
       "name": "loadData",
       "index": "$unicode-load-data",
-      "params": [
-        "i32",
-        "i32"
-      ]
+      "params": ["i32", "i32"]
     },
     {
       "module": "file",
       "name": "read",
       "index": "$file-read",
-      "params": [
-        "i32"
-      ],
+      "params": ["i32"],
       "result": "i32"
     },
     {
