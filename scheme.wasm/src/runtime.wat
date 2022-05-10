@@ -4,6 +4,7 @@
 (global $g-true             (mut i32) (i32.const 0))
 (global $g-false            (mut i32) (i32.const 0))
 (global $g-nil              (mut i32) (i32.const 0))
+(global $g-eof-object       (mut i32) (i32.const 0))
 (global $g-one              (mut i32) (i32.const 0))
 (global $g-zero             (mut i32) (i32.const 0))
 (global $g-newline          (mut i32) (i32.const 0))
@@ -53,6 +54,7 @@
 (global $g-open             (mut i32) (i32.const 0))
 (global $g-parse            (mut i32) (i32.const 0))
 (global $g-plus             (mut i32) (i32.const 0))
+(global $g-port-type        (mut i32) (i32.const 0))
 (global $g-quote            (mut i32) (i32.const 0))
 (global $g-slash            (mut i32) (i32.const 0))
 (global $g-space            (mut i32) (i32.const 0))
@@ -79,6 +81,7 @@
   (global.set $g-true (call $heap-alloc (global.get $g-heap) (%boolean-type) (i32.const 1) (i32.const 0x7423)))
   (global.set $g-false (call $heap-alloc (global.get $g-heap) (%boolean-type) (i32.const 0) (i32.const 0x6623)))
   (global.set $g-nil (call $heap-alloc (global.get $g-heap) (%nil-type) (i32.const 0) (i32.const 0x2928)))
+  (global.set $g-eof-object (call $heap-alloc (global.get $g-heap) (%eof-type) (i32.const 0) (i32.const 0x666f65)))
   (global.set $g-one (%alloc-i32 (i32.const 1)))
   (global.set $g-zero (%alloc-i32 (i32.const 0)))
 
@@ -138,6 +141,7 @@
   (global.set $g-parse (%str %sym-64 64 "parse"))
   (global.set $g-fold-case (%str %sym-128 128 "#!fold-case"))
   (global.set $g-no-fold-case (%str %sym-128 128 "#!no-fold-case"))
+  (global.set $g-port-type (%str %sym-32 32 "port"))
 
   (global.set $g-curr-version (%str %sym-192 192 (%version)))
 

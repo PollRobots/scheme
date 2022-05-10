@@ -163,6 +163,19 @@
         (call $print-lambda (local.get $ptr))
         (br $b_switch)))
 
+    (if (i32.eq (local.get $type) (%port-type)) (then
+        (call $print-other
+          (global.get $g-port-type)
+          (local.get $type)
+          (local.get $ptr))
+        (br $b_switch)))
+
+    (if (i32.eq (local.get $type) (%eof-type)) (then
+        (call $print-other
+          (global.get $g-eof)
+          (local.get $type)
+          (local.get $ptr))
+        (br $b_switch)))
 
     ;; default:
     (call $print-other (global.get $g-unknown) (local.get $type) (local.get $ptr))

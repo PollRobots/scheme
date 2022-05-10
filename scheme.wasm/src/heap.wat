@@ -44,7 +44,9 @@
 ;;   record-meta-type = 25
 ;;   record-method-type = 26
 ;;   case-lambda = 27
-;; kMaxType = 24
+;;   port = 28
+;;   eof = 29
+;; kMaxType = 29
 
 ;;  Empty cell
 ;;    next-empty: i32 ptr
@@ -126,6 +128,15 @@
 ;;  Case-Lambda:
 ;;    car: i32 env
 ;;    cons ((formals, body) ...) : i32
+
+;;  Port:
+;;    car: i32 fd
+;;    cdr: i4 enumFlags Input     #x001
+;;                      Output    #x002
+;;                      Text      #x004
+;;                      Open      #x008
+
+;;  Eof:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

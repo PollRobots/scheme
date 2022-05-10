@@ -71,16 +71,19 @@
       (local.set $arg (%car-l $args))
       (br_if $b_fail (i32.ne (%get-type $arg) (%cons-type)))
       (br_if $b_fail (i32.and (%get-flags $arg) (%immutable-flag)))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
+    (return (call $argument-error (local.get $args))))
+
+  (if (global.get $g-gc-collecting?) (then
+      ;; collect until done, cannot set-car! while a collection is ongoing
+      (loop $start
+        (call $gc-run (global.get $g-nil))
+        (br_if $start (global.get $g-gc-collecting?)))))
 
   (local.set $val (%car (%cdr-l $args)))
   (i32.store offset=4 (local.get $arg) (local.get $val))
 
-  (return (global.get $g-nil))
-)
+  (return (global.get $g-nil)))
 
 (func $pair-set-cdr! (param $env i32) (param $args i32) (result i32)
   (local $arg i32)
@@ -92,16 +95,19 @@
       (local.set $arg (%car-l $args))
       (br_if $b_fail (i32.ne (%get-type $arg) (%cons-type)))
       (br_if $b_fail (i32.and (%get-flags $arg) (%immutable-flag)))
-      (br $b_check)
-    )
-    (return (call $argument-error (local.get $args)))
-  )
+      (br $b_check))
+    (return (call $argument-error (local.get $args))))
+
+  (if (global.get $g-gc-collecting?) (then
+      ;; collect until done, cannot set-cdr! while a collection is ongoing
+      (loop $start
+        (call $gc-run (global.get $g-nil))
+        (br_if $start (global.get $g-gc-collecting?)))))
 
   (local.set $val (%car (%cdr-l $args)))
   (i32.store offset=8 (local.get $arg) (local.get $val))
 
-  (return (global.get $g-nil))
-)
+  (return (global.get $g-nil)))
 
 (func $null? (param $env i32) (param $args i32) (result i32)
   (local $arg i32)

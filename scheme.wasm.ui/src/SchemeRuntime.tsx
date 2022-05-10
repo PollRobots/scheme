@@ -435,6 +435,15 @@ export class SchemeRuntime {
     }
   }
 
+  close(fd: number) {
+    console.warn(`(port-close ${fd})`);
+  }
+
+  open(name: number, mode: number) {
+    console.warn(`(port-open ${this.getString(name)} #x${mode.toString(16)})`);
+    return -1;
+  }
+
   exit(exitCode: number) {
     throw new RuntimeExit(`Scheme exited with code: ${exitCode}`);
   }
@@ -614,6 +623,10 @@ export class SchemeRuntime {
       io: {
         read: () => this.reader(),
         write: (ptr: number) => this.writer(ptr),
+      },
+      port: {
+        close: (fd: number) => this.close(fd),
+        open: (name: number, mode: number) => this.open(name, mode),
       },
       process: {
         exit: (exitCode: number) => this.exit(exitCode),

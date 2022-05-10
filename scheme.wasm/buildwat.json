@@ -20,6 +20,7 @@
     "src/let.wat",
     "src/string.wat",
     "src/malloc.wat",
+    "src/port.wat",
     "src/print.wat",
     "src/quote.wat",
     "src/reader.wat",
@@ -61,6 +62,19 @@
       "name": "write",
       "index": "$io-write",
       "params": ["i32"]
+    },
+    {
+      "module": "port",
+      "name": "close",
+      "index": "$port-close",
+      "params": ["i32"]
+    },
+    {
+      "module": "port",
+      "name": "open",
+      "index": "$port-open",
+      "params": ["i32", "i32"],
+      "result": "i32"
     },
     {
       "module": "process",
@@ -145,6 +159,11 @@
       "name": "gReader",
       "type": "global",
       "index": "$g-reader"
+    },
+    {
+      "name": "gEofObject",
+      "type": "global",
+      "index": "$g-eof-object"
     },
     {
       "name": "gNil",

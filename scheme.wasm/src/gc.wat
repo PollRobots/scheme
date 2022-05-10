@@ -225,6 +225,18 @@ while the working set is non-empty:
           ;; break
           (br $b_switch)))
 
+      ;; case port-type
+      (if (i32.eq (local.get $type) (%port-type)) (then
+          ;; only touch car if the string flag is specified
+          (if (i32.and (%cdr-l $curr) (%port-string-flag)) (then
+              ;; gc-maybe-touched-push(car(curr))
+              (call $gc-maybe-touched-push (%car-l $curr))))
+          (if (i32.and (%cdr-l $curr) (%port-bytevec-flag)) (then
+              ;; gc-maybe-touched-push(car(curr))
+              (call $gc-maybe-touched-push (%car-l $curr))))
+          ;; break
+          (br $b_switch)))
+
       ;; }
     )
 
@@ -355,6 +367,15 @@ while the working set is non-empty:
 
             (if (i32.eq (local.get $type) (%record-type)) (then
                 (call $malloc-free (%car-l $ptr))))
+
+            (if (i32.eq (local.get $type) (%port-type)) (then
+                ;; close the port if it is open, and not a string port and not
+                ;; a bytevector port
+                (if (i32.eqz (i32.and
+                      (%cdr-l $ptr) 
+                      (i32.or (%port-string-flag) (%port-bytevec-flag)))) (then
+                    (if (i32.and (%cdr-l $ptr) (%port-open-flag)) (then
+                        (call $port-close (%car-l $ptr))))))))
 
             ;; heap-free(ptr)
             (call $heap-free (local.get $heap) (local.get $ptr))
@@ -502,6 +523,7 @@ while the working set is non-empty:
         (br_if $b_then (i32.eq (local.get $type) (%record-meta-type)))
         (br_if $b_then (i32.eq (local.get $type) (%record-method-type)))
         (br_if $b_then (i32.eq (local.get $type) (%case-lambda-type)))
+        (br_if $b_then (i32.eq (local.get $type) (%port-type)))
         (br $b_else)
       )
       ;; mark-touched(item)
@@ -540,6 +562,7 @@ while the working set is non-empty:
   (call $gc-mark-safe (global.get $g-nil))
   (call $gc-mark-safe (global.get $g-true))
   (call $gc-mark-safe (global.get $g-false))
+  (call $gc-mark-safe (global.get $g-eof-object))
   (call $gc-mark-safe (global.get $g-one))
   (call $gc-mark-safe (global.get $g-zero))
   ;; Add passed in roots to the touched set

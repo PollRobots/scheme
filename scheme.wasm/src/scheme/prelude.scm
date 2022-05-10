@@ -5,6 +5,7 @@
       "lazy.scm"
       "pair.scm"
       "numerics.scm"
+      "port.scm"
       "procedures.scm"
       "guard.scm")
     (for-each display (list "Version: " (version) #\newline))

@@ -158,87 +158,35 @@ describe("scheme", () => {
     throw new Error(`scheme tests in ${filename} failed`);
   };
 
-  it("test/boolean.spec.scm", async () => {
-    await testFile("test/boolean.spec.scm");
-  });
+  const schemeSpecs = [
+    "boolean",
+    "bytevector",
+    "case-lambda",
+    "char",
+    "complex",
+    "conditionals",
+    "control",
+    "cxr",
+    "equivalence",
+    "exceptions",
+    "include-ci",
+    "lazy",
+    "number",
+    "pair",
+    "port",
+    "process",
+    "sequence",
+    "string",
+    "symbol",
+    "time",
+    "trig",
+    "vector"
+  ];
 
-  it("test/bytevector.spec.scm", async () => {
-    await testFile("test/bytevector.spec.scm");
-  });
-
-  it("test/case-lambda.spec.scm", async () => {
-    await testFile("test/case-lambda.spec.scm");
-  });
-
-  it("test/char.spec.scm", async () => {
-    await testFile("test/char.spec.scm");
-  });
-
-  it("test/complex.spec.scm", async () => {
-    await testFile("test/complex.spec.scm");
-  });
-
-  it("test/conditionals.spec.scm", async () => {
-    await testFile("test/conditionals.spec.scm");
-  });
-
-  it("test/control.spec.scm", async () => {
-    await testFile("test/control.spec.scm");
-  });
-
-  it("test/cxr.spec.scm", async () => {
-    await testFile("test/cxr.spec.scm");
-  });
-
-  it("test/equivalence.spec.scm", async () => {
-    await testFile("test/equivalence.spec.scm");
-  });
-
-  it("test/exceptions.spec.scm", async () => {
-    await testFile("test/exceptions.spec.scm");
-  });
-
-  it("test/include-ci.spec.scm", async () => {
-    await testFile("test/include-ci.spec.scm");
-  });
-
-  it("test/lazy.spec.scm", async () => {
-    await testFile("test/lazy.spec.scm");
-  });
-
-  it("test/number.spec.scm", async () => {
-    await testFile("test/number.spec.scm");
-  });
-
-  it("test/pair.spec.scm", async () => {
-    await testFile("test/pair.spec.scm");
-  });
-
-  it("test/process.spec.scm", async () => {
-    await testFile("test/process.spec.scm");
-  });
-
-  it("test/sequence.spec.scm", async () => {
-    await testFile("test/sequence.spec.scm");
-  });
-
-  it("test/string.spec.scm", async () => {
-    await testFile("test/string.spec.scm");
-  });
-
-  it("test/symbol.spec.scm", async () => {
-    await testFile("test/symbol.spec.scm");
-  });
-
-  it("test/time.spec.scm", async () => {
-    await testFile("test/time.spec.scm");
-  });
-
-  it("test/trig.spec.scm", async () => {
-    await testFile("test/trig.spec.scm");
-  });
-
-  it("test/vector.spec.scm", async () => {
-    await testFile("test/vector.spec.scm");
-  });
+  for (const test of schemeSpecs) {
+    const filename = `test/${test}.spec.scm`;
+    it(filename, async() => {
+      await testFile(filename);
+    })
+  }
 });

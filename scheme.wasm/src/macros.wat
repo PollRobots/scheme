@@ -47,7 +47,10 @@
 ;;   record-meta-type = 25
 ;;   record-method-type = 26
 ;;   case-lambda = 27
-;; kMaxType = 27
+;;   port = 28
+;;   eof = 29
+;; kMaxType = 29
+
 (%define %empty-type () (i32.const 0))
 (%define %nil-type () (i32.const 1))
 (%define %boolean-type () (i32.const 2))
@@ -76,7 +79,9 @@
 (%define %record-meta-type () (i32.const 25))
 (%define %record-method-type () (i32.const 26))
 (%define %case-lambda-type () (i32.const 27))
-(%define %max-heap-type () (i32.const 27))
+(%define %port-type () (i32.const 28))
+(%define %eof-type () (i32.const 29))
+(%define %max-heap-type () (i32.const 29))
 
 (%define %get-type (%arg) (i32.and (i32.load8_u (local.get %arg)) (i32.const 0x1F)))
 (%define %get-gc-flags (%arg) (i32.load8_u offset=1 (local.get %arg)))
@@ -86,6 +91,12 @@
 (%define %visited-flag () (i32.const 1))
 (%define %visited-not-flag () (i32.const 0xFE))
 (%define %immutable-flag () (i32.const 2))
+(%define %port-input-flag ()   (i32.const 0x01))
+(%define %port-output-flag ()  (i32.const 0x02))
+(%define %port-text-flag ()    (i32.const 0x04))
+(%define %port-open-flag ()    (i32.const 0x08))
+(%define %port-string-flag ()  (i32.const 0x10))
+(%define %port-bytevec-flag () (i32.const 0x20))
 
 (%define %car (%cons) (i32.load offset=4 %cons))
 (%define %car-l (%cons) (i32.load offset=4 (local.get %cons)))
@@ -100,6 +111,7 @@
 (%define %chk-type-ne (%lbl %var %type) (br_if %lbl (i32.eq (%get-type %var) (%type))))
 
 (%define %set-car!-l (%cons %val) (i32.store offset=4 (local.get %cons) (local.get %val)))
+(%define %set-car! (%cons %val) (i32.store offset=4 %cons %val))
 (%define %set-cdr!-l (%cons %val) (i32.store offset=8 (local.get %cons) (local.get %val)))
 (%define %set-cdr! (%cons %val) (i32.store offset=8 %cons %val))
 
@@ -145,6 +157,7 @@
 (%define %alloc-quote (%val) (%alloc-cons (global.get $g-quote) (%alloc-cons %val (global.get $g-nil))))
 (%define %alloc-raise (%error) (call $heap-alloc (global.get $g-heap) (%except-type) %error (i32.const 1)))
 (%define %alloc-raise-continuable (%error) (call $heap-alloc (global.get $g-heap) (%except-type) %error (i32.const 2)))
+(%define %alloc-port (%fd %mode) (call $heap-alloc (global.get $g-heap) (%port-type) %fd %mode))
 
 
 (%define %pack-64 (%hi %lo) (i64.or (i64.shl (i64.extend_i32_u %hi) (i64.const 32)) (i64.extend_i32_u %lo)))

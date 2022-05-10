@@ -990,10 +990,10 @@
           (then
             ;; triple byte
             (br_if $b_end (i32.le_s (local.get $byte-len) (i32.const 2)))
-            ;; char = byte << 16 | (uint16 *)ptr[1]
+            ;; char = byte  | ((uint16 *)ptr[1] << 8)
             (local.set $char (i32.or
-                (i32.shl (local.get $byte) (i32.const 16))
-                (i32.load16_s offset=1 (local.get $ptr))))
+                (local.get $byte) 
+                (i32.shl (i32.load16_s offset=1 (local.get $ptr)) (i32.const 8))))
 
             ;; 0b1110xxxx 0b10xxxxxx 0b10xxxxxx
             ;; *dest = ((char & 0xF) << 12) | ((char & 0x3f00) >> 2) | ((char & 0x3f0000) >> 16)

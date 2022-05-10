@@ -504,6 +504,21 @@ const HeapView: React.FunctionComponent<HeapViewProps> = (props) => {
         case SchemeType.Rational:
           color = theme.cyan;
           break;
+        case SchemeType.Complex:
+          color = theme.cyan;
+          break;
+        case SchemeType.Record:
+        case SchemeType.RecordMeta:
+        case SchemeType.RecordMethod:
+          color = theme.red;
+          break;
+        case SchemeType.CaseLambda:
+          color = theme.magenta;
+          break;
+        case SchemeType.Port:
+        case SchemeType.Eof:
+          color: theme.base1;
+          break;
         default:
           continue;
       }

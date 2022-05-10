@@ -104,6 +104,11 @@ export interface IoModule extends Record<string, Function> {
   write: (ptr: number) => void;
 }
 
+export interface PortModule extends Record<string, Function> {
+  close: (fd: number) => void;
+  open: (name: number, mode: number) => number;
+}
+
 export interface ProcessModule extends Record<string, Function> {
   exit: (exitCode: number) => void;
   getEnvironmentVariable: (name: number) => number;
@@ -274,6 +279,7 @@ export interface TimeModule extends Record<string, Function> {
 export async function loadWasm(
   modules: {
     io?: IoModule;
+    port?: PortModule;
     process?: ProcessModule;
     unicode?: UnicodeModule;
     file?: FileModule;
@@ -291,6 +297,14 @@ export async function loadWasm(
       },
       write: (ptr: number) => {
         console.warn(`WRITE: 0x${ptr.toString(16).padStart(8, "0")}`);
+      },
+    };
+    imports["port"] = modules.port || {
+      close: (fd: number) => {
+        console.warn(`(close-port ${fd})`);
+      },
+      open: (name: number, mode: number) => {
+        console.warn(`(open 0x${name.toString(16).padStart(8, "0")} ${mode})`);
       },
     };
     imports["process"] = modules.process || {
