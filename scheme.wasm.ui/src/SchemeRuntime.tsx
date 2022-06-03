@@ -1,4 +1,4 @@
-import pako from "pako";
+import { gunzip } from "fflate";
 import { Jiffies } from "./Jiffies";
 import { SchemeType } from "./SchemeType";
 
@@ -598,10 +598,24 @@ export class SchemeRuntime {
     }
   }
 
+  gunzipResponse(response: Response): Promise<string> {
+    return response.arrayBuffer().then(
+      (buffer) =>
+        new Promise((resolve, reject) =>
+          gunzip(new Uint8Array(buffer), (err, data) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(new TextDecoder().decode(data));
+            }
+          })
+        )
+    );
+  }
+
   async loadUnicodeBlocks() {
     const response = await fetch("./unicode/blocks.json.gz");
-    const compressed = await response.arrayBuffer();
-    const raw = pako.inflate(new Uint8Array(compressed), { to: "string" });
+    const raw = await this.gunzipResponse(response);
     const data = JSON.parse(raw);
     if (typeof data !== "object") {
       throw new Error("Invalid unicode block data");

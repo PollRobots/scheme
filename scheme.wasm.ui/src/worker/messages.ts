@@ -1,5 +1,3 @@
-import { FlushValues } from "pako";
-
 export interface WorkerMessage {
   type: string;
   id: number;

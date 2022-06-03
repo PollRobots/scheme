@@ -39,10 +39,14 @@ module.exports = (env, argv) => {
     // accessing external urls (i.e. no tracking images in inline styles)
     "unsafe-inline",
   ];
-  const workerSources = ["self"];
+  // fflate useses a worker loaded from a blob, so worker sources needs to
+  // include the blob: scheme
+  const workerSources = ["self", "blob:"];
 
   const sourceMap = (sources, type) =>
-    [type, ...sources.map((el) => `'${el}'`)].join(" ") + ";";
+    [type, ...sources.map((el) => (el.endsWith(":") ? el : `'${el}'`))].join(
+      " "
+    ) + ";";
   const cspHeader = [
     sourceMap(defaultSources, "default-src"),
     sourceMap(scriptSources, "script-src"),
